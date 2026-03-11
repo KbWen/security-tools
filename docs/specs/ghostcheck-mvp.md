@@ -2,6 +2,7 @@
 status: frozen
 module: ghostcheck
 created: 2026-03-11
+updated: 2026-03-11
 ---
 # GhostCheck MVP Specification
 
@@ -13,15 +14,17 @@ leaked secrets in AI outputs, and dangerous agent rule configurations.
 
 ## Architecture
 
-```
+```text
 src/ghostcheck/
 ├── __init__.py              # Version: "0.1.0"
 ├── cli.py                   # argparse CLI entry point
 ├── scanner.py               # Orchestrator
+├── ignorefile.py            # .ghostcheckignore parser
+├── demo.py                  # Demo command: generates sample files & scans them
 ├── checks/
 │   ├── __init__.py
 │   ├── hallucination.py     # Package hallucination detector
-│   ├── secrets.py           # Secret leak scanner
+│   ├── secrets.py           # Secret leak scanner (file-type-aware severity)
 │   └── agent_rules.py       # Agent rules linter
 ├── reporters/
 │   ├── __init__.py
@@ -29,7 +32,11 @@ src/ghostcheck/
 │   └── json_reporter.py     # JSON export
 └── data/
     ├── secret_patterns.json # Regex patterns for secrets
-    └── risky_rules.json     # Risk patterns for agent rules
+    ├── risky_rules.json     # Risk patterns for agent rules
+    └── demo_fixtures/       # Sample bad files for demo command
+        ├── requirements_demo.txt
+        ├── chat_log_demo.md
+        └── rules_demo.md
 ```
 
 ## Acceptance Criteria
@@ -83,8 +90,37 @@ all commands with examples, CI integration guide, contributing section.
 `docs/ghostcheck/README_zh-TW.md` provides equivalent content in 繁體中文.
 
 ### AC-12: Packaging
+
 `pyproject.toml` with no runtime dependencies. CLI entry point registered.
 `pip install -e .` works. GitHub Actions CI runs tests on Python 3.9-3.12.
+
+### AC-13: Demo Command
+
+`ghostcheck demo` creates a temporary directory with intentionally vulnerable sample
+files (a requirements.txt with fake packages, a chat log with leaked keys, a rules
+file with dangerous permissions), runs a full scan against them, displays the results,
+and cleans up. This provides an instant "wow" experience for first-time users and
+serves as a smoke test for CI.
+
+### AC-14: Ignore File Support
+
+If a `.ghostcheckignore` file exists in the scan root, GhostCheck reads it and
+excludes matching paths/patterns from all scans. Format follows `.gitignore` conventions:
+- One pattern per line
+- Lines starting with `#` are comments
+- Supports glob patterns (`*.log`, `vendor/**`)
+- Supports negation (`!important.md`)
+The `--no-ignore` flag disables this behavior.
+
+### AC-15: File-Type-Aware Severity for Secrets
+
+The secret scanner adjusts severity based on file context:
+- Files named `*.example`, `*.sample`, `*.template`, `.env.example` → severity
+  downgraded by one level (e.g., HIGH → MEDIUM)
+- Files in paths matching `chat*/`, `conversation*/`, `log*/`, or AI output
+  directories → severity upgraded by one level (e.g., HIGH → CRITICAL)
+- Files in `test*/`, `fixture*/`, `mock*/` → severity downgraded by one level
+This reduces noise from known-safe files while highlighting real leaks in AI outputs.
 
 ## Non-goals
 
@@ -98,8 +134,9 @@ all commands with examples, CI integration guide, contributing section.
 ## Risks
 
 1. PyPI/npm API rate limiting during dependency checks → Mitigation: 0.5s delay between requests, timeout handling
-2. Regex patterns for secret detection may have false positives → Mitigation: configurable exclusion list
+2. Regex patterns for secret detection may have false positives → Mitigation: `.ghostcheckignore` + file-type-aware severity adjustment
 3. Agent rules analysis is pattern-based, not semantic → Mitigation: clearly document limitations
+4. Demo command creates temp files → Mitigation: use `tempfile` stdlib, always clean up in finally block
 
 ## Constraints
 

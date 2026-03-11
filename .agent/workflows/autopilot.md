@@ -44,8 +44,13 @@ Implement **GhostCheck MVP** as specified in `docs/specs/ghostcheck-mvp.md`.
 
 **GhostCheck** is a CLI security scanner for AI-assisted development workflows. It detects:
 1. **Hallucinated packages** — dependencies that don't exist or are suspiciously new on PyPI/npm
-2. **Leaked secrets** — API keys, tokens, passwords in AI chat logs and markdown files
+2. **Leaked secrets** — API keys, tokens, passwords in AI chat logs and markdown files (with file-type-aware severity adjustment)
 3. **Risky agent rules** — dangerous permissions in .agent/, .cursor/, and similar AI config files
+
+Additional MVP features:
+4. **Demo command** — `ghostcheck demo` generates sample vulnerable files, scans them, and cleans up
+5. **Ignore file** — `.ghostcheckignore` support for excluding paths/patterns from scans
+6. **Smart severity** — Severity adjusted by file context (example files downgraded, AI chat logs upgraded)
 
 ## Workflow Sequence
 
@@ -81,9 +86,11 @@ Execute IN ORDER, completing each phase fully before moving to the next:
 ## Success Criteria
 
 The session is complete when:
-1. All source files are created and functional
+1. All source files are created and functional (including `ignorefile.py` and `demo.py`)
 2. All tests pass (`pytest` exit code 0)
 3. Multi-role review has no ❌ failures
 4. `ghostcheck scan .` runs successfully against the repo itself
-5. Work log is archived and `current_state.md` is updated
-6. Changes are committed and ready for push
+5. `ghostcheck demo` runs and produces expected output
+6. `.ghostcheckignore` is tested with both inclusion and exclusion patterns
+7. Work log is archived and `current_state.md` is updated
+8. Changes are committed and ready for push
