@@ -1,4 +1,0 @@
-version: 1
-display_name: writing-plans
-short_description: Plan before implementing, outputting a task plan that is verifiable, revertible, and executable in stages.
-icon_small: wrench

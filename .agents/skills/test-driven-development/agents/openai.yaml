@@ -1,4 +1,0 @@
-version: 1
-display_name: test-driven-development
-short_description: Advance logic changes with a test-first approach (Red→Green→Refactor), ensuring behavior is verifiable and regression-proof.
-icon_small: wrench

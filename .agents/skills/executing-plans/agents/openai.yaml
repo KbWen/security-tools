@@ -1,4 +1,0 @@
-version: 1
-display_name: executing-plans
-short_description: Execute and report step-by-step according to the established plan, ensuring evidence for each step and maintaining rollback capability.
-icon_small: wrench
