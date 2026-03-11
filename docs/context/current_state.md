@@ -1,6 +1,6 @@
 # Project Current State (vNext)
 
-- **Project Intent**: Build a self-managed Agent OS for Codex Web / Codex App / Google Antigravity to reduce human procedural burden and continuously lower token costs.
+- **Project Intent**: Build **GhostCheck**, an open-source CLI security scanner for AI-assisted development workflows. Detects hallucinated packages, leaked secrets in AI outputs, and risky agent rule configurations. Built on AgentCortex v5 template.
 - **Core Guardrails**:
   - Correctness first: No claim of completion without evidence.
   - Small & reversible: Prioritize small, reversible changes; avoid unauthorized refactoring.
@@ -15,6 +15,7 @@
   - `docs/adr/ADR-001-vnext-self-managed-architecture.md`
 - **Spec Index**:
   - `[template-import-cleanup] docs/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
+  - `[ghostcheck] docs/specs/ghostcheck-mvp.md [Frozen] [Created: 2026-03-11]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/bootstrap`: Task initialization & classification freeze.
