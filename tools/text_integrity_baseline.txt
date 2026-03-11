@@ -1,0 +1,18 @@
+# Legacy text-integrity exceptions kept as baseline so validation only blocks regressions.
+# One relative path per line.
+.agent/workflows/handoff.md
+.claude/commands/bootstrap.md
+.claude/commands/handoff.md
+.claude/commands/implement.md
+.claude/commands/plan.md
+.claude/commands/review.md
+.claude/commands/ship.md
+.claude/commands/test.md
+.github/workflows/integrity-check.yml
+.gitignore
+CLAUDE.md
+agentcortex/docs/CLAUDE_PLATFORM_GUIDE.md
+agentcortex/docs/guides/token-governance.md
+docs/context/archive/codex-master-2026-03-06.md
+docs/context/current_state.md
+tests/template_import_cleanup_smoke.ps1

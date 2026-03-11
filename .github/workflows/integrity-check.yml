@@ -1,0 +1,62 @@
+name: AgentCortex Integrity Check
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Validate UTF-8 Encoding
+        run: |
+          python -c "
+          import os, sys
+          root = '.'
+          exts = {'.md', '.sh', '.rules', '.txt', '.yml', '.yaml'}
+          failed = False
+          for r, dirs, files in os.walk(root):
+              if '.git' in r: continue
+              for f in files:
+                  if any(f.endswith(ext) for ext in exts):
+                      path = os.path.join(r, f)
+                      try:
+                          with open(path, 'rb') as fh:
+                              fh.read().decode('utf-8')
+                      except UnicodeDecodeError as e:
+                          print(f'Encoding Error in {path}: {e}')
+                          failed = True
+          if failed: sys.exit(1)
+          print('All files are valid UTF-8.')
+          "
+
+      - name: Check Critical Files Presence
+        run: |
+          files=(
+            "README.md"
+            "AGENTS.md"
+            "docs/context/current_state.md"
+            ".agent/rules/engineering_guardrails.md"
+          )
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "Missing critical file: $f"
+              exit 1
+            fi
+          done
+          echo "All critical files present."
+
+      - name: Run Repository Validation
+        run: |
+          chmod +x ./tools/validate.sh
+          ./tools/validate.sh

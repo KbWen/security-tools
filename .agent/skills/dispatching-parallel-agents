@@ -1,0 +1,4 @@
+version: 1
+display_name: dispatching-parallel-agents
+short_description: Skill for dispatching parallel agents workflows.
+icon_small: wrench

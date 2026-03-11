@@ -1,0 +1,26 @@
+# AgentCortex Local Ignore Template
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Private AI Context (Local Only)
+docs/context/private/
+docs/context/work/*.md
+.agent/private/
+
+# Local Dev Artifacts
+tmp/
+*.log
+.cursor/
+.antigravity/scratch/
+.openrouter/
+
+# Environments
+.env*
+!.env.example
+
+.claude-chat/
+.tmp_vendor/
+.acl-backup-before-fix.txt
+.tmp_test_file.txt
