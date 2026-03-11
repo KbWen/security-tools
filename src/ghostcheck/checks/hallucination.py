@@ -75,6 +75,8 @@ class HallucinationChecker:
                     elif age_days < 90:
                         return {"package": pkg_name, "registry": "PyPI", "severity": "MEDIUM", "message": f"Package is relatively new ({age_days} days old)."}
                 
+                # Note: PyPI /json API doesn't provide download counts. 
+                # Weekly download checks currently skipped in zero-dependency MVP.
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -86,7 +88,6 @@ class HallucinationChecker:
     def _check_npm(self, pkg_name):
         url = f"https://registry.npmjs.org/{pkg_name}"
         try:
-            # npm registry usually requires a full fetch for all versions
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=5) as response:
                 data = json.loads(response.read().decode())
@@ -101,6 +102,8 @@ class HallucinationChecker:
                     elif age_days < 90:
                         return {"package": pkg_name, "registry": "npm", "severity": "MEDIUM", "message": f"Package is relatively new ({age_days} days old)."}
                 
+                # Note: npm registry requires separate API for downloads.
+                # Weekly download checks currently skipped in zero-dependency MVP.
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:

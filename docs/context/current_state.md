@@ -15,7 +15,7 @@
   - `docs/adr/ADR-001-vnext-self-managed-architecture.md`
 - **Spec Index**:
   - `[template-import-cleanup] docs/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
-  - `[ghostcheck] docs/specs/ghostcheck-mvp.md [Frozen] [Created: 2026-03-11]`
+  - [ghostcheck] docs/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/bootstrap`: Task initialization & classification freeze.
@@ -42,16 +42,8 @@
 >
 > 3-5 high-value patterns max. Reviewed during /bootstrap.
 
-- [Global Memory]: Branch-local lessons are lost after archival. Use Global Lessons Registry for persistence.
-- [Format Safety]: Do not copy line numbers from view tools; they break file edits.
-- [Path Rewrite Guard]: Namespace migrations should validate for accidental double-prefix replacements like `agentcortex/agentcortex/...` immediately after bulk path rewrites.
-- [Wrapper Validation]: Validation checks for wrapper files should assert behaviorally equivalent path construction patterns, not only one literal path string representation.
-- [Bash Portability]: Shell validation entrypoints should prefer portable `grep`-based checks over environment-specific `rg` assumptions when they are part of cross-platform integrity gates.
-- [Work Log Key]: Resolve filesystem-safe worklog keys from raw branch names before gate checks; missing active logs are recoverable, while missing handoff references or evidence remain hard failures.
-
-- [GLOBAL-CANDIDATE][Patch Path Fallback]: When `apply_patch` is unstable on this Windows workspace, prefer repo-local safe whole-file rewrites only for newly added files or tightly scoped text-only files, then immediately re-verify with `git diff --check`.
-- [Detector Validation]: New integrity checks must be validated against real repo bytes before baselining, otherwise pure-LF files can be falsely classified as mixed EOL and pollute the baseline.
-- [Shell Dependency Guard]: Cross-platform validation entrypoints must not add new hard runtime dependencies unless the template explicitly requires them and the migration path is documented.
+- [Status Safety]: Ensure modular scan methods in `Scanner` prune ignored directories from `os.walk` to avoid scanning prohibited/large paths inappropriately.
+- [Test Assertion]: `DemoRunner.run()` returns 0 on success; smoke tests should assert 0 and verify finding details separately instead of asserting non-zero for findings.
 
 ## Ship History
 ### Ship-master-2026-03-06
@@ -62,4 +54,7 @@
 - Tests: Pass
 ### Ship-codex-template-import-cleanup-namespacing-2026-03-07
 - Feature shipped: added a minimal text hardening kit with repo-level text defaults, baseline-backed integrity checks, validation integration, and rollout guidance for older projects.
+- Tests: Pass
+### Ship-main-2026-03-11
+- Feature shipped: GhostCheck MVP (v0.1.0). Implemented hallucination detection, secret scanning with file-type-aware severity, and agent rules linter. Optimized CLI for modular scans and added comprehensive smoke tests.
 - Tests: Pass

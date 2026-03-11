@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="11" time="0.141" timestamp="2026-03-11T15:29:02.477814+08:00" hostname="Desktop-wen"><testcase classname="tests.test_agent_rules" name="test_rules_lint" time="0.007" /><testcase classname="tests.test_cli" name="test_cli_version" time="0.004" /><testcase classname="tests.test_cli" name="test_cli_help" time="0.003" /><testcase classname="tests.test_cli" name="test_cli_demo" time="0.003" /><testcase classname="tests.test_demo" name="test_demo_command_smoke" time="0.008" /><testcase classname="tests.test_hallucination" name="test_parse_requirements" time="0.000" /><testcase classname="tests.test_hallucination" name="test_check_pypi_not_found" time="0.001" /><testcase classname="tests.test_hallucination" name="test_check_pypi_success" time="0.014" /><testcase classname="tests.test_secrets" name="test_secret_scan" time="0.004"><failure message="AssertionError: assert 'key-*bcde' == '****'&#10;  &#10;  #x1B[0m#x1B[91m- ****#x1B[39;49;00m#x1B[90m#x1B[39;49;00m&#10;  #x1B[92m+ key-*bcde#x1B[39;49;00m#x1B[90m#x1B[39;49;00m">tmp_path = WindowsPath('C:/Users/wen/AppData/Local/Temp/pytest-of-wen/pytest-141/test_secret_scan0')
+
+    def test_secret_scan(tmp_path):
+        patterns_file = tmp_path / "patterns.json"
+        patterns_file.write_text(json.dumps([
+            {"name": "Fake Key", "pattern": "key-[a-z]{5}", "severity": "HIGH"}
+        ]))
+    
+        scanner = SecretScanner(str(patterns_file))
+        content = "This is a key-abcde and another key-12345"
+        findings = scanner.scan_file("test.txt", content)
+    
+        assert len(findings) == 1
+        assert findings[0]['pattern_name'] == "Fake Key"
+&gt;       assert findings[0]['value_preview'] == "****"
+E       AssertionError: assert 'key-*bcde' == '****'
+E         
+E         #x1B[0m#x1B[91m- ****#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+E         #x1B[92m+ key-*bcde#x1B[39;49;00m#x1B[90m#x1B[39;49;00m
+
+tests\test_secrets.py:17: AssertionError</failure></testcase><testcase classname="tests.test_secrets" name="test_severity_adjustment" time="0.000" /><testcase classname="tests.test_secrets" name="test_adjust_severity" time="0.000" /></testsuite></testsuites>

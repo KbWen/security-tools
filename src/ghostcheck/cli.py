@@ -63,15 +63,11 @@ def main():
         if args.command == "scan":
             findings = scanner.scan()
         elif args.command == "check-deps":
-            # For specific file checks, we filter manual
-            all_findings = scanner.scan()
-            findings = [f for f in all_findings if f.get('package')]
+            findings = scanner.scan_dependencies()
         elif args.command == "check-secrets":
-            all_findings = scanner.scan()
-            findings = [f for f in all_findings if f.get('pattern_name')]
+            findings = scanner.scan_secrets()
         elif args.command == "check-rules":
-            all_findings = scanner.scan()
-            findings = [f for f in all_findings if f.get('rule_name')]
+            findings = scanner.scan_rules()
             
         # Filter by severity
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}

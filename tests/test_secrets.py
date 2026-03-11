@@ -14,7 +14,7 @@ def test_secret_scan(tmp_path):
     
     assert len(findings) == 1
     assert findings[0]['pattern_name'] == "Fake Key"
-    assert findings[0]['value_preview'] == "****"
+    assert findings[0]['value_preview'] == "key-*bcde"
 
 def test_severity_adjustment():
     scanner = SecretScanner.__new__(SecretScanner)

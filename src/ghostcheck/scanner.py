@@ -24,39 +24,52 @@ class Scanner:
         ignore_file = os.path.join(root_path, '.ghostcheckignore')
         self.ignore_matcher = IgnoreMatcher(ignore_file if ignore_enabled else None)
 
-    def scan(self):
-        all_findings = []
-        
+    def scan_dependencies(self):
+        findings = []
         for root, dirs, files in os.walk(self.root_path):
-            # Exclude ignored directories
             if self.ignore_enabled:
                 dirs[:] = [d for d in dirs if not self.ignore_matcher.is_ignored(os.path.join(root, d))]
-            
             for file in files:
                 file_path = os.path.join(root, file)
-                
-                # AC-14: Check if file is ignored
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
-                
-                # Dependency Checks (AC-2, AC-3)
                 if file == 'requirements.txt':
                     with open(file_path, 'r', errors='ignore') as f:
-                        all_findings.extend(self.hallucination_checker.check_requirements(f.read()))
+                        findings.extend(self.hallucination_checker.check_requirements(f.read()))
                 elif file == 'package.json':
                     with open(file_path, 'r', errors='ignore') as f:
-                        all_findings.extend(self.hallucination_checker.check_package_json(f.read()))
-                
-                # Secret Checks (AC-4, AC-15)
-                # Filter by executable extensions specified in AC-4
+                        findings.extend(self.hallucination_checker.check_package_json(f.read()))
+        return findings
+
+    def scan_secrets(self):
+        findings = []
+        for root, dirs, files in os.walk(self.root_path):
+            if self.ignore_enabled:
+                dirs[:] = [d for d in dirs if not self.ignore_matcher.is_ignored(os.path.join(root, d))]
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
                 if any(file.endswith(ext) for ext in ['.md', '.json', '.txt', '.log', '.yaml', '.yml']):
                     with open(file_path, 'r', errors='ignore') as f:
-                        all_findings.extend(self.secret_scanner.scan_file(file_path, f.read()))
-                
-                # Rule Checks (AC-5)
-                # Check for agent configs
-                if any(x in root for x in ['.agent', '.agents', '.cursor', '.github/copilot']):
-                     with open(file_path, 'r', errors='ignore') as f:
-                        all_findings.extend(self.rules_linter.scan_file(file_path, f.read()))
-                        
-        return all_findings
+                        findings.extend(self.secret_scanner.scan_file(file_path, f.read()))
+        return findings
+
+    def scan_rules(self):
+        findings = []
+        for root, dirs, files in os.walk(self.root_path):
+            if self.ignore_enabled:
+                dirs[:] = [d for d in dirs if not self.ignore_matcher.is_ignored(os.path.join(root, d))]
+            if not any(x in root for x in ['.agent', '.agents', '.cursor', '.github/copilot']):
+                continue
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                with open(file_path, 'r', errors='ignore') as f:
+                    findings.extend(self.rules_linter.scan_file(file_path, f.read()))
+        return findings
+
+    def scan(self):
+        # Full scan combines all
+        return self.scan_dependencies() + self.scan_secrets() + self.scan_rules()

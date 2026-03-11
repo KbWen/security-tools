@@ -1,48 +1,61 @@
 # GhostCheck
 
-**GhostCheck** is a CLI security scanner designed for AI-assisted development workflows. It addresses risks that traditional tools miss: hallucinated packages, leaked secrets in AI chat logs, and dangerous agent instruction configurations.
+## AI-Era Security Scanner for Developers
 
-## Features
+GhostCheck is a zero-dependency CLI security scanner designed to detect risks specific to AI-assisted development workflows.
 
-- 🦄 **Hallucination Detection**: Identify nonexistent packages on PyPI/npm.
-- 🔑 **Smart Secret Scanning**: Detect keys in AI logs with file-type-aware severity.
-- 🛡️ **Agent Rules Linter**: Scan `.agent/`, `.cursor/`, and `.github/` for risky rules.
-- 🚫 **Ignore Support**: Exclude paths via `.ghostcheckignore`.
-- 🚀 **Demo Mode**: Instant "wow" experience with `ghostcheck demo`.
+## Key Features
+
+- **Hallucination Detection**: Flags packages that don't exist on PyPI/npm or are suspiciously new.
+- **Secret Scanning**: Finds leaked API keys/tokens in AI chat logs and code with file-type-aware severity.
+- **Agent Rules Linter**: Audits `.agent`, `.cursor`, and other agent rules for dangerous permissions or commands.
+- **Zero Dependencies**: Pure Python implementation with no runtime dependencies.
 
 ## Installation
 
 ```bash
-git clone https://github.com/KbWen/security-tools.git
-cd security-tools
 pip install -e .
 ```
 
-## Quick Start
+## Usage
+
+### Perform a Full Scan
 
 ```bash
-# Run a demo scan with sample vulnerabilities
-ghostcheck demo
-
-# Scan the current directory
 ghostcheck scan .
+```
 
-# Check dependencies for hallucinations
+### Check Dependencies
+
+```bash
 ghostcheck check-deps requirements.txt
+ghostcheck check-deps package.json
 ```
 
-## Configuration
+### Scan for Secrets
 
-### .ghostcheckignore
-
-Create a `.ghostcheckignore` file in your project root to exclude files:
-
-```text
-# Ignore log files
-*.log
-# Ignore dependency folder
-node_modules/
+```bash
+ghostcheck check-secrets ./docs
 ```
+
+### Audit Agent Rules
+
+```bash
+ghostcheck check-rules .agent/
+```
+
+### Interactive Demo
+
+```bash
+ghostcheck demo
+```
+
+## Options
+
+- `--format [console|json]`: Specify output format.
+- `--severity [CRITICAL|HIGH|MEDIUM|LOW|INFO]`: Filter by minimum severity.
+- `--no-ignore`: Ignore `.ghostcheckignore` rules.
+- `--no-color`: Disable terminal colors.
 
 ## License
 
