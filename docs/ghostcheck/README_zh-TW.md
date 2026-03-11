@@ -1,62 +1,58 @@
-# GhostCheck
+# 👻 GhostCheck
 
-## 專為 AI 輔助開發流程設計的安全性掃描工具
+[![版本](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/KbWen/security-tools)
+[![授權](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)](https://www.python.org/)
 
-GhostCheck 是一款零依賴 (Zero-dependency) 的命令列安全性掃描工具，旨在偵測 AI 模型產出中特有的風險。
+**GhostCheck** 是一個為 AI 輔助開發時代量身打造的高性能、零依賴安全性掃描工具。它能在 AI Agent 產出的內容進入 CI/CD 流程前，精準識別高風險漏洞與「幻覺」威脅。
 
-## 核心功能
+---
 
-- **幻覺套件偵測 (Hallucination Detection)**: 標記 PyPI/npm 上不存在或過於新穎、疑似為 AI 幻覺產出的套件。
-- **金鑰外洩掃描 (Secret Scanning)**: 在 AI 對話記錄（Chat Logs）或代碼中搜尋外洩的 API Key/Token，並根據檔案情境自動調整嚴重程度。
-- **Agent 規則檢查 (Agent Rules Linter)**: 審核 `.agent`、`.cursor` 等 Agent 規則檔，找出具風險的權限設定或危險指令。
-- **零運行時依賴**: 純 Python 實作，無需額外安裝執行環境套件。
+## 🚀 願景
 
-## 安裝方式
+AI Agent 正在重塑世界，但也帶來了新的攻擊面。**GhostCheck** 彌補了傳統 SAST 與 AI 原生安全性之間的鴻溝，確保您的代碼在享受 AI 速度的同時依然穩如泰山。
+
+## 🛡️ 核心能力
+
+- **🔍 幻覺套件偵測 (Hallucination Detection)**：自動驗證依賴項，在安裝前標記 AI 虛構（幻覺）的套件。
+- **🔑 情境感知金鑰掃描 (Context-Aware Secrets)**：針對終端機日誌、AI 對話記錄與源碼中的 API 金鑰與 Token 進行專業偵測。
+- **📜 Agent 規則審核 (Agent Rules Linter)**：審查 `.agent`、`.cursorrules` 等指令檔，找出危險權限或指令執行風險。
+- **⚡ 零基礎設施依賴**：單一文件、純 Python 引擎。無需資料庫、無需 Docker、無需外部 API。
+
+## 🛠️ 快速上手
+
+### 安裝
 
 ```bash
 pip install -e .
 ```
 
-## 使用範例
-
-### 執行完整掃描
+### 立即掃描
 
 ```bash
+# 掃描整個專案的安全性風險
 ghostcheck scan .
-```
 
-### 檢查依賴套件
-
-```bash
-ghostcheck check-deps requirements.txt
-ghostcheck check-deps package.json
-```
-
-### 掃描機密資訊
-
-```bash
-ghostcheck check-secrets ./docs
-```
-
-### 審查 Agent 規則
-
-```bash
-ghostcheck check-rules .agent/
-```
-
-### 即時展示
-
-```bash
+# 執行互動式展示了解實際運作
 ghostcheck demo
 ```
 
-## 選項說明
+## 📋 功能與指令
 
-- `--format [console|json]`: 指定輸出格式。
-- `--severity [CRITICAL|HIGH|MEDIUM|LOW|INFO]`: 設定掃描結果的嚴重等級門檻。
-- `--no-ignore`: 停用 `.ghostcheckignore` 過濾。
-- `--no-color`: 停用終端機顏色顯示。
+| 功能 | 指令 | 目標 |
+| :--- | :--- | :--- |
+| **完整安全掃描** | `ghostcheck scan` | 整個工作區 |
+| **依賴項檢查** | `ghostcheck check-deps` | `requirements.txt`, `package.json` |
+| **機密資訊偵測** | `ghostcheck check-secrets` | 日誌、源碼、文件 |
+| **Agent 規則審核** | `ghostcheck check-rules` | `.agent/`, `.cursor/` |
 
-## 授權條款
+## ⚙️ 進階配置
 
-MIT
+GhostCheck 遵循專業的忽略規則：
+- 建立 `.ghostcheckignore` 來排除特定路徑。
+- 使用 `--severity [CRITICAL|HIGH|MEDIUM|LOW]` 過濾嚴重等級。
+- 使用 `--format json` 導出結果以進行自動化整合。
+
+---
+
+**由 [KbWen](https://github.com/KbWen) 為 AI 社群用心開發 ❤️**
