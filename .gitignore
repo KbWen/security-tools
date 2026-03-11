@@ -59,3 +59,16 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+
+
+# AgentCortex Template - Downstream Ignore Defaults
+docs/context/current_state.md
+docs/context/work/
+docs/context/archive/
+docs/context/private/
+.openrouter/
+.claude-chat/
+.cursor/
+.antigravity/scratch/
+# End AgentCortex Template - Downstream Ignore Defaults
+
