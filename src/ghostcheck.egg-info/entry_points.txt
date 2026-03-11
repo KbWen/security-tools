@@ -1,0 +1,2 @@
+[console_scripts]
+ghostcheck = ghostcheck.cli:main

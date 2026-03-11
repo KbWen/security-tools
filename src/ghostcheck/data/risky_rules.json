@@ -1,0 +1,26 @@
+[
+    {
+        "name": "Destructive Command",
+        "pattern": "(rm\\s+-rf|DROP\\s+TABLE|DELETE\\s+FROM|TRUNCATE\\s+TABLE|--force)",
+        "severity": "CRITICAL",
+        "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss."
+    },
+    {
+        "name": "Privilege Escalation",
+        "pattern": "(sudo\\s+|chmod\\s+777|chown\\s+root)",
+        "severity": "HIGH",
+        "remediation": "Do not grant root/sudo permissions or world-writable permissions to agent workflows."
+    },
+    {
+        "name": "External Execution",
+        "pattern": "(curl\\s+.*\\|\\s*bash|wget\\s+.*\\|\\s*sh|python\\s+-c.*import\\s+os.*system)",
+        "severity": "HIGH",
+        "remediation": "Disable external script execution or piping network content directly to a shell."
+    },
+    {
+        "name": "Safety Check Disabled",
+        "pattern": "(skip\\s+tests|disable\\s+safety|no\\s+restrictions|ignore\\s+security)",
+        "severity": "MEDIUM",
+        "remediation": "Always keep security and safety checks enabled for AI agents."
+    }
+]

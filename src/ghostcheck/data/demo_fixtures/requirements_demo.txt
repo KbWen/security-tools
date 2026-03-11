@@ -1,0 +1,3 @@
+nonexistent-package-ghost-123
+ai-generated-malware-lib
+requests==2.25.1
