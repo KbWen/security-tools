@@ -7,19 +7,31 @@
     },
     {
         "name": "Privilege Escalation",
-        "pattern": "(sudo\\s+|chmod\\s+777|chown\\s+root)",
+        "pattern": "(sudo\\s+|chmod\\s+777|chown\\s+root|runas\\s+/user:administrator)",
         "severity": "HIGH",
         "remediation": "Do not grant root/sudo permissions or world-writable permissions to agent workflows."
     },
     {
+        "name": "Data Exfiltration",
+        "pattern": "(curl|wget|fetch|axios|requests)\\s+.*(POST|PUT|PATCH)\\s+.*http",
+        "severity": "CRITICAL",
+        "remediation": "Avoid rules that send potentially sensitive data to external endpoints via POST/PUT."
+    },
+    {
         "name": "External Execution",
-        "pattern": "(curl\\s+.*\\|\\s*bash|wget\\s+.*\\|\\s*sh|python\\s+-c.*import\\s+os.*system)",
+        "pattern": "(curl\\s+.*\\|\\s*(bash|sh|zsh|ps1|powershell)|wget\\s+.*\\|\\s*(bash|sh)|python\\s+-c.*import\\s+os.*system)",
         "severity": "HIGH",
         "remediation": "Disable external script execution or piping network content directly to a shell."
     },
     {
+        "name": "Non-interactive Execution",
+        "pattern": "(-y|--yes|--noconfirm|--assume-yes|DEBIAN_FRONTEND=noninteractive)",
+        "severity": "MEDIUM",
+        "remediation": "Avoid bypassing human confirmation for potentially dangerous system changes."
+    },
+    {
         "name": "Safety Check Disabled",
-        "pattern": "(skip\\s+tests|disable\\s+safety|no\\s+restrictions|ignore\\s+security)",
+        "pattern": "(skip\\s+tests|disable\\s+safety|no\\s+restrictions|ignore\\s+security|bypass\\s+guardrails)",
         "severity": "MEDIUM",
         "remediation": "Always keep security and safety checks enabled for AI agents."
     }

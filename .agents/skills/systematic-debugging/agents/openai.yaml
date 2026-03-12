@@ -1,0 +1,4 @@
+version: 1
+display_name: systematic-debugging
+short_description: Skill for systematic debugging workflows.
+icon_small: wrench

@@ -1,0 +1,4 @@
+version: 1
+display_name: verification-before-completion
+short_description: Skill for verification before completion workflows.
+icon_small: wrench

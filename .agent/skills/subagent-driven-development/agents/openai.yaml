@@ -1,0 +1,4 @@
+version: 1
+display_name: subagent-driven-development
+short_description: Decompose tasks through sub-agent collaboration, defining interface contracts, synchronization nodes, and integrated acceptance.
+icon_small: wrench

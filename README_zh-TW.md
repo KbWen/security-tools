@@ -1,6 +1,6 @@
 # 👻 GhostCheck
 
-[![版本](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/KbWen/security-tools)
+[![版本](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/KbWen/security-tools)
 [![授權](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)](https://www.python.org/)
 
@@ -12,12 +12,15 @@
 
 AI Agent 正在重塑世界，但也帶來了新的攻擊面。**GhostCheck** 彌補了傳統 SAST 與 AI 原生安全性之間的鴻溝，確保您的代碼在享受 AI 速度的同時依然穩如泰山。
 
-## 🛡️ 核心能力
+## ✨ 核心功能 (v0.2.0)
 
-- **🔍 幻覺套件偵測 (Hallucination Detection)**：自動驗證依賴項，在安裝前標記 AI 虛構（幻覺）的套件。
-- **🔑 情境感知金鑰掃描 (Context-Aware Secrets)**：針對終端機日誌、AI 對話記錄與源碼中的 API 金鑰與 Token 進行專業偵測。
-- **📜 Agent 規則審核 (Agent Rules Linter)**：審查 `.agent`、`.cursorrules` 等指令檔，找出危險權限或指令執行風險。
-- **⚡ 零基礎設施依賴**：單一文件、純 Python 引擎。無需資料庫、無需 Docker、無需外部 API。
+- **進階密鑰掃描**：支援 AWS, GCP, GitHub, Slack, Stripe 等高精度正則偵測，**掃描範圍覆蓋所有代碼檔案** (.py, .js, .ts 等)。
+- **Git Hook 整合**：提供專業的 Windows (PS1) 與 Unix (Sh) pre-commit hook，自動阻斷風險提交。
+- **惡意行為偵測**：針對 Agent 指令檔進行 exfiltration 與權限繞過偵測。
+- **Docker 風險檢查**：自動偵測 Dockerfile/Compose 中的特權容器、Root 執行與不安全端口映射。
+- **幻覺防護**：對接 PyPI 與 npm 註冊表，驗證依賴包的真實性。
+- **專業化報告**：高品質表格佈局，支援等級配色與執行摘要。
+- **擴充性架構**：模組化設計，輕鬆加入自定義掃描邏輯。
 
 ## 🛠️ 快速上手
 

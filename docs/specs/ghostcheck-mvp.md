@@ -16,7 +16,7 @@ leaked secrets in AI outputs, and dangerous agent rule configurations.
 
 ```text
 src/ghostcheck/
-├── __init__.py              # Version: "0.1.0"
+├── __init__.py              # Version: "0.2.0"
 ├── cli.py                   # argparse CLI entry point
 ├── scanner.py               # Orchestrator
 ├── ignorefile.py            # .ghostcheckignore parser

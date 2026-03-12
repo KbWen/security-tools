@@ -1,6 +1,6 @@
 # 👻 GhostCheck
 
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/KbWen/security-tools)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)](https://www.python.org/)
 
@@ -12,12 +12,15 @@
 
 AI agents are rewriting the world, but they also introduce new attack surfaces. **GhostCheck** bridges the gap between traditional SAST and AI-native security, ensuring your code remains secure while you move at AI speed.
 
-## 🛡️ Core Capabilities
+## ✨ Key Features (v0.2.0)
 
-- **🔍 Hallucination Detection**: Automatically verifies dependencies to flag AI-hallucinated packages before they are installed.
-- **🔑 Context-Aware Secret Scanning**: Specialized detection for API keys and tokens in terminal logs, AI chat history, and source code.
-- **📜 Agent Rules Linter**: Audits `.agent`, `.cursorrules`, and other instructions for dangerous permissions or command execution risks.
-- **⚡ Zero Infrastructure**: A single-file, pure Python engine. No database, no Docker, no external APIs required.
+- **Advanced Secret Scanning**: High-precision regex for AWS, GCP, GitHub, Slack, and Stripe keys. **Now scans across all code files** (.py, .js, .ts, etc.).
+- **Git Hook Integration**: Professional pre-commit hooks for Windows (PowerShell) and Unix (Shell) to block risky commits.
+- **Rogue Agent Detection**: Identifies dangerous behavioral patterns (exfiltration, logic bypasses) in agent instruction files.
+- **Docker Risk Check**: Detects privileged containers, root execution, and insecure port mappings in Dockerfiles.
+- **Hallucination Protection**: Verifies dependency legitimacy against PyPI and npm registries.
+- **Professional Reporting**: Structured tabular output with severity color-coding and executive summaries.
+- **Extensible Architecture**: Modular design for adding custom domain-oriented security checks.
 
 ## 🛠️ Quick Start
 

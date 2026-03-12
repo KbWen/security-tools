@@ -12,33 +12,36 @@ def main():
         epilog="Addressing the unique risks of AI-assisted development."
     )
     
+    # Create a parent parser for common arguments
+    parent_parser = argparse.ArgumentParser(add_help=False)
+    parent_parser.add_argument("--format", choices=["console", "json"], default="console", help="Output format")
+    parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="INFO", help="Minimum severity threshold")
+    parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
+    parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
     # scan command
-    scan_parser = subparsers.add_parser("scan", help="Run full scan on target path")
+    scan_parser = subparsers.add_parser("scan", parents=[parent_parser], help="Run full scan on target path")
     scan_parser.add_argument("path", nargs="?", default=".", help="Target path to scan (default: .)")
     
     # check-deps command
-    deps_parser = subparsers.add_parser("check-deps", help="Check dependencies for hallucinations")
+    deps_parser = subparsers.add_parser("check-deps", parents=[parent_parser], help="Check dependencies for hallucinations")
     deps_parser.add_argument("target", help="File to check (requirements.txt or package.json)")
     
     # check-secrets command
-    secrets_parser = subparsers.add_parser("check-secrets", help="Scan for leaked secrets")
+    secrets_parser = subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
     secrets_parser.add_argument("path", help="Path to scan")
     
     # check-rules command
-    rules_parser = subparsers.add_parser("check-rules", help="Lint agent rules")
+    rules_parser = subparsers.add_parser("check-rules", parents=[parent_parser], help="Lint agent rules")
     rules_parser.add_argument("path", help="Path to scan for rule files")
     
     # demo command
-    subparsers.add_parser("demo", help="Run a demo scan with sample vulnerabilities")
+    subparsers.add_parser("demo", parents=[parent_parser], help="Run a demo scan with sample vulnerabilities")
     
-    # Global flags
-    parser.add_argument("--format", choices=["console", "json"], default="console", help="Output format")
-    parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="INFO", help="Minimum severity threshold")
-    parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
-    parser.add_argument("--no-color", action="store_true", help="Disable colored output")
-    parser.add_argument("--version", action="version", version="GhostCheck 0.1.0")
+    # Version flag remains at top level
+    parser.add_argument("--version", action="version", version="GhostCheck 0.2.0")
     
     args = parser.parse_args()
     

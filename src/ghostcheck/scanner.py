@@ -3,6 +3,7 @@ import json
 from .checks.hallucination import HallucinationChecker
 from .checks.secrets import SecretScanner
 from .checks.agent_rules import AgentRulesLinter
+from .checks.docker import DockerRiskChecker
 from .ignorefile import IgnoreMatcher
 
 class Scanner:
@@ -19,6 +20,7 @@ class Scanner:
         self.hallucination_checker = HallucinationChecker()
         self.secret_scanner = SecretScanner(self.secret_patterns_path)
         self.rules_linter = AgentRulesLinter(self.risky_rules_path)
+        self.docker_checker = DockerRiskChecker()
         
         # AC-14: Ignore Handling
         ignore_file = os.path.join(root_path, '.ghostcheckignore')
@@ -50,7 +52,7 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
-                if any(file.endswith(ext) for ext in ['.md', '.json', '.txt', '.log', '.yaml', '.yml']):
+                if any(file.endswith(ext) for ext in ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1']):
                     with open(file_path, 'r', errors='ignore') as f:
                         findings.extend(self.secret_scanner.scan_file(file_path, f.read()))
         return findings
@@ -70,6 +72,20 @@ class Scanner:
                     findings.extend(self.rules_linter.scan_file(file_path, f.read()))
         return findings
 
+    def scan_docker(self):
+        findings = []
+        for root, dirs, files in os.walk(self.root_path):
+            if self.ignore_enabled:
+                dirs[:] = [d for d in dirs if not self.ignore_matcher.is_ignored(os.path.join(root, d))]
+            for file in files:
+                if any(x in file for x in ['Dockerfile', 'docker-compose']):
+                    file_path = os.path.join(root, file)
+                    if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                        continue
+                    with open(file_path, 'r', errors='ignore') as f:
+                        findings.extend(self.docker_checker.scan_file(file_path, f.read()))
+        return findings
+
     def scan(self):
         # Full scan combines all
-        return self.scan_dependencies() + self.scan_secrets() + self.scan_rules()
+        return self.scan_dependencies() + self.scan_secrets() + self.scan_rules() + self.scan_docker()

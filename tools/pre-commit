@@ -1,0 +1,21 @@
+#!/bin/sh
+# GhostCheck Pre-commit Hook
+# Prevents committing files with security risks.
+
+echo "👻 Running GhostCheck pre-commit scan..."
+
+# Run ghostcheck scan on the current directory
+# We focus on staged changes but for MVP we scan the workspace
+python -m ghostcheck.cli scan . --severity HIGH
+
+# Capture exit code
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+    echo "❌ GhostCheck found high-severity risks. Commit aborted."
+    echo "Run 'ghostcheck scan .' for details or fix the issues before committing."
+    exit 1
+fi
+
+echo "✅ GhostCheck scan passed."
+exit 0

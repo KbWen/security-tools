@@ -14,21 +14,33 @@ class DemoRunner:
         print("\n🚀 Starting GhostCheck Demo Scan...\n")
         
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Copy fixtures to temp dir
-            for f in os.listdir(self.fixtures_dir):
-                shutil.copy(os.path.join(self.fixtures_dir, f), tmpdir)
+            # Create expected directories
+            agent_dir = os.path.join(tmpdir, '.agent')
+            os.makedirs(agent_dir)
+            
+            # Map fixtures to their expected names and locations
+            fixture_map = {
+                'chat_log_demo.md': ('chat_log.md', tmpdir),
+                'requirements_demo.txt': ('requirements.txt', tmpdir),
+                'rules_demo.md': ('rules.md', agent_dir)
+            }
+            
+            for src_name, (dst_name, dst_dir) in fixture_map.items():
+                shutil.copy(
+                    os.path.join(self.fixtures_dir, src_name),
+                    os.path.join(dst_dir, dst_name)
+                )
             
             # Run scanner
             scanner = Scanner(tmpdir)
             findings = scanner.scan()
             
-            # Use scanner's reporting logic via a shim or direct call
-            # For demo, we just print the findings using the console reporter logic
+            # Use scanner's reporting logic
             from .reporters.console import ConsoleReporter
             reporter = ConsoleReporter()
             reporter.report(findings)
             
-            print(f"\n✅ Demo complete. Scanned {len(os.listdir(self.fixtures_dir))} files in temporary directory: {tmpdir}")
+            print(f"\n✅ Demo complete. Scanned temporary environment: {tmpdir}")
             print("Note: All temporary files have been cleaned up.\n")
             
         return 0
