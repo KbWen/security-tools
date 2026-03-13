@@ -1,22 +1,91 @@
+import os
 import json
 import re
 import urllib.request
 import urllib.error
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+import hashlib
 
 class HallucinationChecker:
-    def __init__(self, logger=None):
+    def __init__(self, logger=None, offline=False):
         self.logger = logger
+        self.offline = offline
+        self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
+        self.cache_file = os.path.join(self.cache_dir, "hallucination.json")
+        self._load_cache()
+
+    def _load_cache(self):
+        self.cache = {}
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, 'r') as f:
+                    content = f.read()
+                    data = json.loads(content)
+                    # Verify integrity if hash exists
+                    if 'integrity' in data:
+                        stored_hash = data.pop('integrity')
+                        current_hash = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+                        if stored_hash != current_hash:
+                            if self.logger: self.logger.warning("Cache integrity check failed. Involving new cache.")
+                            self.cache = {}
+                            return
+                    self.cache = data
+            except (json.JSONDecodeError, IOError):
+                pass
+
+    def _save_cache(self):
+        try:
+            if not os.path.exists(self.cache_dir):
+                os.makedirs(self.cache_dir, exist_ok=True)
+            
+            # Add integrity hash before saving
+            cache_to_save = self.cache.copy()
+            if 'integrity' in cache_to_save:
+                del cache_to_save['integrity']
+            
+            integrity_hash = hashlib.sha256(json.dumps(cache_to_save, sort_keys=True).encode()).hexdigest()
+            cache_to_save['integrity'] = integrity_hash
+
+            with open(self.cache_file, 'w') as f:
+                json.dump(cache_to_save, f)
+        except IOError:
+            pass
+
+    def _get_cached(self, registry, pkg_name):
+        key = f"{registry}:{pkg_name}"
+        if key in self.cache:
+            entry = self.cache[key]
+            try:
+                cached_time = datetime.fromisoformat(entry['timestamp'])
+                is_stale = datetime.now() - cached_time > timedelta(hours=24)
+                
+                if not is_stale:
+                    return entry['data'], False
+                elif self.offline:
+                    # Stale but in offline mode, return with warning flag
+                    return entry['data'], True
+            except (ValueError, KeyError):
+                pass
+        return None, False
+
+    def _set_cached(self, registry, pkg_name, data):
+        key = f"{registry}:{pkg_name}"
+        self.cache[key] = {
+            "timestamp": datetime.now().isoformat(),
+            "data": data
+        }
+        self._save_cache()
 
     def check_requirements(self, file_content):
         findings = []
         packages = self._parse_requirements(file_content)
         for pkg in packages:
-            result = self._check_pypi(pkg)
+            result = self._check_package("PyPI", pkg)
             if result:
                 findings.append(result)
-            time.sleep(0.5)  # Rate limiting
+            if not self.offline:
+                time.sleep(0.5)  # Rate limiting
         return findings
 
     def check_package_json(self, file_content):
@@ -28,10 +97,11 @@ class HallucinationChecker:
             all_deps = {**deps, **dev_deps}
             
             for pkg in all_deps:
-                result = self._check_npm(pkg)
+                result = self._check_package("npm", pkg)
                 if result:
                     findings.append(result)
-                time.sleep(0.5)  # Rate limiting
+                if not self.offline:
+                    time.sleep(0.5)  # Rate limiting
         except json.JSONDecodeError:
             pass
         return findings
@@ -48,7 +118,31 @@ class HallucinationChecker:
                 packages.append(match.group(1))
         return packages
 
-    def _check_pypi(self, pkg_name):
+    def _check_package(self, registry, pkg_name):
+        # 1. Check Cache
+        cached_data, is_stale = self._get_cached(registry, pkg_name)
+        if cached_data is not None:
+            if is_stale and self.offline:
+                # In a real CLI, we might want to collect these and show at the end
+                # For now, we return it but it's marked as potentially stale
+                pass 
+            return cached_data if cached_data != "OK" else None
+
+        # 2. If Offline and not in cache, skip
+        if self.offline:
+            return None
+
+        # 3. Perform real network check
+        if registry == "PyPI":
+            result = self._check_pypi_online(pkg_name)
+        else:
+            result = self._check_npm_online(pkg_name)
+
+        # 4. Update Cache (store "OK" if no finding)
+        self._set_cached(registry, pkg_name, result if result else "OK")
+        return result
+
+    def _check_pypi_online(self, pkg_name):
         url = f"https://pypi.org/pypi/{pkg_name}/json"
         try:
             with urllib.request.urlopen(url, timeout=5) as response:
@@ -56,7 +150,6 @@ class HallucinationChecker:
                 info = data.get('info', {})
                 releases = data.get('releases', {})
                 
-                # Get creation date (upload time of first release)
                 upload_times = []
                 for rel in releases.values():
                     for entry in rel:
@@ -66,8 +159,6 @@ class HallucinationChecker:
                 if upload_times:
                     created_at = min(upload_times)
                 
-                # Check metrics (simulated download count as PyPI API doesn't provide it directly in /json)
-                # We'll use version count or other signals if available, but for MVP we focus on age.
                 if created_at:
                     age_days = (datetime.now() - datetime.strptime(created_at, '%Y-%m-%dT%H:%M:%S')).days
                     if age_days < 30:
@@ -75,8 +166,6 @@ class HallucinationChecker:
                     elif age_days < 90:
                         return {"package": pkg_name, "registry": "PyPI", "severity": "MEDIUM", "message": f"Package is relatively new ({age_days} days old)."}
                 
-                # Note: PyPI /json API doesn't provide download counts. 
-                # Weekly download checks currently skipped in zero-dependency MVP.
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
@@ -85,7 +174,7 @@ class HallucinationChecker:
             pass
         return None
 
-    def _check_npm(self, pkg_name):
+    def _check_npm_online(self, pkg_name):
         url = f"https://registry.npmjs.org/{pkg_name}"
         try:
             req = urllib.request.Request(url)
@@ -102,8 +191,6 @@ class HallucinationChecker:
                     elif age_days < 90:
                         return {"package": pkg_name, "registry": "npm", "severity": "MEDIUM", "message": f"Package is relatively new ({age_days} days old)."}
                 
-                # Note: npm registry requires separate API for downloads.
-                # Weekly download checks currently skipped in zero-dependency MVP.
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:

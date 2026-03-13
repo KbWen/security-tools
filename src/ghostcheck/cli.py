@@ -18,6 +18,7 @@ def main():
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="INFO", help="Minimum severity threshold")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+    parent_parser.add_argument("--offline", action="store_true", help="Run in offline mode (use cache, skip network)")
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
@@ -37,14 +38,29 @@ def main():
     rules_parser = subparsers.add_parser("check-rules", parents=[parent_parser], help="Lint agent rules")
     rules_parser.add_argument("path", help="Path to scan for rule files")
     
+    # cache-clear command
+    subparsers.add_parser("cache-clear", help="Clear the local security data cache")
+    
     # demo command
     subparsers.add_parser("demo", parents=[parent_parser], help="Run a demo scan with sample vulnerabilities")
     
     # Version flag remains at top level
-    parser.add_argument("--version", action="version", version="GhostCheck 0.2.0")
+    parser.add_argument("--version", action="version", version="GhostCheck 0.3.0")
     
     args = parser.parse_args()
     
+    if args.command == "cache-clear":
+        cache_file = os.path.expanduser("~/.ghostcheck/cache/hallucination.json")
+        if os.path.exists(cache_file):
+            try:
+                os.remove(cache_file)
+                print("✅ Cache cleared successfully.")
+            except Exception as e:
+                print(f"Error clearing cache: {e}")
+        else:
+            print("Cache is already empty.")
+        sys.exit(0)
+
     if args.command == "demo":
         runner = DemoRunner()
         sys.exit(runner.run(reporter_type=args.format))
@@ -59,7 +75,7 @@ def main():
         print(f"Error: Path '{target_path}' does not exist.")
         sys.exit(2)
         
-    scanner = Scanner(target_path, ignore_enabled=not args.no_ignore)
+    scanner = Scanner(target_path, ignore_enabled=not args.no_ignore, offline=args.offline)
     
     try:
         findings = []

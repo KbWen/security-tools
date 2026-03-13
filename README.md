@@ -1,6 +1,6 @@
 # 👻 GhostCheck
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/KbWen/security-tools)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)](https://www.python.org/)
 
@@ -12,15 +12,17 @@
 
 AI agents are rewriting the world, but they also introduce new attack surfaces. **GhostCheck** bridges the gap between traditional SAST and AI-native security, ensuring your code remains secure while you move at AI speed.
 
-## ✨ Key Features (v0.2.0)
+## ✨ Key Features (v0.3.0)
 
-- **Advanced Secret Scanning**: High-precision regex for AWS, GCP, GitHub, Slack, and Stripe keys. **Now scans across all code files** (.py, .js, .ts, etc.).
+- **Deep Intelligence Scanning**:
+  - **AST-Based Secret Detection**: Uses Abstract Syntax Tree parsing to detect obfuscated secrets formed through string concatenation in Python files.
+  - **Offline Mode & Local Cache**: Blazing-fast repeated scans with local package metadata caching (up to 24h) and `--offline` support for air-gapped environments.
+- **Advanced Agent Rule Linting**: Detects complex behavioral risks like data exfiltration (POST/DNS), hidden tunneling (ngrok/ssh), and logic bypasses in agent instruction files.
+- **Improved Scanner Engine**: Robust modular design supporting both directory and single-file targets.
 - **Git Hook Integration**: Professional pre-commit hooks for Windows (PowerShell) and Unix (Shell) to block risky commits.
-- **Rogue Agent Detection**: Identifies dangerous behavioral patterns (exfiltration, logic bypasses) in agent instruction files.
 - **Docker Risk Check**: Detects privileged containers, root execution, and insecure port mappings in Dockerfiles.
 - **Hallucination Protection**: Verifies dependency legitimacy against PyPI and npm registries.
 - **Professional Reporting**: Structured tabular output with severity color-coding and executive summaries.
-- **Extensible Architecture**: Modular design for adding custom domain-oriented security checks.
 
 ## 🛠️ Quick Start
 

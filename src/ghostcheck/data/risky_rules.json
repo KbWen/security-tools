@@ -13,9 +13,15 @@
     },
     {
         "name": "Data Exfiltration",
-        "pattern": "(curl|wget|fetch|axios|requests)\\s+.*(POST|PUT|PATCH)\\s+.*http",
+        "pattern": "(curl|wget|fetch|axios|requests|powershell|Invoke-WebRequest)\\s+.*(POST|PUT|PATCH|upload|Base64|dns).*http",
         "severity": "CRITICAL",
-        "remediation": "Avoid rules that send potentially sensitive data to external endpoints via POST/PUT."
+        "remediation": "Avoid rules that send potentially sensitive data to external endpoints via POST/PUT or encoded uploads."
+    },
+    {
+        "name": "Tunneling / Proxy",
+        "pattern": "(ngrok|localtunnel|ssh\\s+-R|cloudflared|frp)",
+        "severity": "HIGH",
+        "remediation": "Unauthorized tunneling tools can bypass firewall restrictions. Ensure these are explicitly approved."
     },
     {
         "name": "External Execution",
