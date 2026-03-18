@@ -37,7 +37,16 @@ class DemoRunner:
             
             # Use scanner's reporting logic
             from .reporters.console import ConsoleReporter
-            reporter = ConsoleReporter()
+            from .reporters.json_reporter import JsonReporter
+            from .reporters.sarif_reporter import SarifReporter
+            
+            if reporter_type == 'json':
+                reporter = JsonReporter()
+            elif reporter_type == 'sarif':
+                reporter = SarifReporter()
+            else:
+                reporter = ConsoleReporter()
+                
             reporter.report(findings)
             
             print(f"\n✅ Demo complete. Scanned temporary environment: {tmpdir}")

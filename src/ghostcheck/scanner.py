@@ -34,7 +34,10 @@ class Scanner:
         
         # AC-14: Ignore Handling
         ignore_file = os.path.join(self.root_path, '.ghostcheckignore')
-        self.ignore_matcher = IgnoreMatcher(ignore_file if ignore_enabled else None)
+        self.ignore_matcher = IgnoreMatcher(
+            ignore_file if ignore_enabled else None,
+            base_path=self.root_path
+        )
 
     def _is_safe_path(self, file_path):
         """Prevents path traversal by ensuring file is within root_path."""

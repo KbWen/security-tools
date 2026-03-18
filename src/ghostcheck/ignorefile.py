@@ -2,8 +2,9 @@ import fnmatch
 import os
 
 class IgnoreMatcher:
-    def __init__(self, ignore_file_path=None):
+    def __init__(self, ignore_file_path=None, base_path=None):
         self.patterns = []
+        self.base_path = os.path.abspath(base_path) if base_path else None
         if ignore_file_path and os.path.exists(ignore_file_path):
             with open(ignore_file_path, 'r') as f:
                 for line in f:
@@ -12,7 +13,11 @@ class IgnoreMatcher:
                         self.patterns.append(line)
 
     def is_ignored(self, path):
-        # Normalize path for matching
+        # Normalize and make relative to base_path if possible
+        abs_path = os.path.abspath(path)
+        if self.base_path and abs_path.startswith(self.base_path):
+            path = os.path.relpath(abs_path, self.base_path)
+        
         path = path.replace(os.sep, '/')
         if path.startswith('./'):
             path = path[2:]

@@ -1,0 +1,18 @@
+# GhostCheck Ignore List
+
+# Test samples and fixtures (may contain mock secrets)
+tests/test_ast_sample.py
+tests/fixtures/
+
+# Cache
+.ghostcheck/cache/
+
+# Development
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/

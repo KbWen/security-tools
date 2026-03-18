@@ -4,6 +4,7 @@ import os
 from .scanner import Scanner
 from .reporters.console import ConsoleReporter
 from .reporters.json_reporter import JsonReporter
+from .reporters.sarif_reporter import SarifReporter
 from .demo import DemoRunner
 
 def main():
@@ -14,7 +15,7 @@ def main():
     
     # Create a parent parser for common arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--format", choices=["console", "json"], default="console", help="Output format")
+    parent_parser.add_argument("--format", choices=["console", "json", "sarif"], default="console", help="Output format")
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="INFO", help="Minimum severity threshold")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
@@ -45,7 +46,7 @@ def main():
     subparsers.add_parser("demo", parents=[parent_parser], help="Run a demo scan with sample vulnerabilities")
     
     # Version flag remains at top level
-    parser.add_argument("--version", action="version", version="GhostCheck 0.3.0")
+    parser.add_argument("--version", action="version", version="GhostCheck 0.4.0")
     
     args = parser.parse_args()
     
@@ -96,6 +97,8 @@ def main():
         # Report
         if args.format == "json":
             reporter = JsonReporter()
+        elif args.format == "sarif":
+            reporter = SarifReporter()
         else:
             reporter = ConsoleReporter(use_color=not args.no_color)
             
