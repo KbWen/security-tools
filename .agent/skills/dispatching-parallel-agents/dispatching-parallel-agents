@@ -1,0 +1,14 @@
+---
+name: dispatching-parallel-agents
+description: Evaluate when to split work across parallel subagents. Auto-consider when task has 3+ independent subtasks, or when multiple files/modules can be worked on simultaneously without coupling.
+phases: [implement]
+trigger: auto (when task is decomposable into independent units)
+---
+
+# Dispatching Parallel Agents
+
+Full instructions: `.agents/skills/dispatching-parallel-agents/SKILL.md`.
+
+- **Trigger**: Auto — consider when you see 3+ independent subtasks
+- **Key rule**: Only parallelize low-coupling work. High-coupling = sequential.
+- **Do NOT use**: For tasks under 3 files, or when subtasks share state

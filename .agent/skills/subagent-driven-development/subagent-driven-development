@@ -1,0 +1,14 @@
+---
+name: subagent-driven-development
+description: Decompose complex tasks via subagent collaboration — define interface contracts, sync points, and acceptance criteria. Auto-consider for feature/architecture-change tasks with 4+ files or cross-module scope.
+phases: [implement]
+trigger: auto (for complex tasks with cross-module scope)
+---
+
+# Subagent-Driven Development
+
+Full instructions: `.agents/skills/subagent-driven-development/SKILL.md`.
+
+- **Trigger**: Auto — consider for tasks touching 4+ files or crossing module boundaries
+- **Key pattern**: Define input/output contracts before spawning subagents
+- **Sync points**: Define where subagent outputs must be validated before continuing

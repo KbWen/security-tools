@@ -17,7 +17,7 @@ Output Format:
 6. Spec Seeds: Did the AI make any architectural decisions or discover new feature requirements during development that are NOT currently written in any formal Spec?
    - If YES: Append these to the current Work Log under a `## Spec Seeds` heading, and proactively ask the user: "I recorded [N] undocumented design decisions. Would you like me to formally add them to the Specs now?"
 7. Spec Gap Check: Did this task modify code in a module/feature area that has NO Spec coverage at all in the Spec Index?
-   - If YES and the change was `quick-win` or higher: Append to `## Spec Seeds` with tag `[NEW-SPEC-NEEDED]` and notify: "⚠️ Module [name] has no Spec coverage. Recommend creating `docs/specs/<module-name>.md` to prevent future documentation decay."
+   - If YES and the change was `quick-win` or higher: Append to `## Spec Seeds` with tag `[NEW-SPEC-NEEDED]` and notify: "⚠️ Module [name] has no Spec coverage. Recommend creating `.agentcortex/specs/<module-name>.md` to prevent future documentation decay."
    - Advisory for `quick-win`; MANDATORY action for `feature` and above.
 
 ```markdown

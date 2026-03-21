@@ -1,0 +1,14 @@
+---
+name: finishing-a-development-branch
+description: Final verification before branch closure — choose between merge, squash-merge, rebase, or close-without-merge. Auto-activate during /ship or when PR is ready.
+phases: [ship, handoff]
+trigger: auto (when branch work is complete and ready for closure)
+---
+
+# Finishing a Development Branch
+
+Full instructions: `.agents/skills/finishing-a-development-branch/SKILL.md`.
+
+- **Trigger**: Auto — when /ship or PR creation is reached
+- **4 closure options**: Merge, squash-merge, rebase, close-without-merge
+- **Decision criteria**: Commit history cleanliness, evidence completeness, branch purpose

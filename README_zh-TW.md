@@ -62,4 +62,6 @@ GhostCheck 遵循專業的忽略規則：
 
 ---
 
+本專案採用 [AgentCortex](https://github.com/KbWen/AgentCortex) 流程驅動 (Process-driven) 架構，專為 AI Agent 量身打造。
+
 **由 [KbWen](https://github.com/KbWen) 為 AI 社群用心開發 ❤️**

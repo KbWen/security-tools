@@ -20,7 +20,7 @@ Read-only logic. DOES NOT change state. Hard completion gate for non-`tiny-fix` 
 ## 2. Platform Specialization
 
 - **Codex Web**: MUST output full summary directly in chat.
-- **Antigravity / Codex App**: Auto-write to `docs/context/work/<worklog-key>.md`.
+- **Antigravity / Codex App**: Auto-write to `.agentcortex/context/work/<worklog-key>.md`.
 - If the active Work Log is missing, resolve or create the current `<worklog-key>` log first. If the previous log was archived after a prior ship, create a follow-up active log and note that recovery in the delta.
 
 ## 3. Required Output Blocks
@@ -47,7 +47,29 @@ Read-only logic. DOES NOT change state. Hard completion gate for non-`tiny-fix` 
 - Completed: [list of done steps]
 - Next: [immediate next action]
 - Context: [1-2 sentence summary of what was decided and why]
+
+### Read Map (for next agent)
+Files the next agent MUST read:
+- [file path] → [section or "full"]
+- [file path] → [section or "full"]
+
+### Skip List
+Files the next agent can SKIP (already processed, no changes expected):
+- [file path] — [reason: e.g., "already reviewed, no issues"]
+
+### Context Snapshot (≤ 200 tokens)
+[Compressed summary of current understanding: key decisions made,
+ constraints discovered, patterns observed. Written so that the next
+ agent can bootstrap without re-reading everything.]
+
+### Backlog Status (if applicable)
+- Active Backlog: [path or "none"]
+- Current Feature: [name and status]
+- Remaining: [count] pending, [count] deferred
+- Next Recommended: [feature name or "user choice"]
 ```
+
+> **Why Read Map + Skip List?** The biggest cross-session token waste is the next agent re-reading files the previous agent already processed. The Read Map tells it exactly where to look; the Skip List prevents redundant reads. Together they can cut handoff bootstrap tokens by 40-60%.
 
 ## 4. Minimum References (HARD GATE)
 
@@ -55,7 +77,7 @@ MUST include ALL of the following:
 
 1. At least 1 docs/ file path
 2. At least 1 code file path
-3. Corresponding Work Log path (`docs/context/work/<worklog-key>.md`)
+3. Corresponding Work Log path (`.agentcortex/context/work/<worklog-key>.md`)
 
 If requirements unsatisfied, COMPLETION AND `/ship` ARE STRICTLY PROHIBITED.
 
@@ -65,17 +87,12 @@ If requirements unsatisfied, COMPLETION AND `/ship` ARE STRICTLY PROHIBITED.
 - DO NOT restate old background unless it is required for a decision or rollback.
 - If context repeats, link to the previous section instead of re-writing full paragraphs.
 
-## 6. Work Log Compaction Trigger (Portable Defaults)
+## 6. Work Log Compaction Trigger
 
-If either threshold is hit:
+Thresholds are defined in `.agent/config.yaml` §worklog. If either is hit (`max_lines` or `max_kb`), MUST compact the Work Log:
 
-- `WORKLOG_MAX_LINES` (default: `300`), or
-- `WORKLOG_MAX_KB` (default: `12`)
-
-MUST compact the Work Log:
-
-1. Keep `## Session Info`, latest `## Resume`, latest `## Risks`, and the latest `N` delta entries (`WORKLOG_KEEP_RECENT_ENTRIES`, default: `5`).
-2. Move older details to `docs/context/archive/work/<worklog-key>-<YYYYMMDD>.md`.
+1. Keep `## Session Info`, latest `## Resume`, latest `## Risks`, and the latest N delta entries (see `keep_recent_entries` in config).
+2. Move older details to `.agentcortex/context/archive/work/<worklog-key>-<YYYYMMDD>.md`.
 3. Add one line in current log: `Compacted: [date], archive: [path]`.
 
 ## 7. Token & Efficiency Reflection

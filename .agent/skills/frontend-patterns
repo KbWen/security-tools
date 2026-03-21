@@ -1,0 +1,14 @@
+---
+name: frontend-patterns
+description: Component structure, state management, data fetching, error handling for UI. Ensures consistent frontend patterns per ADR framework choice.
+phases: [implement, review, test]
+trigger: auto (when task involves creating or modifying UI components, pages, or client-side state)
+---
+
+# Frontend Patterns
+
+Full instructions: `.agents/skills/frontend-patterns/SKILL.md`.
+
+- **Trigger**: Auto — when task touches UI components or pages (feature/architecture-change)
+- **Conventions**: Component structure, state management, data fetching, form handling
+- **Anti-patterns**: God component, prop drilling, useEffect misuse, missing empty state

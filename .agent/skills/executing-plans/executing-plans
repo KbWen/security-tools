@@ -1,0 +1,14 @@
+---
+name: executing-plans
+description: Execute approved plans step-by-step with evidence per step and rollback capability. Auto-activate during /implement phase when a plan exists.
+phases: [implement]
+trigger: auto (when plan is approved and state >= IMPLEMENTABLE)
+---
+
+# Executing Plans
+
+Full instructions: `.agents/skills/executing-plans/SKILL.md`.
+
+- **Trigger**: Auto — during /implement when an approved plan exists
+- **Key rule**: Each step needs evidence (file:line, test output, command result)
+- **Deviation**: If reality diverges from plan, record the deviation and rationale

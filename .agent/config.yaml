@@ -1,0 +1,12 @@
+# AgentCortex Framework Configuration
+# Central source of truth for governance constants.
+# Workflows reference these values instead of hardcoding inline defaults.
+
+worklog:
+  # Compaction triggers — when a Work Log exceeds either threshold,
+  # compact per /handoff §6 before proceeding with the current phase.
+  max_lines: 300
+  max_kb: 12
+  # During compaction, keep the N most recent delta entries
+  # (plus Session Info, latest Resume, latest Risks).
+  keep_recent_entries: 5

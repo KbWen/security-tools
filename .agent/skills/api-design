@@ -1,0 +1,14 @@
+---
+name: api-design
+description: REST/GraphQL endpoint conventions, error format, pagination, input validation. Ensures consistent API design across the project per ADR decisions.
+phases: [implement, review, test]
+trigger: auto (when task involves creating, modifying, or deprecating API endpoints)
+---
+
+# API Design
+
+Full instructions: `.agents/skills/api-design/SKILL.md`.
+
+- **Trigger**: Auto — when task touches API endpoints (feature/architecture-change/hotfix)
+- **Conventions**: Endpoint naming, HTTP methods, error format, pagination, versioning
+- **Anti-patterns**: God endpoint, verb in URL, swallowing errors, unbounded lists

@@ -1,0 +1,14 @@
+---
+name: using-git-worktrees
+description: Use Git worktrees for parallel branch work safely. Auto-activate when /bootstrap detects need for isolated branch work, or when user requests working on multiple branches simultaneously.
+phases: [bootstrap, implement]
+trigger: auto (when parallel branch isolation is needed)
+---
+
+# Using Git Worktrees
+
+Full instructions: `.agents/skills/using-git-worktrees/SKILL.md`.
+
+- **Trigger**: Auto — when needing to work on a separate branch without stashing/switching
+- **Safety**: Always name worktrees descriptively, clean up when done
+- **Common mistake**: Forgetting to return to main worktree after finishing

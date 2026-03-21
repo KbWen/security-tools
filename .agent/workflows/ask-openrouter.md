@@ -78,7 +78,7 @@ python -m ask_openrouter "<user's request>" --task <mapped-task> --profile <mapp
 
 After `ask-openrouter` completes, AI MUST:
 
-1. **Read output**: Check `.openrouter/` or `docs/context/work/` for the generated `.md` report.
+1. **Read output**: Check `.openrouter/` or `.agentcortex/context/work/` for the generated `.md` report.
 2. **Verify scope**: Ensure output aligns with the original task scope.
 3. **For `--task code`**: Check if auto-apply succeeded. If `.openrouter.patch` exists, review and handle.
 4. **Update Work Log**: Append execution result, output file path, and any issues.

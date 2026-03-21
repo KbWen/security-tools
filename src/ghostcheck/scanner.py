@@ -3,6 +3,9 @@ import json
 from .checks.hallucination import HallucinationChecker
 from .checks.secrets import SecretScanner
 from .checks.ast_scanner import AstSecretChecker
+from .checks.ast_js_scanner import JsAstSecretChecker
+from .checks.severity_engine import SeverityEngine
+from .checks.env_scanner import EnvScanner
 from .checks.agent_rules import AgentRulesLinter
 from .checks.docker import DockerRiskChecker
 from .ignorefile import IgnoreMatcher
@@ -29,6 +32,7 @@ class Scanner:
         self.hallucination_checker = HallucinationChecker(offline=offline)
         self.secret_scanner = SecretScanner(self.secret_patterns_path)
         self.ast_secret_checker = AstSecretChecker(self.raw_secret_patterns)
+        self.js_ast_checker = JsAstSecretChecker(self.raw_secret_patterns)
         self.rules_linter = AgentRulesLinter(self.risky_rules_path)
         self.docker_checker = DockerRiskChecker()
         
@@ -38,6 +42,10 @@ class Scanner:
             ignore_file if ignore_enabled else None,
             base_path=self.root_path
         )
+
+        # v0.5.0 features
+        self.severity_engine = SeverityEngine(self.root_path)
+        self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
 
     def _is_safe_path(self, file_path):
         """Prevents path traversal by ensuring file is within root_path."""
@@ -94,12 +102,20 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
+                # v0.5.0: .env scanning
+                if '.env' in file:
+                    content = self._read_file_safe(file_path)
+                    if content:
+                        findings.extend(self.env_scanner.scan_file(file_path, content))
+
                 if any(file.endswith(ext) for ext in ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1']):
                     content = self._read_file_safe(file_path)
                     if content:
                         findings.extend(self.secret_scanner.scan_file(file_path, content))
                         if file.endswith('.py'):
                             findings.extend(self.ast_secret_checker.scan_file(file_path, content))
+                        elif file.endswith('.js') or file.endswith('.ts'):
+                            findings.extend(self.js_ast_checker.scan_file(file_path, content))
         return findings
 
     def scan_rules(self):
@@ -137,4 +153,6 @@ class Scanner:
 
     def scan(self):
         # Full scan combines all
-        return self.scan_dependencies() + self.scan_secrets() + self.scan_rules() + self.scan_docker()
+        raw_findings = self.scan_dependencies() + self.scan_secrets() + self.scan_rules() + self.scan_docker()
+        # v0.5.0: Post-process with Severity Engine
+        return self.severity_engine.adjust_findings(raw_findings)
