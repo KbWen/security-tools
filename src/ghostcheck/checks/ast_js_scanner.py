@@ -25,8 +25,8 @@ class JsAstSecretChecker:
         self._walk_and_check(tree, file_path, findings)
         return findings
 
-    def _walk_and_check(self, node, file_path, findings):
-        if not node:
+    def _walk_and_check(self, node, file_path, findings, depth=0):
+        if not node or depth > self.MAX_RECURSION_DEPTH:
             return
 
         # Handle different node structures from esprima
@@ -59,15 +59,15 @@ class JsAstSecretChecker:
                     items = node.items()
                 elif isinstance(node, list):
                     for item in node:
-                        self._walk_and_check(item, file_path, findings)
+                        self._walk_and_check(item, file_path, findings, depth + 1)
                     return
 
                 for key, value in items:
                     if isinstance(value, list):
                         for item in value:
-                            self._walk_and_check(item, file_path, findings)
+                            self._walk_and_check(item, file_path, findings, depth + 1)
                     elif isinstance(value, (dict, esprima.nodes.Node)):
-                        self._walk_and_check(value, file_path, findings)
+                        self._walk_and_check(value, file_path, findings, depth + 1)
 
     def _resolve_binop(self, node, depth=0):
         if depth > self.MAX_RECURSION_DEPTH:
