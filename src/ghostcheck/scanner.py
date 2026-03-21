@@ -51,9 +51,9 @@ class Scanner:
         """Prevents path traversal by ensuring file is within root_path."""
         abs_path = os.path.abspath(file_path)
         # If targeting a single file, it's safe if it exists. 
-        # But if root_path is a directory, verify the file is inside it.
+        # But if root_path is a directory, verify the file is strictly inside it.
         if os.path.isdir(self.root_path):
-             return abs_path.startswith(self.root_path)
+             return os.path.commonpath([self.root_path, abs_path]) == self.root_path
         return True # Single file target is its own root
 
     def _read_file_safe(self, file_path):
