@@ -1,7 +1,8 @@
-# GhostCheck — 產品路線圖 v1.0
+# GhostCheck — 產品路線圖 v2.0
 
-> AI-era security scanner for developers who build with AI agents.
+> AI-era universal security scanner for developers who build with AI agents.
 > 本文件為 GhostCheck 的完整產品規劃，供 Flash 模型（或任何 AI agent）按版本逐步實作。
+> **設計理念**: 任何 app（Web / Mobile / API / CLI / IaC）都能在 30 秒內完成安全掃描。
 
 ---
 
@@ -46,9 +47,9 @@
 
 ---
 
-## 當前架構
+## 當前架構 (v0.5.0)
 
-```
+```text
 security-tools/
 ├── src/ghostcheck/
 │   ├── cli.py                    # CLI 入口 (argparse)
@@ -58,12 +59,16 @@ security-tools/
 │   ├── checks/
 │   │   ├── hallucination.py      # 套件幻覺偵測 + 離線快取
 │   │   ├── secrets.py            # 密鑰正則掃描
-│   │   ├── ast_scanner.py        # AST 抽象語法樹掃描
+│   │   ├── ast_scanner.py        # Python AST 抽象語法樹掃描
+│   │   ├── ast_js_scanner.py     # JS/TS AST 掃描 (esprima)
+│   │   ├── severity_engine.py    # 智慧型嚴重度引擎
+│   │   ├── env_scanner.py        # .env 檔案深度掃描
 │   │   ├── agent_rules.py        # Agent 規則 Linter
 │   │   └── docker.py             # Docker 風險檢查
 │   ├── reporters/
 │   │   ├── console.py            # Terminal 彩色輸出
-│   │   └── json_reporter.py      # JSON 輸出
+│   │   ├── json_reporter.py      # JSON 輸出
+│   │   └── sarif_reporter.py     # SARIF v2.1.0 輸出
 │   └── data/
 │       ├── secret_patterns.json  # 密鑰正則模式
 │       └── risky_rules.json      # 規則風險模式
@@ -71,9 +76,7 @@ security-tools/
 ├── tools/
 │   └── pre-commit                # Git pre-commit hook
 └── docs/
-    ├── specs/
-    │   └── ghostcheck-mvp.md     # MVP 規格
-    └── context/                  # SSoT + Work Logs
+    └── specs/                    # 規格與路線圖
 ```
 
 ---
@@ -86,99 +89,49 @@ security-tools/
 
 > **目標**: 使 GhostCheck 成為 CI/CD pipeline 的一等公民。
 
-#### Feature A: GitHub Actions CI Pipeline
-
-- **新增**: `.github/workflows/ci.yml`
-- Matrix 測試: Python 3.9, 3.10, 3.11, 3.12, 3.13
-- Steps: checkout → setup-python → `pip install -e .[dev]` → pytest + coverage → upload coverage report
-- 設定 coverage threshold ≥80%
-
-#### Feature B: SARIF Output Format
-
-- **新增**: `src/ghostcheck/reporters/sarif_reporter.py`
-- 實作 [SARIF v2.1.0](https://sarifweb.azurewebsites.net/) 輸出格式
-- 讓 GitHub Advanced Security 可以直接匯入掃描結果
-- CLI 新增 `--format sarif` 選項
-
-#### Feature C: Comprehensive Test Suite
-
-- **新增**: 針對所有 check modules 的完整測試
-  - `tests/test_hallucination.py`: Mock HTTP, 404 偵測, 新套件偵測, 離線模式
-  - `tests/test_ast_scanner.py`: 深度嵌套拼接, 遞歸限制, 語法錯誤處理
-  - `tests/test_docker.py`: Dockerfile 風險偵測
-  - `tests/test_cache_integrity.py`: SHA-256 校驗, 快取竄改偵測
-  - `tests/fixtures/`: 完整 fixture 檔案 (good/bad variants)
-- **目標**: Core logic ≥80% coverage
-
-#### Feature D: Makefile & Developer Experience
-
-- **新增**: `Makefile`
-  - `make install` — `pip install -e .[dev]`
-  - `make test` — `pytest -v --cov`
-  - `make lint` — flake8 + mypy 靜態檢查
-  - `make clean` — 清除 build artifacts
-  - `make demo` — 執行 demo command
-
-#### Verification
-
-```bash
-pytest tests/ -v --cov=ghostcheck --cov-report=term-missing
-# CI: push to GitHub → verify Actions pass
-# SARIF: validate output with sarif-tools or GitHub upload
-```
+| 功能 | 狀態 |
+| ---- | ---- |
+| GitHub Actions CI Pipeline (matrix tests) | ✅ 完成 |
+| SARIF v2.1.0 Output Format | ✅ 完成 |
+| Comprehensive Test Suite (≥80% coverage) | ✅ 完成 |
+| Makefile & Developer Experience | ✅ 完成 |
 
 ---
 
-### 🟢 v0.5.0 — Multi-Language AST & Smart Severity
+### ✅ v0.5.0 — Multi-Language AST & Smart Severity (2026-03-21)
 
 > **目標**: 擴展 AST 掃描到 JavaScript/TypeScript，並引入智慧型嚴重度評估。
 
-#### Feature A: JavaScript/TypeScript AST Scanner
-
-- **新增**: `src/ghostcheck/checks/ast_js_scanner.py`
-- 使用 `esprima`（或純正則 fallback）解析 JS/TS 檔案
-- 偵測 template literal 拼接的密鑰: `` `sk-` + secretPart ``
-- 偵測 `process.env` 被硬編碼覆蓋的 patterns
-- 整合進 `scanner.py`
-
-#### Feature B: Intelligent Severity Engine
-
-- **新增**: `src/ghostcheck/checks/severity_engine.py`
-- 根據上下文自動調整嚴重度:
-  - 是否在 `.gitignore` 中？→ 降級
-  - 是否在 test/fixture/example 目錄？→ 降級
-  - 是否在 AI chat 輸出目錄？→ 升級
-  - 是否鄰近 `git add` 或 `git commit`？→ 升級
-  - 找到的密鑰長度和熵值(entropy)分析 → 調整信心值
-
-#### Feature C: `.env` File Deep Scan
-
-- **新增**: `src/ghostcheck/checks/env_scanner.py`
-- 專門掃描 `.env`, `.env.local`, `.env.production` 檔案
-- 偵測: 硬編碼生產密鑰、過於寬鬆的 wildcard origins、不安全的 DEBUG 設定
-- 結合 `.gitignore` 交叉檢查: `.env` 存在但未被 ignore → CRITICAL
-
-#### Verification
-
-```bash
-# JS/TS AST: 準備含拼接密鑰的 .js 測試檔案
-# Severity: 驗證 test/ 目錄中的發現被自動降級
-# .env: 驗證偵測未被 .gitignore 的 .env 檔案
-```
+| 功能 | 狀態 |
+| ---- | ---- |
+| JavaScript/TypeScript AST Scanner (esprima) | ✅ 完成 |
+| Intelligent Severity Engine (context-aware) | ✅ 完成 |
+| `.env` File Deep Scan | ✅ 完成 |
+| **安全強化**: JS AST DoS 遞歸限制 | ✅ 完成 |
+| **安全強化**: Python AST `RecursionError` 防護 | ✅ 完成 |
+| **安全強化**: Path Traversal Bypass 修補 (scanner + ignorefile) | ✅ 完成 |
 
 ---
 
-### 🟡 v0.6.0 — Watch Mode & Git Integration
+### 🟡 v0.6.0 — Zero-Config Onboarding & Git Integration
 
-> **目標**: 即時監控檔案變更，在開發過程中提供即時回饋。
+> **目標**: 讓任何 app 專案能在 30 秒內開始掃描，並深度整合 Git 工作流。
 
-#### Feature A: Watch Mode
+#### Feature A: `ghostcheck init` — 零設定快速啟動 ⭐ 核心
 
-- **新增**: `src/ghostcheck/watcher.py`
-- 使用 `watchdog` 或 stdlib `os.scandir` polling
-- `ghostcheck watch .` — 監控工作目錄變更
-- 檔案變更時自動增量掃描 (只掃描變更的檔案)
-- Terminal 即時輸出新發現
+- **新增**: `src/ghostcheck/init.py`
+- `ghostcheck init` — 自動偵測專案類型並產生最佳化設定:
+  - 偵測 `package.json` → Node.js/React/Vue/Next.js 專案
+  - 偵測 `requirements.txt` / `pyproject.toml` → Python 專案
+  - 偵測 `go.mod` → Go 專案
+  - 偵測 `Cargo.toml` → Rust 專案
+  - 偵測 `Dockerfile` / `docker-compose.yml` → 容器化專案
+  - 偵測 `*.tf` → Terraform IaC 專案
+  - 偵測 `.github/workflows/` → CI/CD 專案
+- 自動產生 `ghostcheck.toml` 設定檔，並加入對應的掃描模組
+- 自動產生 `.ghostcheckignore` (根據 `.gitignore` + 框架特定排除)
+- 自動安裝 pre-commit hook (可選)
+- **效果**: 開發者只需 `pip install ghostcheck && ghostcheck init && ghostcheck scan .`
 
 #### Feature B: Git Diff Scan
 
@@ -187,153 +140,243 @@ pytest tests/ -v --cov=ghostcheck --cov-report=term-missing
 - `ghostcheck scan --diff HEAD~1` — 掃描最近一次 commit 的差異
 - 大幅提升大型 repo 的掃描效率
 
-#### Feature C: Auto-Fix Suggestions
+#### Feature C: Suppression Mechanisms (Baseline & Inline)
+
+- **新增**: `ghostcheck scan --baseline .ghostcheck-baseline.json`，僅報告與基準線差異的新風險，幫助大型遺留專案平滑導入 CI
+- **新增**: 程式碼行內屏蔽 (`// ghostcheck-disable-next-line` / `# ghostcheck-ignore`)，精準控制誤判
+- **新增**: `ghostcheck baseline create` — 從當前掃描結果產生基準線檔案
+
+#### Feature D: Expanded Secret Patterns (30+ Providers) ⭐ 核心
+
+- **擴充**: `src/ghostcheck/data/secret_patterns.json` 從 10 → 30+ patterns
+- 新增偵測:
+  - **AI 服務**: Anthropic (`sk-ant-`), Cohere, Hugging Face, Replicate
+  - **雲端**: Azure (`DefaultEndpointsProtocol`), GCP Service Account JSON, Vercel Token, Netlify Token
+  - **支付**: PayPal, Square
+  - **通訊**: Twilio (`AC` + auth token), SendGrid (`SG.`), Discord Bot Token
+  - **BaaS/DB**: Supabase (`sbp_`), Firebase (`AAAA`), PlanetScale
+  - **Auth**: Auth0 Client Secret, JWT Secret, Clerk
+  - **台灣常見**: LINE Channel Secret/Token, ECPAY HashKey
+- 每個 pattern 附帶 `remediation` 欄位（修復建議）
+
+#### Feature E: Auto-Fix Suggestions
 
 - **修改**: 所有 `Finding` 結構新增 `suggestion` 欄位
-- 針對常見問題提供修復建議:
-  - Secret 發現 → 建議 "Move to .env and add to .gitignore"
-  - Hallucinated package → 建議 "Remove or verify on registry"
-  - Risky rule → 建議具體的安全替代寫法
-- JSON/Console reporter 顯示建議
-
-#### Feature D: Suppression Mechanisms (Baseline & Inline)
-
-- **新增**: `ghostcheck scan --baseline .ghostcheck-baseline.json` 參數，僅報告與基準線差異的新風險，幫助大型遺留專案平滑導入 CI。
-- **新增**: 程式碼行內屏蔽支援 (例如 `// ghostcheck-disable-next-line` 或 `# ghostcheck-ignore`)，讓開發者有比全域 `.ghostcheckignore` 更精準的干擾控制手段 (DX 提升)。
+- Secret 發現 → "Move to .env and add to .gitignore"
+- Hallucinated package → "Remove or verify on registry"
+- Risky rule → 具體的安全替代寫法
+- JSON/Console/SARIF reporter 顯示建議
 
 #### Verification
 
 ```bash
-# Watch Mode: 啟動後修改檔案，觀察是否即時偵測
+# Init: 在 Next.js / Python / Go 專案分別執行 ghostcheck init
 # Git Diff: 執行 git add 含密鑰的檔案，驗證 --staged 偵測
+# Suppression: 測試基準線掃描與行內忽略註解
+# Patterns: 驗證各平台 API Key 格式皆可被偵測
 # Auto-Fix: 驗證 JSON 輸出含 suggestion 欄位
-# Suppression: 測試基準線掃描與行內忽略註解是否正確濾除對應的 Findings
 ```
 
 ---
 
-### 🟠 v0.7.0 — Plugin System & Community Patterns
+### 🟠 v0.7.0 — IaC & CI/CD Security Scanning
 
-> **目標**: 開放社群貢獻自定義規則和檢查模組。
+> **目標**: 將安全掃描範圍從應用程式碼擴展到基礎設施與 CI/CD 管線。
 
-#### Feature A: Plugin Architecture
+#### Feature A: Infrastructure-as-Code (IaC) Scanner ⭐ 核心
+
+- **新增**: `src/ghostcheck/checks/iac_scanner.py`
+- Terraform (`.tf`) 掃描:
+  - 偵測硬編碼 credentials (`access_key`, `secret_key` in provider blocks)
+  - 偵測過於寬鬆的 Security Group (`0.0.0.0/0` ingress)
+  - 偵測未加密的 S3 bucket / RDS instance
+  - 偵測 `terraform.tfstate` 未被 `.gitignore` → CRITICAL
+- Kubernetes YAML 掃描:
+  - 偵測 `privileged: true`, `hostNetwork: true`
+  - 偵測 `securityContext` 缺失
+  - 偵測 Secret 被硬編碼在 YAML 中
+
+#### Feature B: CI/CD Workflow Auditor ⭐ 核心
+
+- **新增**: `src/ghostcheck/checks/ci_auditor.py`
+- GitHub Actions (`.github/workflows/*.yml`) 掃描:
+  - 偵測 `permissions: write-all` 或過於寬鬆的權限
+  - 偵測 `pull_request_target` + `checkout` 組合攻擊
+  - 偵測未固定的 Action 版本 (`uses: actions/checkout@main` vs `@v4`)
+  - 偵測 secrets 在 `echo` 或 `run` 中被明文輸出
+- GitLab CI (`.gitlab-ci.yml`) 基本支援
+
+#### Feature C: Plugin Architecture
 
 - **新增**: `src/ghostcheck/plugins/`
-  - `loader.py` — 動態載入 `~/.ghostcheck/plugins/` 目錄中的 Python 模組
+  - `loader.py` — 動態載入 `~/.ghostcheck/plugins/` 的 Python 模組
   - `base.py` — Abstract `CheckPlugin` base class
-- 使用者可以撰寫自定義檢查模組並放入 plugins 目錄
 - CLI 新增: `ghostcheck plugins list`, `ghostcheck plugins install <url>`
 
-#### Feature B: Pattern Pack System
-
-- **新增**: `src/ghostcheck/data/packs/`
-- 支援從 GitHub Gist 或 URL 下載社群 pattern packs
-- 格式: JSON 檔案含 `patterns`, `metadata`, `version`
-- CLI 新增: `ghostcheck patterns update`, `ghostcheck patterns list`
-
-#### Feature C: Configuration File
+#### Feature D: Configuration File
 
 - **新增**: `src/ghostcheck/config.py`
-- 支援 `ghostcheck.toml` 或 `pyproject.toml` 中的 `[tool.ghostcheck]` 區段
+- 支援 `ghostcheck.toml` 或 `pyproject.toml` 的 `[tool.ghostcheck]` 區段
 - 可設定: severity threshold, 啟用/停用特定檢查, 自定義 patterns, 離線模式預設值
-- 層級覆蓋: CLI flags > 專案 config > 全域 config(`~/.ghostcheck/config.toml`)
-
-#### Feature D: Advanced Threat Detection (Red Team Additions)
-
-- **實作**: **Entropy-based Secret Detection** — 分析被指派給高敏感變數 (如 `password`, `apiKey`) 之字串的亂度 (Shannon Entropy)，以此泛用型偵測揪出未知格式的金鑰。
-- **實作**: **Taint Analysis Lite (污點分析)** — 追蹤被識別為機密的變數是否被傳遞至高風險的外流出口 (如 `fetch`、`console.log`)，藉此判定潛在的惡意外流行為。
+- 層級覆蓋: CLI flags > 專案 config > 全域 config (`~/.ghostcheck/config.toml`)
 
 #### Verification
 
 ```bash
+# IaC: 準備含硬編碼 creds 的 .tf 和 K8s YAML 測試檔案
+# CI/CD: 準備含 write-all 和明文 secrets 的 workflow 檔案
 # Plugin: 撰寫一個簡單的 plugin, 載入並執行
-# Patterns: 從 URL 下載 pattern pack 並驗證偵測
 # Config: 設定 toml 後驗證行為改變
-# Threat Detection: 測試高亂數假字串是否觸發警報，以及追蹤外流函式呼叫
 ```
 
 ---
 
-### 🔴 v0.8.0 — LLM-Assisted Remediation (Fixer Bot)
+### 🔴 v0.8.0 — Advanced Detection & Risk Intelligence
 
-> **目標**: 利用本地或雲端 LLM 提供智慧修復建議。
+> **目標**: 提升偵測能力至接近商業工具水準，引入風險量化。
 
-#### Feature A: LLM Fixer Bot
+#### Feature A: Entropy-based Secret Detection ⭐ 核心
 
-- **新增**: `src/ghostcheck/fixer/`
-  - `engine.py` — LLM 呼叫抽象層 (支援 OpenAI API / local Ollama)
-  - `prompts.py` — 預設修復 prompt templates
-  - `applier.py` — 將 LLM 建議轉為 git patch
-- `ghostcheck fix <finding-id>` — 針對特定發現呼叫 LLM 產生修復
-- `ghostcheck fix --all` — 批量修復所有可自動修復的發現
-- 使用者可預覽 diff 後決定是否 apply
+- **新增**: `src/ghostcheck/checks/entropy_scanner.py`
+- 分析字串的 Shannon Entropy，偵測未知格式的高機密字串
+- 觸發條件: 字串被指派給高敏感變數 (`password`, `apiKey`, `secret`, `token`) 且亂度 > 4.0
+- 跨語言支援: Python / JS / Go / YAML / .env
 
-#### Feature B: Severity Dashboard (HTML Report)
+#### Feature B: Dependency Vulnerability Scanner (CVE) ⭐ 核心
 
-- **新增**: `src/ghostcheck/reporters/html_reporter.py`
-- 產生互動式 HTML 報告
-- 包含: 嚴重度分佈圖表、趨勢比較、詳細 finding cards
-- `--format html` CLI 選項
+- **新增**: `src/ghostcheck/checks/vuln_scanner.py`
+- 查詢 OSV.dev / GitHub Advisory Database 檢查已知 CVE
+- 支援: `requirements.txt`, `package.json`, `package-lock.json`, `go.sum`, `Cargo.lock`
+- `ghostcheck check-deps --vuln` — 列出含已知漏洞的套件
+- 離線模式: 快取 CVE 資料庫 (24h TTL)
 
-#### Feature C: Risk Score
+#### Feature C: API Endpoint Security Linter
+
+- **新增**: `src/ghostcheck/checks/api_linter.py`
+- 掃描常見 web framework 程式碼:
+  - Express.js: 偵測 `cors({ origin: '*' })`, 缺少 helmet/rate-limit middleware
+  - FastAPI/Flask: 偵測缺少 auth dependency, 開放 debug mode
+  - Next.js: 偵測 `api/` routes 缺少 auth middleware
+- 偵測 SSRF 風險: 使用者輸入直接傳入 `fetch()` / `requests.get()`
+
+#### Feature D: Risk Score & HTML Dashboard
 
 - **新增**: `src/ghostcheck/scoring.py`
-- 計算專案整體風險分數 (0-100)
-- 考慮因素: finding 數量、嚴重度加權、pattern diversity、coverage 完整度
-- Console 輸出最終 Risk Score 和等級 (A/B/C/D/F)
+- 計算專案整體風險分數 (0-100)，等級 A/B/C/D/F
+- 考慮: finding 數量、嚴重度加權、pattern diversity、coverage 完整度
+- **新增**: `src/ghostcheck/reporters/html_reporter.py` — 互動式 HTML 報告
 
 #### Verification
 
 ```bash
-# Fixer: 使用 Ollama 本地模型測試修復建議產生
-# HTML: 驗證輸出的 HTML 報告可正常在瀏覽器開啟
+# Entropy: 測試高亂度假字串是否觸發警報
+# CVE: 測試含已知漏洞版本的 requirements.txt
+# API: 準備含 CORS wildcard 的 Express.js 程式碼
 # Risk Score: 驗證分數計算邏輯與邊界條件
 ```
 
 ---
 
-### 🟣 v1.0.0 — Production Ready
+### 🟤 v0.9.0 — Multi-Language AST Expansion & Watch Mode
 
-> **目標**: 生產就緒版本，具備完整的文件、國際化和穩定的 API。
+> **目標**: 將 AST 語法分析擴展到主流語言，並加入即時監控。
 
-#### Feature A: Complete Documentation
+#### Feature A: Go AST Scanner
 
-- **新增/更新**: `docs/ghostcheck/`
-  - `README.md` — 完整英文使用指南 (Install, Quick Start, Commands, Configuration, CI Integration, Plugin Development, Contributing)
-  - `README_zh-TW.md` — 完整繁體中文版
-  - `API.md` — Python API 參考文件
+- **新增**: `src/ghostcheck/checks/ast_go_scanner.py`
+- 解析 `.go` 檔案的 AST (使用 `tree-sitter-go` 或正則 fallback)
+- 偵測: 硬編碼 credentials, `http.ListenAndServe` without TLS, 不安全的 `exec.Command`
+
+#### Feature B: Java/Kotlin Scanner
+
+- **新增**: `src/ghostcheck/checks/ast_java_scanner.py`
+- 支援 `.java` / `.kt` 檔案
+- 偵測: `@Value` annotation 硬編碼密碼, hardcoded JDBC connection strings, Spring Security misconfigs
+
+#### Feature C: Taint Analysis Lite
+
+- **實作**: 追蹤被識別為機密的變數是否被傳遞至危險輸出口
+- 偵測: `console.log(secret)`, `print(api_key)`, `logger.info(token)`
+- 偵測: `fetch(url, { headers: { Authorization: hardcoded } })`
+- 跨語言: Python / JavaScript
+
+#### Feature D: Watch Mode
+
+- **新增**: `src/ghostcheck/watcher.py`
+- `ghostcheck watch .` — 監控工作目錄變更
+- 檔案變更時自動增量掃描 (只掃描變更的檔案)
+- Terminal 即時輸出新發現
+
+#### Feature E: LLM Fixer Bot
+
+- **新增**: `src/ghostcheck/fixer/`
+  - `engine.py` — LLM 呼叫抽象層 (OpenAI API / local Ollama)
+  - `prompts.py` — 修復 prompt templates
+  - `applier.py` — 將建議轉為 git patch
+- `ghostcheck fix <finding-id>` — 呼叫 LLM 修復特定發現
+- `ghostcheck fix --all` — 批量修復
+
+#### Verification
+
+```bash
+# Go AST: 準備含硬編碼 creds 的 .go 測試檔
+# Java: 準備含 @Value 密碼的 .java 測試檔
+# Taint: 測試 console.log(secret) 是否被偵測
+# Watch: 啟動後修改檔案，觀察即時偵測
+# Fixer: 使用 Ollama 測試修復建議產生
+```
+
+---
+
+### 🟣 v1.0.0 — Production Ready (Universal Scanner)
+
+> **目標**: 生產就緒版本。任何開發者執行 `pip install ghostcheck && ghostcheck init && ghostcheck scan .` 即可獲得全面安全報告。
+
+#### Feature A: Framework Presets ⭐ 核心
+
+- **新增**: `src/ghostcheck/presets/`
+- 預設掃描策略 (由 `ghostcheck init` 自動選擇):
+  - `next.js` — 掃描 API routes, middleware, env vars, Vercel 設定
+  - `react` — 偵測前端硬編碼 API keys, `dangerouslySetInnerHTML`
+  - `fastapi` — 偵測 CORS, auth, debug mode
+  - `django` — 偵測 `SECRET_KEY`, `DEBUG=True`, ALLOWED_HOSTS
+  - `express` — 偵測 helmet, rate-limit, CORS, session config
+  - `flutter` — 偵測 API keys in Dart files, Firebase config
+  - `terraform` — 偵測 state 檔案, hardcoded creds
+  - `generic` — 通用掃描 (default)
+
+#### Feature B: Complete Documentation
+
+- **新增**: `docs/ghostcheck/`
+  - `README.md` — 完整英文使用指南
+  - `README_zh-TW.md` — 繁體中文版
+  - `API.md` — Python API 參考
   - `CHANGELOG.md` — 版本變更紀錄
   - `SECURITY.md` — 安全政策
+  - `PRESETS.md` — 框架預設策略文件
 
-#### Feature B: PyPI Publishing
+#### Feature C: PyPI Publishing & Performance
 
-- **新增**: `.github/workflows/publish.yml`
-- `make publish` → build → test → twine upload
-- `pip install ghostcheck` 可直接安裝
-- 版本號遵循 Semantic Versioning
-
-#### Feature C: Performance Optimization
-
-- 大型 repo (>10,000 files) 效能基準測試
+- `pip install ghostcheck` 直接安裝
 - 平行掃描 (multi-threading for IO-bound checks)
 - 智慧跳過 (已掃描且未修改的檔案不重複掃描)
-- 記憶體使用最佳化
+- 大型 repo (>10,000 files) 效能基準 < 60s
 
 #### Feature D: Multi-Role Self-Review Protocol
 
 - Flash 模型在 ship 前 MUST 執行四角色審查:
-  1. **Security Researcher 🔒**: 偵測模式完整性、regex 安全性、API 使用安全性
-  2. **Python Developer 👨‍💻**: 程式碼品質、edge case、error handling、UX
+  1. **Security Researcher 🔒**: 偵測模式完整性、regex 安全性
+  2. **Python Developer 👨‍💻**: 程式碼品質、edge case、error handling
   3. **Open Source Maintainer 🌍**: 文件品質、易用性、中文文件準確性
-  4. **DevOps / CI Engineer ⚙️**: CI pipeline、exit codes、JSON 輸出、安裝流程
-- 每個角色必須輸出: `✅ Pass` 或 `❌ Fail (reason)`
+  4. **DevOps / CI Engineer ⚙️**: CI pipeline、exit codes、安裝流程
 
 #### Verification
 
 ```bash
 # Full regression: pytest --cov ≥80%
-# Install: pip install ghostcheck && ghostcheck scan .
-# Performance: time ghostcheck scan <large-repo>
+# Install: pip install ghostcheck && ghostcheck init && ghostcheck scan .
+# Presets: 在 Next.js / Django / Terraform 專案各執行一次
+# Performance: time ghostcheck scan <large-repo> < 60s
 # Publish: test upload to TestPyPI
 ```
 
@@ -345,7 +388,7 @@ pytest tests/ -v --cov=ghostcheck --cov-report=term-missing
 
 ### Flash 模型 Autopilot 指令
 
-```
+```text
 ## Role Assignment
 你正在擔任 **Project Owner (KbWen)** 角色。你擁有以下完全權限:
 - 批准所有 gate handshakes (bootstrap, plan, implement, review, ship)
@@ -369,31 +412,35 @@ pytest tests/ -v --cov=ghostcheck --cov-report=term-missing
 
 ## 版本選擇
 根據 current_state.md 的 Ship History 判斷下一個待實作版本:
-- 如果最新 ship 是 v0.3.0 → 實作 v0.4.0
-- 如果最新 ship 是 v0.4.0 → 實作 v0.5.0
+- 如果最新 ship 是 v0.5.0 → 實作 v0.6.0
+- 如果最新 ship 是 v0.6.0 → 實作 v0.7.0
 - 以此類推
+
+## ⭐ 核心 Feature 標記
+標有 ⭐ 核心 的 Feature 為該版本的 must-have，不可省略或簡化。
+其他 Feature 為 nice-to-have，可根據實作時間彈性調整。
 ```
 
 ### 跨版本依賴圖
 
 ```mermaid
 graph LR
-    v0.3["v0.3.0 ✅<br/>Deep Intelligence"] --> v0.4["v0.4.0<br/>CI/CD + Tests"]
-    v0.4 --> v0.5["v0.5.0<br/>Multi-Lang AST"]
-    v0.5 --> v0.6["v0.6.0<br/>Watch + Git"]
-    v0.6 --> v0.7["v0.7.0<br/>Plugins"]
-    v0.7 --> v0.8["v0.8.0<br/>LLM Fixer"]
-    v0.8 --> v1.0["v1.0.0<br/>Production"]
-    
-    v0.4 -.->|"SARIF 基礎"| v0.8
+    v0.5["v0.5.0 ✅<br/>Multi-Lang AST"] --> v0.6["v0.6.0<br/>Zero-Config + Git"]
+    v0.6 --> v0.7["v0.7.0<br/>IaC + CI/CD"]
+    v0.7 --> v0.8["v0.8.0<br/>Advanced Detection"]
+    v0.8 --> v0.9["v0.9.0<br/>Multi-Lang + Watch"]
+    v0.9 --> v1.0["v1.0.0<br/>Universal Scanner"]
+
+    v0.6 -.->|"init + config"| v1.0
+    v0.7 -.->|"IaC patterns"| v1.0
+    v0.8 -.->|"Entropy + CVE"| v1.0
     v0.5 -.->|"Severity Engine"| v0.8
-    v0.7 -.->|"Plugin System"| v1.0
 ```
 
 ### 品質門檻 (每版本 Ship 前必須達成)
 
 | 門檻 | 要求 |
-|------|------|
+| ---- | ---- |
 | Unit Tests | ≥80% core logic coverage |
 | Smoke Test | `ghostcheck scan .` 成功執行 |
 | No Regression | 所有既有測試通過 |
@@ -403,16 +450,39 @@ graph LR
 
 ---
 
+## 掃描能力矩陣 (Target Coverage)
+
+> GhostCheck v1.0.0 目標: 一個工具掃描所有常見 app 類型的安全風險。
+
+| App 類型 | 版本引入 | 掃描能力 |
+| ---- | ---- | ---- |
+| Python (Flask/Django/FastAPI) | v0.1.0+ | 密鑰、AST、套件幻覺、.env |
+| Node.js (Express/Next.js/React) | v0.5.0+ | JS AST、密鑰、npm 幻覺 |
+| Docker / Compose | v0.2.0+ | Dockerfile 風險、compose 權限 |
+| Terraform / IaC | v0.7.0 | 硬編碼 creds、Security Group、State 檔案 |
+| Kubernetes | v0.7.0 | privileged pods、缺少 securityContext |
+| GitHub Actions / GitLab CI | v0.7.0 | 權限過寬、明文 secrets、未固定版本 |
+| Go | v0.9.0 | AST 密鑰偵測、不安全 exec |
+| Java/Kotlin (Spring) | v0.9.0 | JDBC 連接字串、@Value 密碼 |
+| Flutter/Dart | v1.0.0 | API keys、Firebase config |
+| 通用 (任何語言) | v0.1.0+ | 正則密鑰掃描、entropy 偵測 (v0.8.0+) |
+
+---
+
 ## 附錄: 原始 MVP 計畫差異追蹤
 
-以下是原始 MVP 計畫中尚未完成或已調整的項目:
-
 | 原始計畫項目 | 狀態 | 備註 |
-|---|---|---|
-| CI Pipeline (GitHub Actions) | 🔵 延至 v0.4.0 | 需建立 matrix 測試 |
-| Makefile | 🔵 延至 v0.4.0 | 開發者體驗改善 |
+| ---- | ---- | ---- |
+| CI Pipeline (GitHub Actions) | ✅ v0.4.0 完成 | Matrix 測試 |
+| Makefile | ✅ v0.4.0 完成 | 開發者體驗 |
 | 繁體中文 README | 🟣 延至 v1.0.0 | 需等功能穩定 |
-| LLM Fixer Bot | 🔴 延至 v0.8.0 | 原始計畫列為 non-goal |
-| Watch Mode | 🟡 延至 v0.6.0 | 搭配 git diff 更有價值 |
-| git patch 產生 | 🔴 併入 v0.8.0 | LLM Fixer 的子功能 |
+| LLM Fixer Bot | 🔴 延至 v0.9.0 | 搭配 Taint Analysis |
+| Watch Mode | 🟡 延至 v0.9.0 | 搭配多語言 AST 更有價值 |
+| git patch 產生 | 🔴 併入 v0.9.0 | LLM Fixer 的子功能 |
 | GUI / Web Interface | ❌ 維持 non-goal | 專注 CLI 體驗 |
+| **[新增] ghostcheck init** | 🟡 v0.6.0 | 零設定快速啟動 |
+| **[新增] IaC / K8s 掃描** | 🟠 v0.7.0 | 基礎設施安全 |
+| **[新增] CVE 漏洞偵測** | 🔴 v0.8.0 | 超越幻覺偵測 |
+| **[新增] Entropy 偵測** | 🔴 v0.8.0 | 泛用密鑰偵測 |
+| **[新增] Go / Java AST** | 🟤 v0.9.0 | 多語言覆蓋 |
+| **[新增] Framework Presets** | 🟣 v1.0.0 | 框架感知 |
