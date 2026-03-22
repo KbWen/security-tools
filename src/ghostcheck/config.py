@@ -1,6 +1,12 @@
 import os
-import tomllib
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
 from typing import Dict, Any, Optional
+
 
 class GhostCheckConfig:
     DEFAULT_CONFIG = {
