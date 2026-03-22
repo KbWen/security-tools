@@ -15,7 +15,7 @@ class IgnoreMatcher:
     def is_ignored(self, path):
         # Normalize and make relative to base_path if possible
         abs_path = os.path.abspath(path)
-        if self.base_path and abs_path.startswith(self.base_path):
+        if self.base_path and os.path.commonpath([self.base_path, abs_path]) == self.base_path:
             path = os.path.relpath(abs_path, self.base_path)
         
         path = path.replace(os.sep, '/')

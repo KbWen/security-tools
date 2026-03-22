@@ -1,0 +1,14 @@
+---
+name: test-driven-development
+description: Red→Green→Refactor cycle for logic changes. Auto-activate during /implement for feature and architecture-change classifications when testable logic is being written.
+phases: [implement, test]
+trigger: auto (when writing testable logic in feature/architecture-change tasks)
+---
+
+# Test-Driven Development
+
+Full instructions: `.agents/skills/test-driven-development/SKILL.md`.
+
+- **Trigger**: Auto — when implementing testable logic (not config changes, docs, or scaffolding)
+- **Cycle**: Red (write failing test) → Green (minimal code to pass) → Refactor (clean up)
+- **Ironclad**: Never write production code without a failing test first

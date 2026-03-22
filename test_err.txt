@@ -1,0 +1,18 @@
+
+=================================== ERRORS ====================================
+_____________________ ERROR collecting tests/test_cli.py ______________________
+ImportError while importing test module 'C:\Users\wen\.gemini\antigravity\scratch\security-tools\tests\test_cli.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+C:\Python314\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\test_cli.py:3: in <module>
+    from ghostcheck.cli import main
+src\ghostcheck\cli.py:9: in <module>
+    from .demo import DemoRunner
+E   ModuleNotFoundError: No module named 'ghostcheck.demo'
+=========================== short test summary info ===========================
+ERROR tests/test_cli.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 1 error during collection !!!!!!!!!!!!!!!!!!!!
+1 error in 0.72s

@@ -7,13 +7,8 @@ Global (applies to all projects using template).
 ## Reading Mode
 
 - **Full Mode** (default for `feature`, `architecture-change`, `hotfix`): Read this entire document.
-- **Quick Mode** (for `quick-win`): Read ONLY: §4 (Design Before Implementation), §7 (Scope Discipline), §8.1 (Bug Fix Protocol if applicable), §9.1 (Acknowledgment-only Inputs). Skip §1-3, §5-6, §10.1-10.2.
-- **Lite Mode** (for `tiny-fix` ONLY): Read ONLY the following sections:
-  - §7 Scope Discipline (mandatory)
-  - §8.1 Bug Fix Protocol (if fixing a bug)
-  - §9.1 Acknowledgment-only Inputs (always)
-  - §10.3 Tiny-Fix Fast-Path (for verification)
-  - Skip sections 1-4, 6, 10.1-10.2. These do not apply to tiny-fix tasks.
+- **Quick Mode** (for `quick-win`): Do NOT read this file. Essential quick-win rules (Confidence Gate, Bug Fix Protocol, Doc Integrity) are embedded in `bootstrap.md` §7 quick-win classification. If the task escalates beyond quick-win, switch to Full Mode.
+- **Skip Mode** (for `tiny-fix` ONLY): Do NOT read this file. `AGENTS.md` §Core Directives provides sufficient governance for tiny-fix tasks (scope discipline, evidence requirement, fast-path rules). If the task escalates beyond tiny-fix, switch to Quick or Full Mode and read this file at that point.
 
 ## Role
 
@@ -59,7 +54,18 @@ Non-negotiable principles for agent-driven development.
 - BEFORE coding, MUST provide: Problem understanding, Design, Trade-offs, Risks.
 - If ambiguous, priority is CLARIFICATION.
 
-### 4.1 Spec Freezing (SSoT Protection)
+### 4.1 Confidence Gate (Auto-Enforced)
+
+Before executing any implementation step, AI MUST internally assess and state:
+
+- `Confidence: [0-100]%` with a 1-line rationale.
+- **< 80%**: STOP. Surface the uncertainty and ask a clarifying question. DO NOT proceed.
+- **80–90%**: State the assumption explicitly, then proceed with caution.
+- **> 90%**: Proceed normally.
+
+This check is silent when confidence is high — no extra output needed above 90%. Only surfaces when it matters.
+
+### 4.2 Spec Freezing (SSoT Protection)
 
 - Whenever a Spec is approved or the task transitions to implementation, the Spec MUST be marked as **FROZEN** (e.g., via YAML frontmatter `status: frozen`).
 - AI agents MUST NOT modify, review, or suggest refactoring for any document marked as `FROZEN` or `Finalized` during normal tasks.
@@ -75,11 +81,11 @@ Non-negotiable principles for agent-driven development.
 - **Sanity Check**: Is output bounding safe? Side-effects?
 - **Doc-First Pillar**: Architecture/Core logic changes MUST precede with Spec/ADR in `docs/`.
 - **Naming/Locations**:
-  - ADRs: `docs/adr/ADR-[ID]-[kebab-case].md`
-  - Specs: `docs/specs/[feature-name].md`
+  - ADRs: `.agentcortex/adr/ADR-[ID]-[kebab-case].md`
+  - Specs: `.agentcortex/specs/[feature-name].md`
   - Guides: `docs/guides/[topic].md`
-  - Agent Work Logs: `docs/context/work/`
-  - Private Context: `docs/context/private/` (local-only, gitignored)
+  - Agent Work Logs: `.agentcortex/context/work/`
+  - Private Context: `.agentcortex/context/private/` (local-only, gitignored)
     - USE FOR: personal dev environment configs, private remote URLs, internal credentials references, team-specific workflows not intended for public repos.
     - DO NOT USE FOR: project architecture docs, contribution guides, public development standards.
     - WHEN UNCERTAIN: Agent MUST present options to user in `/plan` phase. Autonomous path decisions on ambiguous content are PROHIBITED.
@@ -91,8 +97,9 @@ Non-negotiable principles for agent-driven development.
 
 ## 7. Scope Discipline
 
-- ONLY solve requested issue. UNAUTHORIZED REFACTORING IS PROHIBITED.
-- If larger issue discovered, output a "Follow-up Issue" recommendation.
+> See also: `AGENTS.md` §Core Directives ("UNAUTHORIZED REFACTORING STRICTLY PROHIBITED").
+
+- ONLY solve requested issue. If larger issue discovered, output a "Follow-up Issue" recommendation.
 
 ## 8. Agent Operating Mode
 
@@ -158,7 +165,16 @@ When locating code, files, or definitions:
 2. Semantic search is allowed ONLY after lexical search yields no results.
 3. If still unresolved, ask a targeted question.
 
-### 9.4 Core Principle
+### 9.4 Namespace Isolation (Downstream Safety)
+
+AgentCortex deploys workflows and skills into downstream projects. Those projects may have their own custom commands, skills, or automation — including inside `.agent/` directories. The Intent Router must respect boundaries:
+
+1. **Framework-managed vs user-owned**: The distinction is NOT by directory. Files listed in `.agentcortex-manifest` are framework-managed. Everything else — even files inside `.agent/workflows/` or `.agent/skills/` — belongs to the project owner. Users are free to add their own workflows and skills alongside AgentCortex's.
+2. **Collision resolution**: If a user-created command name collides with an AgentCortex workflow (e.g., both have a `/deploy`), the **user's command takes priority**. AgentCortex workflows are infrastructure; user commands are application-level.
+3. **Natural language routing**: When AI receives natural language that could map to either an AgentCortex phase or a user-defined command, AI MUST check: "Is the user talking about the AgentCortex governance process, or about their project-specific action?" If ambiguous, ask.
+4. **Governance still applies**: User-defined workflows and skills are not exempt from AgentCortex governance. Phase order, gates, and evidence requirements still apply — but the user's custom logic drives the implementation, not AgentCortex's.
+
+### 9.5 Core Principle
 >
 > When intent is unclear, ASK. Never guess. Never proceed.
 
@@ -204,7 +220,8 @@ AI self-enforces the phase order above. Users may invoke phases via slash comman
 
 ### 10.5 Handoff/Ship Hard Gate
 
-- Non-`tiny-fix` tasks MUST NOT claim complete without a handoff phase.
+> See also: `AGENTS.md` §Delivery Gates.
+
 - The ship phase MUST verify handoff references in single-line format: `ship:[doc=<path>][code=<path>][log=<path>]`
 - If any field is missing, AI MUST reject shipping and list the missing field(s).
 
@@ -224,29 +241,15 @@ When AI detects a task is nearing completion (e.g., user says "done", "完成了
 
 ## 11. Multi-Person Collaboration Rules
 
-### 11.1 Work Log Ownership
+> Canonical rules are in `AGENTS.md` §Multi-Person Collaboration and §Multi-Session Concurrency. This section adds implementation details.
 
-- **One Branch = One Owner**: Each `docs/context/work/<worklog-key>.md` Work Log MUST have exactly ONE active writer at a time.
-- AI MUST write `Owner: <user-name or session-id>` in the Work Log header during `/bootstrap`.
-- If a Work Log already exists with a different Owner, AI MUST warn: "⚠️ This Work Log is owned by [Owner]. Concurrent writes will cause data loss. Create a separate Work Log? (yes/no)"
-- Naming convention for multi-person: `docs/context/work/<owner>-<worklog-key>.md` (e.g., `alice-feature-x.md`).
-- Missing active Work Logs are recoverable during `/bootstrap`, `/plan`, and `/handoff`: resolve `<worklog-key>`, create or recover the active log, and warn the user. `/ship` may recover a follow-up log from archive context, but missing handoff references remain a hard failure.
+- **Work Log Naming**: `.agentcortex/context/work/<worklog-key>.md` for single-person, `.agentcortex/context/work/<owner>-<worklog-key>.md` for multi-person.
+- Missing active Work Logs are recoverable during bootstrap/plan/handoff: resolve `<worklog-key>`, create or recover the active log.
 
-### 11.2 Agent Identity
-
-Every Work Log entry MUST include a compact identity line to enable cross-session debugging:
-
-```markdown
-## Session Info
-@[model]:[platform]:[timestamp-or-conversation-id]
-```
-
-This enables answering: "Which AI wrote this? When? On which platform?"
-
-### 11.3 Ship Guard (SSoT Merge Protection)
+### 11.1 Ship Guard (SSoT Merge Protection)
 
 Before `/ship` writes to `current_state.md`:
 
 1. AI MUST check if `current_state.md` has been modified since the task started (compare timestamps or last-known content hash).
-2. If modified by another person/session: AI MUST warn: "⚠️ `current_state.md` was updated by another session since your task started. Please review the changes before I merge. Proceed? (yes/abort)"
-3. If the user says proceed, AI MUST perform an **additive merge** (append new entries without removing existing ones), NOT a full overwrite.
+2. If modified by another person/session: AI MUST warn and require confirmation before merge.
+3. If proceeding, AI MUST perform an **additive merge** (append new entries without removing existing ones), NOT a full overwrite.

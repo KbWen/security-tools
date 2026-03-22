@@ -4,14 +4,17 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostcheck"
-version = "0.3.0"
+version = "0.6.0"
 description = "AI-era security scanner for developers"
 authors = [
     { name = "KbWen", email = "kbwen@example.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.9"
-dependencies = []
+dependencies = [
+    "esprima>=4.0.1",
+    "tomli; python_version < '3.11'",
+]
 
 [project.optional-dependencies]
 dev = [

@@ -1,0 +1,18 @@
+---
+name: red-team-adversarial
+description: Adversarial security and resilience analysis — auto-triggered during /review and /test based on task classification (hotfix=Lite, feature=Full, architecture-change=Full+Beast Mode). Complements OWASP security scan.
+phases: [review, test]
+trigger: auto (classification-based)
+---
+
+# Red Team / Adversarial Testing
+
+Auto-triggered adversarial analysis skill. Full instructions: `.agents/skills/red-team-adversarial/SKILL.md`.
+
+## Quick Reference
+
+- **Trigger**: Auto — reads classification from Work Log. Skips tiny-fix/quick-win.
+- **Modes**: Lite (hotfix), Full (feature), Full+Beast (architecture-change)
+- **Blocking**: CRITICAL = hard block, HIGH = soft block (record decision), MEDIUM/LOW = advisory
+- **Output**: Red Team Report (in /review), Adversarial Test Cases + Beast Mode Analysis (in /test)
+- **Work Log**: Findings recorded under `## Red Team Findings`

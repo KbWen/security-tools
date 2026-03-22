@@ -1,0 +1,14 @@
+---
+name: database-design
+description: Schema conventions, migration rules, index strategy, query patterns. Ensures safe and consistent database changes per ADR decisions.
+phases: [plan, implement, review, test]
+trigger: auto (when task involves creating tables, modifying schema, or writing migrations)
+---
+
+# Database Design
+
+Full instructions: `.agents/skills/database-design/SKILL.md`.
+
+- **Trigger**: Auto — when task touches DB schema or data access (feature/architecture-change/hotfix)
+- **Conventions**: Table design, relationships, indexes, migration rules, query patterns
+- **Anti-patterns**: Schema via ORM only, god table, missing FK indexes, SELECT *

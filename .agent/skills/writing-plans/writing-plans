@@ -1,0 +1,14 @@
+---
+name: writing-plans
+description: Plan before implementing — output a task plan that is verifiable, revertible, and executable in stages. Auto-activate during /plan phase.
+phases: [plan]
+trigger: auto (during /plan phase)
+---
+
+# Writing Plans
+
+Full instructions: `.agents/skills/writing-plans/SKILL.md`.
+
+- **Trigger**: Auto — during /plan phase
+- **Required fields**: Target Files, Execution Steps, Risks & Rollback, AC Coverage, Non-goals
+- **Key principle**: Every step must be independently verifiable and revertible

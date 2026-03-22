@@ -1,0 +1,1 @@
+Fatal Error: 'cp950' codec can't encode character '\U0001f47b' in position 13: illegal multibyte sequence

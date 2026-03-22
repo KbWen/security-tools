@@ -62,4 +62,9 @@ GhostCheck respects professional ignore rules:
 
 ---
 
-**Developed with ❤️ for the AI community by [KbWen](https://github.com/KbWen).**
+## Powered by AgentCortex
+
+### Why AgentCortex?
+This project uses the [AgentCortex](https://github.com/KbWen/AgentCortex) framework to ensure high standards of AI agent autonomy, security, and process-driven development.
+
+Developed with ❤️ by [KbWen](https://github.com/KbWen) for the AI community.

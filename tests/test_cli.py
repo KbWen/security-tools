@@ -10,7 +10,7 @@ def test_cli_version(capsys):
         assert e.value.code == 0
     # argparse version prints to stderr in some versions, check both
     out, err = capsys.readouterr()
-    assert "GhostCheck 0.4.0" in out or "GhostCheck 0.4.0" in err
+    assert "GhostCheck 0.6.0" in out or "GhostCheck 0.6.0" in err
 
 def test_cli_help(capsys):
     with patch('sys.argv', ['ghostcheck', '--help']):
@@ -20,9 +20,3 @@ def test_cli_help(capsys):
     out, err = capsys.readouterr()
     assert "GhostCheck: AI-Era Security Scanner" in out
 
-def test_cli_demo(capsys):
-    with patch('ghostcheck.demo.DemoRunner.run', return_value=0):
-        with patch('sys.argv', ['ghostcheck', 'demo']):
-            with pytest.raises(SystemExit) as e:
-                main()
-            assert e.value.code == 0

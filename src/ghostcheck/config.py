@@ -1,0 +1,72 @@
+import os
+import sys
+
+try:
+    import tomllib
+except ModuleNotFoundError:
+    import tomli as tomllib
+from typing import Dict, Any, Optional
+
+
+class GhostCheckConfig:
+    DEFAULT_CONFIG = {
+        "severity_threshold": "INFO",
+        "exclude_patterns": [],
+        "enabled_checks": ["hallucination", "secrets", "rules", "docker"],
+        "offline": False,
+        "custom_patterns": []
+    }
+
+    def __init__(self, project_root: str):
+        self.project_root = os.path.abspath(project_root)
+        self.config = self.DEFAULT_CONFIG.copy()
+        self._load_all_configs()
+
+    def _load_all_configs(self):
+        # 1. Load Global Config (~/.ghostcheck/config.toml)
+        global_config_path = os.path.expanduser("~/.ghostcheck/config.toml")
+        if os.path.exists(global_config_path):
+            self._merge_config(self._read_toml(global_config_path))
+
+        # 2. Load Project Config (./ghostcheck.toml or pyproject.toml)
+        project_config_path = os.path.join(self.project_root, "ghostcheck.toml")
+        pyproject_path = os.path.join(self.project_root, "pyproject.toml")
+
+        if os.path.exists(project_config_path):
+            self._merge_config(self._read_toml(project_config_path))
+        elif os.path.exists(pyproject_path):
+            pyproject_data = self._read_toml(pyproject_path)
+            # Support [tool.ghostcheck] in pyproject.toml
+            if "tool" in pyproject_data and "ghostcheck" in pyproject_data["tool"]:
+                self._merge_config(pyproject_data["tool"]["ghostcheck"])
+
+    def _read_toml(self, path: str) -> Dict[str, Any]:
+        try:
+            with open(path, "rb") as f:
+                return tomllib.load(f)
+        except Exception:
+            return {}
+
+    def _merge_config(self, new_data: Dict[str, Any]):
+        if not new_data:
+            return
+        
+        # Simple merge for keys
+        for key in self.DEFAULT_CONFIG.keys():
+            if key in new_data:
+                # Merge lists if needed, otherwise overwrite
+                if isinstance(self.config[key], list) and isinstance(new_data[key], list):
+                    # Combine lists unique
+                    self.config[key] = list(set(self.config[key] + new_data[key]))
+                else:
+                    self.config[key] = new_data[key]
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return self.config.get(key, default)
+
+    def update_from_args(self, args: Any):
+        """Overrides config with CLI arguments."""
+        if hasattr(args, 'severity') and args.severity:
+            self.config['severity_threshold'] = args.severity
+        if hasattr(args, 'offline') and args.offline:
+            self.config['offline'] = True

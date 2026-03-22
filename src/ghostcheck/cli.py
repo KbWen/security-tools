@@ -1,11 +1,15 @@
 import sys
 import argparse
 import os
+import json
 from .scanner import Scanner
 from .reporters.console import ConsoleReporter
 from .reporters.json_reporter import JsonReporter
 from .reporters.sarif_reporter import SarifReporter
-from .demo import DemoRunner
+
+from .config import GhostCheckConfig
+from .init import GhostCheckInitializer
+from .checks.git_diff_scanner import GitDiffScanner
 
 def main():
     parser = argparse.ArgumentParser(
@@ -13,55 +17,54 @@ def main():
         epilog="Addressing the unique risks of AI-assisted development."
     )
     
-    # Create a parent parser for common arguments
+    # parent parser for common scan arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--format", choices=["console", "json", "sarif"], default="console", help="Output format")
-    parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="INFO", help="Minimum severity threshold")
+    parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
-    parent_parser.add_argument("--offline", action="store_true", help="Run in offline mode (use cache, skip network)")
+    parent_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
+    parent_parser.add_argument("--baseline", help="Path to baseline file to suppress known findings")
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
     # scan command
-    scan_parser = subparsers.add_parser("scan", parents=[parent_parser], help="Run full scan on target path")
+    scan_parser = subparsers.add_parser("scan", parents=[parent_parser], help="Run scan on target path")
     scan_parser.add_argument("path", nargs="?", default=".", help="Target path to scan (default: .)")
+    scan_parser.add_argument("--staged", action="store_true", help="Only scan files staged in Git")
+    scan_parser.add_argument("--diff", help="Only scan files changed since specific Git ref (e.g. HEAD~1)")
+    
+    # init command
+    init_parser = subparsers.add_parser("init", help="Initialize GhostCheck in the current project")
+    init_parser.add_argument("--force", action="store_true", help="Overwrite existing configuration")
+    
+    # baseline command
+    baseline_parser = subparsers.add_parser("baseline", help="Manage security check baselines")
+    baseline_sub = baseline_parser.add_subparsers(dest="baseline_cmd")
+    create_bl = baseline_sub.add_parser("create", help="Create a baseline from current findings")
+    create_bl.add_argument("output", nargs="?", default=".ghostcheck-baseline.json", help="Output file path")
     
     # check-deps command
-    deps_parser = subparsers.add_parser("check-deps", parents=[parent_parser], help="Check dependencies for hallucinations")
-    deps_parser.add_argument("target", help="File to check (requirements.txt or package.json)")
+    subparsers.add_parser("check-deps", parents=[parent_parser], help="Check dependencies for hallucinations")
     
     # check-secrets command
-    secrets_parser = subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
-    secrets_parser.add_argument("path", help="Path to scan")
+    subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
     
-    # check-rules command
-    rules_parser = subparsers.add_parser("check-rules", parents=[parent_parser], help="Lint agent rules")
-    rules_parser.add_argument("path", help="Path to scan for rule files")
-    
-    # cache-clear command
-    subparsers.add_parser("cache-clear", help="Clear the local security data cache")
-    
-    # demo command
-    subparsers.add_parser("demo", parents=[parent_parser], help="Run a demo scan with sample vulnerabilities")
-    
-    # Version flag remains at top level
-    parser.add_argument("--version", action="version", version="GhostCheck 0.4.0")
+    # Version flag
+    parser.add_argument("--version", action="version", version="GhostCheck 0.6.0")
     
     args = parser.parse_args()
     
-    if args.command == "cache-clear":
-        cache_file = os.path.expanduser("~/.ghostcheck/cache/hallucination.json")
-        if os.path.exists(cache_file):
-            try:
-                os.remove(cache_file)
-                print("✅ Cache cleared successfully.")
-            except Exception as e:
-                print(f"Error clearing cache: {e}")
-        else:
-            print("Cache is already empty.")
-        sys.exit(0)
+    if args.command == "init":
+        initializer = GhostCheckInitializer(".")
+        success, msg = initializer.initialize(force=args.force)
+        print(f"{'✅' if success else '⚠️'} {msg}")
+        sys.exit(0 if success else 1)
 
+    # Load configuration
+    config = GhostCheckConfig(".")
+    config.update_from_args(args)
+    
     if args.command == "demo":
         runner = DemoRunner()
         sys.exit(runner.run(reporter_type=args.format))
@@ -70,28 +73,59 @@ def main():
         parser.print_help()
         sys.exit(0)
         
-    # Standard scanning commands
-    target_path = getattr(args, "path", getattr(args, "target", "."))
-    if not os.path.exists(target_path):
-        print(f"Error: Path '{target_path}' does not exist.")
-        sys.exit(2)
-        
-    scanner = Scanner(target_path, ignore_enabled=not args.no_ignore, offline=args.offline)
+    # Determine target and file list
+    target_path = getattr(args, "path", ".")
+    limit_files = None
+    
+    if args.command == "scan":
+        git_scanner = GitDiffScanner(target_path)
+        if args.staged:
+            if not git_scanner.is_git_repo():
+                print("Error: Not a git repository.")
+                sys.exit(2)
+            limit_files = git_scanner.get_staged_files()
+            if not limit_files:
+                print("No staged files to scan.")
+                sys.exit(0)
+        elif args.diff:
+            if not git_scanner.is_git_repo():
+                print("Error: Not a git repository.")
+                sys.exit(2)
+            limit_files = git_scanner.get_diff_files(args.diff)
+            if not limit_files:
+                print("No files changed since ref.")
+                sys.exit(0)
+
+    # Initialize scanner
+    scanner = Scanner(
+        target_path, 
+        ignore_enabled=not args.no_ignore, 
+        offline=config.get("offline", False),
+        config=config,
+        baseline_path=args.baseline
+    )
     
     try:
         findings = []
         if args.command == "scan":
-            findings = scanner.scan()
+            findings = scanner.scan(limit_files=limit_files)
         elif args.command == "check-deps":
-            findings = scanner.scan_dependencies()
+            findings = scanner.scan_dependencies(limit_files=limit_files)
         elif args.command == "check-secrets":
-            findings = scanner.scan_secrets()
-        elif args.command == "check-rules":
-            findings = scanner.scan_rules()
+            findings = scanner.scan_secrets(limit_files=limit_files)
             
+        # Baseline creation
+        if args.command == "baseline" and args.baseline_cmd == "create":
+            scan_findings = scanner.scan()
+            with open(args.output, "w") as f:
+                json.dump({"findings": scan_findings}, f, indent=4)
+            print(f"✅ Baseline created with {len(scan_findings)} findings at {args.output}")
+            sys.exit(0)
+
         # Filter by severity
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
-        threshold = severity_order.get(args.severity, 4)
+        threshold_name = args.severity or config.get("severity_threshold", "INFO")
+        threshold = severity_order.get(threshold_name, 4)
         findings = [f for f in findings if severity_order.get(f.get('severity', 'INFO'), 4) <= threshold]
         
         # Report
@@ -104,7 +138,6 @@ def main():
             
         reporter.report(findings)
         
-        # Exit codes (AC-8)
         if findings:
             sys.exit(1)
         sys.exit(0)

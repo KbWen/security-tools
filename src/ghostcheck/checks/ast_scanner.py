@@ -15,7 +15,7 @@ class AstSecretChecker:
         findings = []
         try:
             tree = ast.parse(content)
-        except (SyntaxError, ValueError, OverflowError):
+        except (SyntaxError, ValueError, OverflowError, RecursionError):
             # Gracefully handle broken files or extremely complex ones
             return findings
 
