@@ -159,13 +159,13 @@ security-tools/
   - **台灣常見**: LINE Channel Secret/Token, ECPAY HashKey
 - 每個 pattern 附帶 `remediation` 欄位（修復建議）
 
-#### Feature E: Auto-Fix Suggestions
+#### Feature E: Configuration File (從 v0.7.0 提前)
 
-- **修改**: 所有 `Finding` 結構新增 `suggestion` 欄位
-- Secret 發現 → "Move to .env and add to .gitignore"
-- Hallucinated package → "Remove or verify on registry"
-- Risky rule → 具體的安全替代寫法
-- JSON/Console/SARIF reporter 顯示建議
+- **新增**: `src/ghostcheck/config.py`
+- 支援 `ghostcheck.toml` 或 `pyproject.toml` 的 `[tool.ghostcheck]` 區段
+- 可設定: severity threshold, 啟用/停用特定檢查, 自定義 patterns, 離線模式預設值
+- 層級覆蓋: CLI flags > 專案 config > 全域 config (`~/.ghostcheck/config.toml`)
+- **理由**: `ghostcheck init` 產生的 `ghostcheck.toml` 需要配套的解析器才能生效
 
 #### Verification
 
@@ -213,12 +213,13 @@ security-tools/
   - `base.py` — Abstract `CheckPlugin` base class
 - CLI 新增: `ghostcheck plugins list`, `ghostcheck plugins install <url>`
 
-#### Feature D: Configuration File
+#### Feature D: Auto-Fix Suggestions (從 v0.6.0 延後)
 
-- **新增**: `src/ghostcheck/config.py`
-- 支援 `ghostcheck.toml` 或 `pyproject.toml` 的 `[tool.ghostcheck]` 區段
-- 可設定: severity threshold, 啟用/停用特定檢查, 自定義 patterns, 離線模式預設值
-- 層級覆蓋: CLI flags > 專案 config > 全域 config (`~/.ghostcheck/config.toml`)
+- **修改**: 所有 `Finding` 結構新增 `suggestion` 欄位
+- Secret 發現 → "Move to .env and add to .gitignore"
+- Hallucinated package → "Remove or verify on registry"
+- Risky rule → 具體的安全替代寫法
+- JSON/Console/SARIF reporter 顯示建議
 
 #### Verification
 
