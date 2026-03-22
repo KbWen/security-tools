@@ -196,12 +196,18 @@ pytest tests/ -v --cov=ghostcheck --cov-report=term-missing
   - Risky rule → 建議具體的安全替代寫法
 - JSON/Console reporter 顯示建議
 
+#### Feature D: Suppression Mechanisms (Baseline & Inline)
+
+- **新增**: `ghostcheck scan --baseline .ghostcheck-baseline.json` 參數，僅報告與基準線差異的新風險，幫助大型遺留專案平滑導入 CI。
+- **新增**: 程式碼行內屏蔽支援 (例如 `// ghostcheck-disable-next-line` 或 `# ghostcheck-ignore`)，讓開發者有比全域 `.ghostcheckignore` 更精準的干擾控制手段 (DX 提升)。
+
 #### Verification
 
 ```bash
 # Watch Mode: 啟動後修改檔案，觀察是否即時偵測
 # Git Diff: 執行 git add 含密鑰的檔案，驗證 --staged 偵測
 # Auto-Fix: 驗證 JSON 輸出含 suggestion 欄位
+# Suppression: 測試基準線掃描與行內忽略註解是否正確濾除對應的 Findings
 ```
 
 ---
@@ -232,12 +238,18 @@ pytest tests/ -v --cov=ghostcheck --cov-report=term-missing
 - 可設定: severity threshold, 啟用/停用特定檢查, 自定義 patterns, 離線模式預設值
 - 層級覆蓋: CLI flags > 專案 config > 全域 config(`~/.ghostcheck/config.toml`)
 
+#### Feature D: Advanced Threat Detection (Red Team Additions)
+
+- **實作**: **Entropy-based Secret Detection** — 分析被指派給高敏感變數 (如 `password`, `apiKey`) 之字串的亂度 (Shannon Entropy)，以此泛用型偵測揪出未知格式的金鑰。
+- **實作**: **Taint Analysis Lite (污點分析)** — 追蹤被識別為機密的變數是否被傳遞至高風險的外流出口 (如 `fetch`、`console.log`)，藉此判定潛在的惡意外流行為。
+
 #### Verification
 
 ```bash
 # Plugin: 撰寫一個簡單的 plugin, 載入並執行
 # Patterns: 從 URL 下載 pattern pack 並驗證偵測
 # Config: 設定 toml 後驗證行為改變
+# Threat Detection: 測試高亂數假字串是否觸發警報，以及追蹤外流函式呼叫
 ```
 
 ---
