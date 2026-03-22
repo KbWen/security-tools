@@ -32,7 +32,9 @@ AI Agent 正在重塑程式開發，但也帶來了全新的攻擊面。**GhostC
 ### 1. 安裝
 
 ```bash
-pip install ghostcheck
+git clone https://github.com/KbWen/security-tools.git
+cd security-tools
+pip install -e .
 ```
 
 ### 2. 初始化專案安全規則

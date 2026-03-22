@@ -32,7 +32,9 @@ AI agents are rewriting the world, but they also introduce new attack surfaces. 
 ### 1. Installation
 
 ```bash
-pip install ghostcheck
+git clone https://github.com/KbWen/security-tools.git
+cd security-tools
+pip install -e .
 ```
 
 ### 2. Initialize Project Rules
