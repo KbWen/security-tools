@@ -113,7 +113,7 @@ security-tools/
 
 ---
 
-### 🟡 v0.6.0 — Zero-Config Onboarding & Git Integration
+### ✅ v0.6.0 — Zero-Config Onboarding & Git Integration
 
 > **目標**: 讓任何 app 專案能在 30 秒內開始掃描，並深度整合 Git 工作流。
 
@@ -221,6 +221,15 @@ security-tools/
 - Risky rule → 具體的安全替代寫法
 - JSON/Console/SARIF reporter 顯示建議
 
+#### Feature E: Native CI/CD Pipeline Generation ⭐ 核心 [NEW from Review]
+
+- **延伸 `ghostcheck init`**: `ghostcheck init --ci github` 自動產生 `.github/workflows/ghostcheck.yml`
+- 支援目標:
+  - GitHub Actions: 含 SARIF upload 到 GitHub Advanced Security
+  - GitLab CI: `.gitlab-ci.yml` 含 SAST stage
+- 與 Feature B (CI/CD Auditor) 互補: Auditor 審核現有 pipeline，Generator 產生最佳實踐 pipeline
+- **來源**: Multi-Role Review v0.6.0 — DevOps Engineer 建議
+
 #### Verification
 
 ```bash
@@ -228,6 +237,7 @@ security-tools/
 # CI/CD: 準備含 write-all 和明文 secrets 的 workflow 檔案
 # Plugin: 撰寫一個簡單的 plugin, 載入並執行
 # Config: 設定 toml 後驗證行為改變
+# CI Gen: 執行 ghostcheck init --ci github，驗證產生的 workflow 檔案
 ```
 
 ---
@@ -267,6 +277,18 @@ security-tools/
 - 考慮: finding 數量、嚴重度加權、pattern diversity、coverage 完整度
 - **新增**: `src/ghostcheck/reporters/html_reporter.py` — 互動式 HTML 報告
 
+#### Feature E: Contextual Secret Validation [NEW from Review]
+
+- **新增**: `src/ghostcheck/checks/secret_validator.py`
+- 對偵測到的 token 主動呼叫對應 API 驗證是否為有效憑證:
+  - GitHub: `GET /user` with token → 判斷是否 active
+  - AWS: `sts:GetCallerIdentity` → 判斷 key 是否有效
+  - OpenAI: `GET /v1/models` → 判斷 API key 是否有效
+  - Slack: `auth.test` → 判斷 webhook/token 有效性
+- 標記 `verified: true/false` 到 finding 結果，區分「理論風險」與「即時威脅」
+- 預設 opt-in (`ghostcheck scan --verify-secrets`)，避免非預期外部請求
+- **來源**: Multi-Role Review v0.6.0 — Security Researcher 建議
+
 #### Verification
 
 ```bash
@@ -274,6 +296,7 @@ security-tools/
 # CVE: 測試含已知漏洞版本的 requirements.txt
 # API: 準備含 CORS wildcard 的 Express.js 程式碼
 # Risk Score: 驗證分數計算邏輯與邊界條件
+# Secret Validation: 使用測試 token 驗證 API 呼叫邏輯
 ```
 
 ---
@@ -485,5 +508,7 @@ graph LR
 | **[新增] IaC / K8s 掃描** | 🟠 v0.7.0 | 基礎設施安全 |
 | **[新增] CVE 漏洞偵測** | 🔴 v0.8.0 | 超越幻覺偵測 |
 | **[新增] Entropy 偵測** | 🔴 v0.8.0 | 泛用密鑰偵測 |
+| **[新增] CI/CD Pipeline 自動產生** | 🟠 v0.7.0 | Review 建議: DevOps |
+| **[新增] Contextual Secret Validation** | 🔴 v0.8.0 | Review 建議: Security |
 | **[新增] Go / Java AST** | 🟤 v0.9.0 | 多語言覆蓋 |
 | **[新增] Framework Presets** | 🟣 v1.0.0 | 框架感知 |

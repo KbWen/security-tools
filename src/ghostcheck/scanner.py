@@ -13,12 +13,27 @@ from .ignorefile import IgnoreMatcher
 class Scanner:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-    def __init__(self, root_path, ignore_enabled=True, offline=False):
+    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None):
         # Normalize and store absolute path for boundary checks
         self.root_path = os.path.abspath(root_path)
         self.ignore_enabled = ignore_enabled
         self.offline = offline
+        self.config = config
+        self.baseline_path = baseline_path
+        self.baseline_findings = set()
         
+        # Load baseline if provided
+        if baseline_path and os.path.exists(baseline_path):
+            try:
+                with open(baseline_path, 'r') as f:
+                    data = json.load(f)
+                    for fnd in data.get('findings', []):
+                        # Create fingerprint: file:line:rule_name
+                        fp = f"{fnd.get('file')}:{fnd.get('line')}:{fnd.get('name')}"
+                        self.baseline_findings.add(fp)
+            except:
+                pass
+
         # Load data files
         base_dir = os.path.dirname(__file__)
         self.secret_patterns_path = os.path.join(base_dir, 'data', 'secret_patterns.json')
@@ -69,7 +84,14 @@ class Scanner:
         except (IOError, OSError):
             return None
 
-    def _iter_files(self):
+    def _iter_files(self, limit_files=None):
+        if limit_files:
+            # Yield specific files for Git Diff Scan
+            for f in limit_files:
+                if os.path.exists(f) and os.path.isfile(f):
+                    yield os.path.dirname(f), [os.path.basename(f)]
+            return
+
         if os.path.isfile(self.root_path):
             yield os.path.dirname(self.root_path), [os.path.basename(self.root_path)]
         else:
@@ -78,9 +100,9 @@ class Scanner:
                     dirs[:] = [d for d in dirs if not self.ignore_matcher.is_ignored(os.path.join(root, d))]
                 yield root, files
 
-    def scan_dependencies(self):
+    def scan_dependencies(self, limit_files=None):
         findings = []
-        for root, files in self._iter_files():
+        for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
@@ -95,9 +117,9 @@ class Scanner:
                         findings.extend(self.hallucination_checker.check_package_json(content))
         return findings
 
-    def scan_secrets(self):
+    def scan_secrets(self, limit_files=None):
         findings = []
-        for root, files in self._iter_files():
+        for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
@@ -108,7 +130,8 @@ class Scanner:
                     if content:
                         findings.extend(self.env_scanner.scan_file(file_path, content))
 
-                if any(file.endswith(ext) for ext in ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1']):
+                allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1']
+                if any(file.endswith(ext) for ext in allowed_exts):
                     content = self._read_file_safe(file_path)
                     if content:
                         findings.extend(self.secret_scanner.scan_file(file_path, content))
@@ -118,13 +141,13 @@ class Scanner:
                             findings.extend(self.js_ast_checker.scan_file(file_path, content))
         return findings
 
-    def scan_rules(self):
+    def scan_rules(self, limit_files=None):
         findings = []
-        for root, files in self._iter_files():
+        for root, files in self._iter_files(limit_files):
             # For rule scanning, we only care about agent-related directories
             # UNLESS a specific file was targeted
             is_file_target = os.path.isfile(self.root_path)
-            if not is_file_target and not any(x in root for x in ['.agent', '.agents', '.cursor', '.github/copilot']):
+            if not is_file_target and not limit_files and not any(x in root for x in ['.agent', '.agents', '.cursor', '.github/copilot']):
                 continue
             for file in files:
                 file_path = os.path.join(root, file)
@@ -138,9 +161,9 @@ class Scanner:
                         findings.extend(self.rules_linter.scan_file(file_path, content))
         return findings
 
-    def scan_docker(self):
+    def scan_docker(self, limit_files=None):
         findings = []
-        for root, files in self._iter_files():
+        for root, files in self._iter_files(limit_files):
             for file in files:
                 if any(x in file for x in ['Dockerfile', 'docker-compose']) or os.path.isfile(self.root_path):
                     file_path = os.path.join(root, file)
@@ -151,8 +174,45 @@ class Scanner:
                         findings.extend(self.docker_checker.scan_file(file_path, content))
         return findings
 
-    def scan(self):
+    def _get_fnd_id(self, fnd):
+        """Extracts a stable ID for the finding regardless of which scanner produced it."""
+        return fnd.get('pattern_name') or fnd.get('rule_name') or fnd.get('package') or "generic_issue"
+
+    def scan(self, limit_files=None):
         # Full scan combines all
-        raw_findings = self.scan_dependencies() + self.scan_secrets() + self.scan_rules() + self.scan_docker()
+        raw_findings = (
+            self.scan_dependencies(limit_files) + 
+            self.scan_secrets(limit_files) + 
+            self.scan_rules(limit_files) + 
+            self.scan_docker(limit_files)
+        )
+        
+        # v0.6.0: Inline suppression and Baseline filter
+        filtered = []
+        for fnd in raw_findings:
+            # Baseline check
+            # Use relative path for stability across environments
+            rel_path = os.path.relpath(fnd.get('file', ''), self.root_path).replace(os.sep, '/')
+            fnd_id = self._get_fnd_id(fnd)
+            line = fnd.get('line', 0)
+            
+            # Create a stable fingerprint
+            fp = f"{rel_path}:{line}:{fnd_id}"
+            
+            # Also check absolute path fingerprint for compatibility with current create command
+            abs_fp = f"{fnd.get('file')}:{line}:{fnd_id}"
+
+            if fp in self.baseline_findings or abs_fp in self.baseline_findings:
+                continue
+            
+            # v0.6.0: Inline comment suppression (regex for ghostcheck-ignore)
+            # (Simplification for now: check if the finding has a 'line_content' with ignore tag)
+            if "ghostcheck-ignore" in str(fnd.get('context', '')):
+                continue
+
+            filtered.append(fnd)
+
         # v0.5.0: Post-process with Severity Engine
-        return self.severity_engine.adjust_findings(raw_findings)
+        return self.severity_engine.adjust_findings(filtered)
+
+

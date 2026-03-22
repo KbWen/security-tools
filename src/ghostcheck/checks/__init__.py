@@ -1,0 +1,1 @@
+# GhostCheck checks subpackage

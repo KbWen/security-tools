@@ -1,8 +1,13 @@
 # GhostCheck Ignore List
 
+# Frameworks & Metadata
+.agentcortex/
+.gemini/
+.cursor/
+tmp/
+
 # Test samples and fixtures (may contain mock secrets)
-tests/test_ast_sample.py
-tests/fixtures/
+tests/
 
 # Cache
 .ghostcheck/cache/
@@ -16,3 +21,4 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
