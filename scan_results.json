@@ -1,0 +1,187 @@
+[
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tests\\test_ast_js_scanner.py",
+    "line": 8,
+    "pattern_name": "OpenAI API Key",
+    "severity": "LOW",
+    "value_preview": "sk-1***************7890",
+    "adjustment_reason": "test/fixture directory"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tests\\test_ast_js_scanner.py",
+    "line": 20,
+    "pattern_name": "OpenAI API Key",
+    "severity": "LOW",
+    "value_preview": "sk-1***************7890",
+    "adjustment_reason": "test/fixture directory"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tests\\test_ast_js_scanner.py",
+    "line": 8,
+    "pattern_name": "OpenAI API Key",
+    "severity": "MEDIUM",
+    "value_preview": "sk-1***************7890",
+    "adjustment_reason": "test/fixture directory"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tests\\test_ast_js_scanner.py",
+    "line": 20,
+    "pattern_name": "OpenAI API Key",
+    "severity": "MEDIUM",
+    "value_preview": "sk-1***************7890",
+    "adjustment_reason": "test/fixture directory"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\README.md",
+    "line": 8,
+    "rule_name": "Non-interactive Execution",
+    "severity": "HIGH",
+    "matched_content": "-y",
+    "remediation": "Avoid bypassing human confirmation for potentially dangerous system changes.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\README.md",
+    "line": 44,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "rm -rf",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\README.md",
+    "line": 46,
+    "rule_name": "External Execution",
+    "severity": "CRITICAL",
+    "matched_content": "curl ... | bash",
+    "remediation": "Disable external script execution or piping network content directly to a shell.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\README_zh-TW.md",
+    "line": 102,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "rm -rf",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\README_zh-TW.md",
+    "line": 103,
+    "rule_name": "External Execution",
+    "severity": "CRITICAL",
+    "matched_content": "curl ... | bash",
+    "remediation": "Disable external script execution or piping network content directly to a shell.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\guides\\audit-guardrails.md",
+    "line": 22,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\guides\\audit-guardrails_zh-TW.md",
+    "line": 22,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\guides\\migration.md",
+    "line": 19,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\docs\\guides\\migration_zh-TW.md",
+    "line": 19,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\specs\\ghostcheck-mvp.md",
+    "line": 65,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "rm -rf",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\specs\\ghostcheck-mvp.md",
+    "line": 66,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "DROP TABLE",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\specs\\ghostcheck-mvp.md",
+    "line": 66,
+    "rule_name": "Privilege Escalation",
+    "severity": "CRITICAL",
+    "matched_content": "chmod 777",
+    "remediation": "Do not grant root/sudo permissions or world-writable permissions to agent workflows.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\.agentcortex\\specs\\ghostcheck-roadmap-v1.md",
+    "line": 41,
+    "rule_name": "Tunneling / Proxy",
+    "severity": "CRITICAL",
+    "matched_content": "ngrok",
+    "remediation": "Unauthorized tunneling tools can bypass firewall restrictions. Ensure these are explicitly approved.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tmp\\agentcortex-latest\\.agentcortex\\docs\\guides\\audit-guardrails.md",
+    "line": 22,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tmp\\agentcortex-latest\\.agentcortex\\docs\\guides\\audit-guardrails_zh-TW.md",
+    "line": 22,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tmp\\agentcortex-latest\\.agentcortex\\docs\\guides\\migration.md",
+    "line": 19,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  },
+  {
+    "file": "C:\\Users\\wen\\.gemini\\antigravity\\scratch\\security-tools\\tmp\\agentcortex-latest\\.agentcortex\\docs\\guides\\migration_zh-TW.md",
+    "line": 19,
+    "rule_name": "Destructive Command",
+    "severity": "CRITICAL",
+    "matched_content": "--force",
+    "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss.",
+    "adjustment_reason": "AI generated output"
+  }
+]

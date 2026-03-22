@@ -6,7 +6,7 @@ from .scanner import Scanner
 from .reporters.console import ConsoleReporter
 from .reporters.json_reporter import JsonReporter
 from .reporters.sarif_reporter import SarifReporter
-from .demo import DemoRunner
+
 from .config import GhostCheckConfig
 from .init import GhostCheckInitializer
 from .checks.git_diff_scanner import GitDiffScanner

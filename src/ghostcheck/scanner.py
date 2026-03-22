@@ -192,7 +192,14 @@ class Scanner:
         for fnd in raw_findings:
             # Baseline check
             # Use relative path for stability across environments
-            rel_path = os.path.relpath(fnd.get('file', ''), self.root_path).replace(os.sep, '/')
+            file_path = fnd.get('file', '')
+            if not file_path:
+                rel_path = ""
+            else:
+                try:
+                    rel_path = os.path.relpath(file_path, self.root_path).replace(os.sep, '/')
+                except ValueError:
+                    rel_path = file_path.replace(os.sep, '/')
             fnd_id = self._get_fnd_id(fnd)
             line = fnd.get('line', 0)
             
