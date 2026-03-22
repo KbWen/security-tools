@@ -1,10 +1,17 @@
+<div align="center">
+
 # 👻 GhostCheck
+**High-performance, zero-dependency security scanner for the AI-assisted development era.**
 
-[![Version](https://img.shields.io/badge/version-0.4.0-blue.svg)](https://github.com/KbWen/security-tools)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.9+-yellow.svg)](https://www.python.org/)
+[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-**GhostCheck** is a high-performance, zero-dependency security scanner engineered for the AI-assisted development era. It identifies high-risk vulnerabilities and "ghost" threats introduced by AI agents even before they reach your CI/CD pipeline.
+*Identify high-risk vulnerabilities and "ghost" threats introduced by AI agents even before they reach your CI/CD pipeline.*
+
+[English](README.md) | [繁體中文](README_zh-TW.md)
+
+</div>
 
 ---
 
@@ -12,59 +19,69 @@
 
 AI agents are rewriting the world, but they also introduce new attack surfaces. **GhostCheck** bridges the gap between traditional SAST and AI-native security, ensuring your code remains secure while you move at AI speed.
 
-## ✨ Key Features (v0.4.0)
+## ✨ What's New in v0.6.0?
 
-- **CI/CD Integration**: Matrix testing via GitHub Actions for automated quality assurance across Python 3.8-3.11.
-- **SARIF Reporting**: Native support for SARIF v2.1.0, enabling direct integration with GitHub Advanced Security and modern IDEs.
-- **Test Hardening**: Comprehensive test suite with ≥80% core logic coverage, including edge cases for hallucinations and Docker risks.
-- **Developer Experience**: Standardized `Makefile` for streamlined installation, testing, and linting.
-- **AST-Based Secret Detection**: Uses Abstract Syntax Tree parsing to detect obfuscated secrets formed through string concatenation in Python files.
-- **Offline Mode & Local Cache**: Blazing-fast repeated scans with local package metadata caching (up to 24h) and `--offline` support.
-- **Advanced Agent Rule Linting**: Detects complex behavioral risks like data exfiltration, hidden tunneling, and logic bypasses.
-- **Docker Risk Check**: Detects privileged containers, root execution, and insecure port mappings in Dockerfiles.
-- **Hallucination Protection**: Verifies dependency legitimacy against PyPI and npm registries.
-- **Git Hook Integration**: Professional pre-commit hooks for Windows and Unix.
+*   🎯 **Zero-Config Onboarding:** Run `ghostcheck init` to instantly generate best-practice security rules for your stack.
+*   🔍 **Smart Git Integration:** Scan only what matters. Support for scanning staged files (`ghostcheck scan --staged`) and uncommitted diffs (`--diff`).
+*   🔑 **Expanded Secret Detection:** Out-of-the-box detection for 30+ providers (AWS, GCP, Stripe, GitHub, Slack, etc.) using context-aware AST parsing.
+*   🛡️ **Frictionless Suppression:** Manage false positives elegantly via `ghostcheck.toml` baseline ignores or inline `# ghostcheck:disable` comments.
+*   ⚡ **uv-Powered:** Optimized CI pipelines with 10x faster matrix testing and dependency resolution using `uv`.
 
 ## 🛠️ Quick Start
 
-### Installation
+### 1. Installation
 
 ```bash
-pip install -e .
+pip install ghostcheck
 ```
 
-### Immediate Scan
+### 2. Initialize Project Rules
+
+Generate tailored `.ghostcheckignore` and `ghostcheck.toml` setups instantly:
+```bash
+ghostcheck init
+```
+
+### 3. Immediate Scan
 
 ```bash
-# Scan entire project for all risks
+# Scan the entire project for all risks
 ghostcheck scan .
 
-# Run interactive simulation to see it in action
-ghostcheck demo
+# Scan ONLY the files you are about to commit (Blazing Fast)
+ghostcheck scan --staged
 ```
 
-## 📋 Commands & Features
+## 📋 Core Capabilities
 
-| Feature | Commands | Target |
+| Feature | Command | Target |
 | :--- | :--- | :--- |
-| **Full Security Scan** | `ghostcheck scan` | Entire Workspace |
+| **Full Security Scan** | `ghostcheck scan` | Entire Workspace / Git Diffs |
 | **Dependency Check** | `ghostcheck check-deps` | `requirements.txt`, `package.json` |
 | **Secret Detection** | `ghostcheck check-secrets` | Logs, Source, Docs |
 | **Rule Audit** | `ghostcheck check-rules` | `.agent/`, `.cursor/` |
 
-## ⚙️ Configuration
+## ⚙️ Configuration & CI/CD
 
-GhostCheck respects professional ignore rules:
+GhostCheck respects professional workflows:
 
-- Create a `.ghostcheckignore` to exclude specific paths.
-- Filter results by severity using `--severity [CRITICAL|HIGH|MEDIUM|LOW]`.
-- Export results for automation using `--format json`.
+*   **Custom Exclusions:** Use `.ghostcheckignore` to silently bypass safe paths.
+*   **Severity Filters:** Run scans with targeted focus using `--severity [CRITICAL|HIGH|MEDIUM|LOW]`.
+*   **Automation Ready:** Export results natively using `--format json` or `--format sarif` for seamless GitHub Advanced Security integration.
 
 ---
 
-## Powered by AgentCortex
+<<<<<<< Updated upstream
+**Developed with ❤️ for the AI community by [KbWen](https://github.com/KbWen).**
+=======
+## 🧠 Powered by AgentCortex
 
 ### Why AgentCortex?
-This project uses the [AgentCortex](https://github.com/KbWen/AgentCortex) framework to ensure high standards of AI agent autonomy, security, and process-driven development.
+GhostCheck leverages the [AgentCortex](https://github.com/KbWen/AgentCortex) framework to enforce high standards of AI agent autonomy, verifiable security, and process-driven development.
 
-Developed with ❤️ by [KbWen](https://github.com/KbWen) for the AI community.
+<div align="center">
+
+**Developed with ❤️ by [KbWen](https://github.com/KbWen) for the AI community.**
+
+</div>
+>>>>>>> Stashed changes
