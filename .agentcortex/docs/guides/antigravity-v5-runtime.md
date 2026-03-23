@@ -81,7 +81,7 @@ flowchart LR
     %% Artifacts
     %% ==========================================
     subgraph ART ["ARTIFACTS LAYER (Outputs)"]
-        SPECS[".agentcortex/specs/&lt;feature&gt;.md"]:::art
+        SPECS["docs/specs/&lt;feature&gt;.md"]:::art
         WL[".agentcortex/context/work/&lt;branch&gt;.md<br/>Work Log + Drift + Evidence"]:::art
         SSOT[".agentcortex/context/current_state.md<br/>SSoT (controlled writes)"]:::art
         CODE["src/** + tests/**"]:::art
@@ -267,7 +267,7 @@ For `feature` / `architecture-change`, plan output MUST include:
 
 ```text
 Docs:
-- <at least one path in .agentcortex/specs/ or .agentcortex/context/>
+- <at least one path in docs/specs/ or .agentcortex/context/>
 ```
 
 ---

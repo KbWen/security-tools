@@ -26,7 +26,7 @@ This exists because loading SSoT + specs + archives for a typo fix wastes ~2500 
 
 If the task is classified as `feature` or `architecture-change`, check:
 
-1. **No ADR exists**: `.agentcortex/adr/` contains no project-specific ADR (only framework ADRs like `ADR-001-*`).
+1. **No ADR exists**: `docs/adr/` contains no project-specific ADR.
    → Output: `"🏗️ New project detected — no architecture ADR found. Run /app-init to establish project conventions? (yes/skip)"`
    → If yes: run `/app-init` workflow, then return here.
    → If skip: record `"App-init skipped by user"` in Work Log. Detection will NOT trigger again this session.
@@ -69,10 +69,10 @@ If the task is classified as `feature` or `architecture-change`, check:
    - Follow `docs/guides/migration.md`. Actively scan and suggest file reorganization.
    - MUST output migration plan and await user `OK` before ANY move/rename.
 5. **Active Backlog Detection**:
-   - Check if `.agentcortex/specs/_product-backlog.md` exists.
+   - Check if `docs/specs/_product-backlog.md` exists.
    - If it exists, read ONLY the Feature Inventory table (~200 tokens). Report in bootstrap output:
      ```
-     Active Backlog: .agentcortex/specs/_product-backlog.md
+     Active Backlog: docs/specs/_product-backlog.md
      Progress: [N] shipped, [M] pending, [K] deferred
      ```
    - If user intent matches a pending backlog feature, route to `/spec-intake` §8a (continuation) instead of fresh bootstrap.
@@ -81,9 +81,11 @@ If the task is classified as `feature` or `architecture-change`, check:
    - If user provided a spec, document, or raw material BEFORE bootstrap, check whether `/spec-intake` was already run:
      - Frozen spec exists (`status: frozen`, `source: external`) → **Bootstrap Lite**: skip spec generation, read existing spec directly. Task classification is derived from spec's Feature Inventory tier.
      - No frozen spec exists → run `/spec-intake` workflow BEFORE continuing bootstrap. Do NOT proceed past Step 6 until spec-intake is complete.
-   - **Orphaned `_raw-intake.md` Recovery**: If `.agentcortex/specs/_raw-intake.md` exists (with `status: raw`) but no `_product-backlog.md` and no frozen external spec, a previous spec-intake was interrupted mid-flow. Warn: `"⚠️ Orphaned raw intake detected. Resume spec-intake from existing _raw-intake.md? (yes/no)"`. If yes, run `/spec-intake` starting from Step 2 (skip §1/§1a — raw file already exists).
+   - **Orphaned `_raw-intake.md` Recovery**: If `docs/specs/_raw-intake.md` exists (with `status: raw`) but no `_product-backlog.md` and no frozen external spec, a previous spec-intake was interrupted mid-flow. Warn: `"⚠️ Orphaned raw intake detected. Resume spec-intake from existing _raw-intake.md? (yes/no)"`. If yes, run `/spec-intake` starting from Step 2 (skip §1/§1a — raw file already exists).
    - AI MUST autonomously extract requirements, constraints, and ACs. Burden of organization is on the AI, NOT the user. Never ask user to restructure input.
 7. Classify task per `engineering_guardrails.md`.
+
+**Write Path Guard** (all classifications): Project specs → `docs/specs/`, project ADRs → `docs/adr/`. NEVER write to `.agentcortex/specs/` or `.agentcortex/adr/` — those are framework-owned template fixtures. If the Spec Index references `.agentcortex/specs/`, READ from it but WRITE new work to `docs/specs/`.
 
 Classification Tiers:
 

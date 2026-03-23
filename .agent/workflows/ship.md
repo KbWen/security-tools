@@ -80,12 +80,12 @@ If ANY condition fails, MUST reject `/ship` and output missing list.
       - `By Pattern`: tag with reusable patterns (e.g., `[windows-compat]`, `[namespace-migration]`)
       - `By Decision`: extract key decisions from `## Decisions` section (if present)
       - Keep each entry to 1 line. If INDEX.md does not exist, create it with the standard header.
-4. **Product Backlog Update**: If `.agentcortex/specs/_product-backlog.md` exists and this feature is listed:
+4. **Product Backlog Update**: If `docs/specs/_product-backlog.md` exists and this feature is listed:
    - Update feature status: `In Progress` → `Shipped`
    - Update `last_updated` in frontmatter
    - If ALL features are now `Shipped` or `Deferred`/`Cancelled`, output: "🎉 Product backlog complete. All features shipped or resolved."
    - If Pending features remain, output: "Backlog: [N] features remaining. Next session can run `/spec-intake` §8a to continue."
-   - Update `current_state.md` **Active Backlog** field to `.agentcortex/specs/_product-backlog.md` (if not already set). This is the only mechanism that persists backlog awareness across sessions via SSoT.
+   - Update `current_state.md` **Active Backlog** field to `docs/specs/_product-backlog.md` (if not already set). This is the only mechanism that persists backlog awareness across sessions via SSoT.
 5. Freeze Artifacts: Ensure all produced Specs/ADRs have YAML frontmatter `status: frozen`. If missing, add it before commit.
    - **Skip non-freezable statuses**: Documents with `status: living` (e.g., `_product-backlog.md`) or `status: raw` (e.g., `_raw-intake.md`) MUST NOT be frozen. These are tracking/temporary artifacts, not spec deliverables.
    - **Spec Freshness**: If implementation DIFFERS from any referenced spec's AC, MUST update the spec to match actual behavior before freezing. Append `[Updated: <date>]` to the corresponding Spec Index entry in `current_state.md`.

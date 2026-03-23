@@ -6,7 +6,7 @@ Execute the canonical workflow: `.agent/workflows/app-init.md`
 
 1. `AGENTS.md` — global directives (Intent Router for app-init triggers)
 2. `.agent/workflows/app-init.md` — full workflow steps
-3. `.agentcortex/adr/` — scan for existing project ADRs
+3. `docs/adr/` — scan for existing project ADRs
 4. `.agentcortex/templates/adr-tech-stack.md` — ADR template
 
 ## Execution

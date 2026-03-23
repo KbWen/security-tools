@@ -110,6 +110,6 @@ During /review:
 
 ## References
 
-- Project ADR: `.agentcortex/adr/ADR-002-project-architecture.md` § API Design
+- Project ADR: `docs/adr/ADR-002-project-architecture.md` § API Design
 - Security guardrails: `.agent/rules/security_guardrails.md` (A01: Access Control, A03: Injection)
 - Spec template: `.agentcortex/templates/spec-app-feature.md` § API Contract

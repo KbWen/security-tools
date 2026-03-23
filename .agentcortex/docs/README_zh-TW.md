@@ -33,7 +33,7 @@
 - `.agent/skills/<skill>/SKILL.md`：技能檔（Codex 相容路徑：`.agents/skills`）
 - `.agentcortex/context/current_state.md`：全域唯讀狀態（SSoT）
 - `.agentcortex/context/work/`：任務隔離 Work Log
-- `.agentcortex/adr/`：架構決策記錄
+- `docs/adr/`：架構決策記錄
 - `.agentcortex/docs/CODEX_PLATFORM_GUIDE_zh-TW.md`：Codex 平台指南
 - `AGENTS.md`：跨平台長期指令入口
 
@@ -144,7 +144,7 @@ Fetch and follow instructions from <your-raw-url>/.codex/INSTALL.md
 ---
 ```
 
-> AI 會在 bootstrap 過程中自動：提取需求與限制 → 整理存入 `.agentcortex/specs/` → 分類任務 → 輸出標準 bootstrap 結果。
+> AI 會在 bootstrap 過程中自動：提取需求與限制 → 整理存入 `docs/specs/` → 分類任務 → 輸出標準 bootstrap 結果。
 
 ### 5) 跨回合交接提示（續做任務時使用）
 

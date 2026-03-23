@@ -10,8 +10,8 @@ Execute before task completion to ensure docs match code.
 1. **Scan Changes**: Run `git diff --name-only` to identify impacted source files.
 2. **Locate Docs**: Search `.agentcortex/` for relevant markdown files.
 3. **Proactive Update**:
-    - Logic changes -> Update `.agentcortex/specs/`.
-    - Arch changes -> Create/Update `.agentcortex/adr/`.
+    - Logic changes -> Update `docs/specs/`.
+    - Arch changes -> Create/Update `docs/adr/`.
     - Usage changes -> Update `.agentcortex/docs/guides/` or `README.md`.
 4. **Verification**: Guarantee all paths and links in docs remain valid.
 
