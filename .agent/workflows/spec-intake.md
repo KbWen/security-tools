@@ -14,7 +14,7 @@ Accept an externally produced spec in any form and integrate it into the project
 Accept spec from the user in ANY of these forms — do NOT ask the user to reformat:
 
 - **Inline paste**: Raw text pasted into the conversation
-- **File path**: `"Spec is at .agentcortex/specs/draft.md"` or similar
+- **File path**: `"Spec is at docs/specs/draft.md"` or similar
 - **Natural language**: `"我要做一個 X，大概有 A、B、C 功能"`
 - **Mixed**: Partial spec + verbal description
 
@@ -29,10 +29,10 @@ If the spec source is a file path, READ it immediately. Do NOT ask the user to p
 **Rule: Write first, think second.**
 
 1. **Check for existing intake artifacts**:
-   - If `.agentcortex/specs/_raw-intake.md` already exists, archive it to `.agentcortex/specs/_raw-intake-<date>.md` before writing the new one.
-   - If `.agentcortex/specs/_product-backlog.md` already exists, warn: `"⚠️ Active backlog exists with [N] features. Merge new spec into existing backlog, or start a separate backlog?"` STOP until user decides.
+   - If `docs/specs/_raw-intake.md` already exists, archive it to `docs/specs/_raw-intake-<date>.md` before writing the new one.
+   - If `docs/specs/_product-backlog.md` already exists, warn: `"⚠️ Active backlog exists with [N] features. Merge new spec into existing backlog, or start a separate backlog?"` STOP until user decides.
 
-2. **Immediately** write the raw input to `.agentcortex/specs/_raw-intake.md`:
+2. **Immediately** write the raw input to `docs/specs/_raw-intake.md`:
    ```markdown
    ---
    status: raw
@@ -47,7 +47,7 @@ If the spec source is a file path, READ it immediately. Do NOT ask the user to p
    - If input was inline paste, write verbatim. Do NOT summarize or restructure at this stage.
 
 3. **All subsequent steps read from `_raw-intake.md`**, NOT from conversation history.
-   - Step 2 (Size Classification): `read .agentcortex/specs/_raw-intake.md`
+   - Step 2 (Size Classification): `read docs/specs/_raw-intake.md`
    - Step 2a (Decomposition): read relevant sections of `_raw-intake.md`
    - Step 3 (Feature Spec Generation): read ONLY the section of `_raw-intake.md` relevant to the selected feature
 
@@ -73,7 +73,7 @@ After reading the input, classify it as one of:
 
 ### 2a. Decomposition (for multi-feature / product specs)
 
-When the spec is large, read from `.agentcortex/specs/_raw-intake.md` (NOT from conversation memory):
+When the spec is large, read from `docs/specs/_raw-intake.md` (NOT from conversation memory):
 
 1. Extract a **Feature Inventory** — one row per distinguishable feature/module:
 
@@ -88,7 +88,7 @@ When the spec is large, read from `.agentcortex/specs/_raw-intake.md` (NOT from 
 
    Rough Tier uses classification from `engineering_guardrails.md §10.1`.
 
-2. Save full product context to `.agentcortex/specs/_product-backlog.md` (see §6 for format).
+2. Save full product context to `docs/specs/_product-backlog.md` (see §6 for format).
 
 3. **Present inventory to user and STOP**:
    ```
@@ -102,7 +102,7 @@ When the spec is large, read from `.agentcortex/specs/_raw-intake.md` (NOT from 
 
 ## 3. Feature Spec Generation
 
-Read ONLY the relevant section of `.agentcortex/specs/_raw-intake.md` for the selected feature (use offset/limit or targeted search — do NOT re-read the entire file).
+Read ONLY the relevant section of `docs/specs/_raw-intake.md` for the selected feature (use offset/limit or targeted search — do NOT re-read the entire file).
 
 **Cross-feature content dependency**: If the selected feature has dependencies (per Feature Inventory), also read the dependency's frozen spec for API contracts, data schemas, or interface definitions that the current feature must conform to. Read only the `## API / Data Contract` and `## Constraints` sections of the dependency spec — do NOT read the full file. Mark fields derived from dependency specs as `[FROM-DEPENDENCY: <spec-name>]`.
 
@@ -115,7 +115,7 @@ Read ONLY the relevant section of `.agentcortex/specs/_raw-intake.md` for the se
 
 When an APP template is found, use it as the structure — include only the sections relevant to this feature (API, DB, Frontend, Auth). Remove sections that don't apply. Read the project ADR to determine which sections are applicable.
 
-Generate `.agentcortex/specs/<feature-name>.md` using the selected template or the default `/spec` workflow output format:
+Generate `docs/specs/<feature-name>.md` using the selected template or the default `/spec` workflow output format:
 
 ```markdown
 ---
@@ -200,13 +200,13 @@ After user confirms (any affirmative response):
 3. If multi-feature: update `_product-backlog.md` Feature Inventory `Spec File` column to point to the frozen spec. (Spec Index in `current_state.md` is updated during `/ship` per Write Isolation rules.)
 4. Output confirmation:
    ```
-   ✅ Spec frozen: .agentcortex/specs/<feature-name>.md
+   ✅ Spec frozen: docs/specs/<feature-name>.md
    Ready to bootstrap. Proceed? (yes/no)
    ```
 
 ---
 
-## 6. Product Backlog Format (`.agentcortex/specs/_product-backlog.md`)
+## 6. Product Backlog Format (`docs/specs/_product-backlog.md`)
 
 ```markdown
 ---
@@ -225,7 +225,7 @@ last_updated: <date>
 ## Feature Inventory
 | # | Feature | Spec File | Tier | Status | Dependencies |
 |---|---|---|---|---|---|
-| 1 | User Auth | .agentcortex/specs/user-auth.md | feature | In Progress | — |
+| 1 | User Auth | docs/specs/user-auth.md | feature | In Progress | — |
 | 2 | Dashboard | — | feature | Pending | #1 |
 | 3 | DB Schema | — | architecture-change | Pending | — |
 
@@ -298,10 +298,10 @@ Specs will change. How they change depends on when:
 **Why not modify shipped specs?** Shipped specs are reference documents. They answer "why was it built this way?". Modifying them after the fact destroys traceability. Instead:
 
 ```
-Original: .agentcortex/specs/user-auth.md [Frozen] [Shipped]
+Original: docs/specs/user-auth.md [Frozen] [Shipped]
     ↓ user wants to add SSO
-Amendment: .agentcortex/specs/user-auth-sso.md [Draft]
-  └─ File Relationship: EXTENDS .agentcortex/specs/user-auth.md
+Amendment: docs/specs/user-auth-sso.md [Draft]
+  └─ File Relationship: EXTENDS docs/specs/user-auth.md
 ```
 
 **Backlog update**: If the amendment is significant enough to be a new feature, add it to `_product-backlog.md` as a new row.

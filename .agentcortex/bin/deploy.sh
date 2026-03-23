@@ -241,17 +241,50 @@ if $_acx_legacy_confirmed || [ -f "$TARGET/tools/validate.sh" ] || \
         migrate_if_exists "docs/context/work" ".agentcortex/context/work"
         migrate_if_exists "docs/context/private" ".agentcortex/context/private"
 
-        # docs/adr/ → .agentcortex/adr/ (only if confirmed legacy install)
-        migrate_if_exists "docs/adr" ".agentcortex/adr"
+        # docs/adr/ is the canonical downstream ADR path (fixed anchor) — do NOT migrate
 
-        # docs/specs/ → .agentcortex/specs/ (only if confirmed legacy install)
-        migrate_if_exists "docs/specs" ".agentcortex/specs"
+        # docs/specs/ is the canonical downstream spec path (fixed anchor) — do NOT migrate
+
+        # --- Orphaned spec/ADR recovery (ace7fea victims) ---
+        # The ace7fea commit incorrectly wrote downstream specs/ADRs into
+        # .agentcortex/specs/ and .agentcortex/adr/. Detect non-framework
+        # files and migrate them to the correct docs/ paths.
+        _framework_specs="template-import-cleanup.md red-team-skill.md gitignore-full-deploy.md manifest-deploy.md"
+        for spec_file in "$TARGET/.agentcortex/specs"/*.md; do
+            [ -f "$spec_file" ] || continue
+            bname="$(basename "$spec_file")"
+            _is_framework=false
+            for fw in $_framework_specs; do
+                [ "$bname" = "$fw" ] && _is_framework=true && break
+            done
+            if ! $_is_framework; then
+                mkdir -p "$TARGET/docs/specs"
+                if [ -e "$TARGET/docs/specs/$bname" ]; then
+                    echo "  [SKIP] docs/specs/$bname already exists — orphaned copy left in .agentcortex/specs/$bname (resolve manually)"
+                else
+                    mv "$spec_file" "$TARGET/docs/specs/$bname"
+                    echo "  [MIGRATE] recovered orphaned spec: .agentcortex/specs/$bname → docs/specs/$bname"
+                fi
+            fi
+        done
+
+        for adr_file in "$TARGET/.agentcortex/adr"/*.md; do
+            [ -f "$adr_file" ] || continue
+            bname="$(basename "$adr_file")"
+            # ADR-001-* is the framework ADR; everything else is project-owned
+            case "$bname" in ADR-001-*) continue ;; esac
+            mkdir -p "$TARGET/docs/adr"
+            if [ -e "$TARGET/docs/adr/$bname" ]; then
+                echo "  [SKIP] docs/adr/$bname already exists — orphaned copy left in .agentcortex/adr/$bname (resolve manually)"
+            else
+                mv "$adr_file" "$TARGET/docs/adr/$bname"
+                echo "  [MIGRATE] recovered orphaned ADR: .agentcortex/adr/$bname → docs/adr/$bname"
+            fi
+        done
 
         # Clean empty legacy dirs (rmdir only removes EMPTY dirs — safe)
         rmdir "$TARGET/docs/context" 2>/dev/null || true
-        rmdir "$TARGET/docs/adr" 2>/dev/null || true
-        rmdir "$TARGET/docs/specs" 2>/dev/null || true
-        rmdir "$TARGET/docs" 2>/dev/null || true
+        # NOTE: docs/adr/ and docs/specs/ are fixed anchors — do NOT rmdir
     fi
 
     # tools/validate.* → removed (no longer deployed as wrappers)
@@ -281,6 +314,8 @@ mkdir -p "$TARGET/.agentcortex/context/work"
 mkdir -p "$TARGET/.agentcortex/context/archive"
 mkdir -p "$TARGET/.agentcortex/adr"
 mkdir -p "$TARGET/.agentcortex/specs"
+mkdir -p "$TARGET/docs/specs"
+mkdir -p "$TARGET/docs/adr"
 
 # --- Deploy: root governance files (core) ---
 deploy_file "$REPO_ROOT/AGENTS.md" "AGENTS.md"

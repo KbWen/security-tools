@@ -129,7 +129,7 @@ During /test:
 
 ## References
 
-- Project ADR: `.agentcortex/adr/ADR-002-project-architecture.md` § Auth & Security
+- Project ADR: `docs/adr/ADR-002-project-architecture.md` § Auth & Security
 - Security guardrails: `.agent/rules/security_guardrails.md` (A01, A02, A07 — primary references)
 - Red team skill: `.agents/skills/red-team-adversarial/SKILL.md` (auth bypass testing)
 - Spec template: `.agentcortex/templates/spec-app-feature.md` § Auth & Permissions

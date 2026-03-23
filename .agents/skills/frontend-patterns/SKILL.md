@@ -95,6 +95,6 @@ During /review:
 
 ## References
 
-- Project ADR: `.agentcortex/adr/ADR-002-project-architecture.md` § Directory Structure, Naming
+- Project ADR: `docs/adr/ADR-002-project-architecture.md` § Directory Structure, Naming
 - Spec template: `.agentcortex/templates/spec-app-feature.md` § Frontend
 - Security guardrails: `.agent/rules/security_guardrails.md` (A03: XSS prevention, A07: Auth)

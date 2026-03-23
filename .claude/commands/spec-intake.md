@@ -16,7 +16,7 @@ The user's spec input is: $ARGUMENTS
 
 - If multi-feature input: decompose into Feature Inventory, ask user which to start.
 - If single-feature: proceed directly to spec generation.
-- Generate `.agentcortex/specs/<feature>.md` with quality assessment.
+- Generate `docs/specs/<feature>.md` with quality assessment.
 - Flag inferred items for user confirmation.
 - After spec is frozen, proceed to bootstrap automatically.
 - End response with ⚡ ACX.

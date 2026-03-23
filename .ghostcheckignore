@@ -13,6 +13,8 @@ tests/
 .ghostcheck/cache/
 
 # Development
+.venv/
+.agent/
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -21,4 +23,7 @@ htmlcov/
 dist/
 build/
 *.egg-info/
+
+# Pattern Registry (contains real regex patterns that trigger findings)
+src/ghostcheck/data/secret_patterns.json
 

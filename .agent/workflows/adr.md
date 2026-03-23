@@ -17,11 +17,11 @@ For smaller decisions, `/decide` is sufficient — don't create ADRs for every c
 
 ## Execution Steps
 
-1. **Check existing ADRs**: `ls .agentcortex/adr/` to find the next available ID and avoid duplicating existing records.
+1. **Check existing ADRs**: `ls docs/adr/` to find the next available ID and avoid duplicating existing records.
 
 2. **Allocate ID**: Use sequential numbering (e.g., ADR-005). Keep the kebab-case suffix descriptive.
 
-3. **Generate content**: Create `.agentcortex/adr/ADR-[ID]-[name].md` with:
+3. **Generate content**: Create `docs/adr/ADR-[ID]-[name].md` with:
    - **Status**: Proposed | Accepted | Deprecated | Superseded by ADR-[N]
    - **Context**: What problem prompted this decision? What constraints apply?
    - **Decision**: What exactly are we doing? Be specific enough that someone can verify compliance.

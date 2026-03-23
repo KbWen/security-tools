@@ -307,7 +307,9 @@ if [[ -f "$GITIGNORE" ]]; then
     '.agentcortex/context/current_state.md' \
     '.agentcortex/context/archive/' \
     '.agentcortex/specs/' \
-    '.agentcortex/adr/'; do
+    '.agentcortex/adr/' \
+    'docs/specs/' \
+    'docs/adr/'; do
     # Check if the exact pattern appears as an ignore line (not negated, not commented)
     if grep -x -F -q -- "$must_track" "$GITIGNORE"; then
       echo "error: .gitignore must NOT ignore persistent SSoT artifact: $must_track" >&2

@@ -70,7 +70,7 @@ This prevents the most common cross-session token waste: Agent B spending 500+ t
 
 If a decision has project-wide impact (affects multiple branches, modules, or future tasks), it SHOULD be promoted to a formal ADR during `/ship`:
 
-1. Copy the decision entry to `.agentcortex/adr/ADR-[ID]-[kebab-case].md`.
+1. Copy the decision entry to `docs/adr/ADR-[ID]-[kebab-case].md`.
 2. Expand with full ADR structure (Context, Decision, Consequences).
 3. Add to `current_state.md` ADR Index.
 4. Remove from Work Log Decisions section (replace with pointer: `→ Promoted to ADR-[ID]`).

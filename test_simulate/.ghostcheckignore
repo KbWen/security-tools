@@ -1,0 +1,6 @@
+# GhostCheck Ignore File
+.git
+__pycache__
+venv
+node_modules
+.ghostcheck

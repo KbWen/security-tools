@@ -12,6 +12,7 @@ Global directives for all AI agents. Loaded automatically every turn
 
 - **MUST OBEY**: `.agent/rules/engineering_guardrails.md`.
 - **MUST OBEY**: `.agent/rules/security_guardrails.md` (auto-enforced during implement/review/ship).
+- **MUST OBEY (Flutter projects only)**: .agent/rules/flutter-template.md — load when the repo contains `pubspec.yaml`. Extends `engineering_guardrails.md` with Flutter/Dart-specific rules (Riverpod, domain model, error handling, import style, i18n, testing).
 - Correctness first. MUST NOT claim completion without verifiable evidence.
 - Small, reversible changes. UNAUTHORIZED REFACTORING STRICTLY PROHIBITED.
 - **No Bypass Rule**: Agent MUST NOT skip Gate/Evidence checks. If check status is unknown, treat as FAIL and STOP.
@@ -22,9 +23,9 @@ Global directives for all AI agents. Loaded automatically every turn
 
 - **Init Read**: MUST read `.agentcortex/context/current_state.md` (SSoT) + `.agentcortex/context/work/<worklog-key>.md` (Work Log). **Exception**: `tiny-fix` tasks (< 3 files, no logic change, unambiguous scope) MAY skip SSoT and Work Log reads — AGENTS.md alone provides sufficient governance context.
 - **Prohibited**: Blind directory scanning (`ls -R .agentcortex/context/`). Read files precisely guided by SSoT.
-- **SSoT Recovery Exception**: If `current_state.md` Spec Index is explicitly marked `[STALE]` or is empty AND no specs exist in the Work Log context, the AI MAY perform ONE targeted scan: `list_dir .agentcortex/specs/` ONLY. After rebuilding the index, MUST update `current_state.md` immediately and document the recovery action in the Work Log.
-- **Active Backlog**: If `.agentcortex/specs/_product-backlog.md` exists, it is the living index for multi-feature product work. Bootstrap MUST check for it. Ship MUST update it. Agents may read it (~200 tokens) without counting against context budget.
-- **Write Isolation**: Agents ONLY write to own Work Log. `current_state.md` updated ONLY during the ship phase. Exception: `.agentcortex/specs/_product-backlog.md` may be updated during spec-intake and ship phases.
+- **SSoT Recovery Exception**: If `current_state.md` Spec Index is explicitly marked `[STALE]` or is empty AND no specs exist in the Work Log context, the AI MAY perform ONE targeted scan: `list_dir docs/specs/` ONLY. After rebuilding the index, MUST update `current_state.md` immediately and document the recovery action in the Work Log.
+- **Active Backlog**: If `docs/specs/_product-backlog.md` exists, it is the living index for multi-feature product work. Bootstrap MUST check for it. Ship MUST update it. Agents may read it (~200 tokens) without counting against context budget.
+- **Write Isolation**: Agents ONLY write to own Work Log. `current_state.md` updated ONLY during the ship phase. Exception: `docs/specs/_product-backlog.md` may be updated during spec-intake and ship phases.
 - **Classification Freeze**: Task category frozen during bootstrap, MUST NOT reclassify later.
 - **Work Log Resolution**: Derive `<worklog-key>` from the current branch using filesystem-safe normalization (for example, replace `/` with `-`). Keep the raw branch value in the Work Log header. Missing active Work Logs during bootstrap, planning, or handoff are recoverable: create or recover the active log at `.agentcortex/context/work/<worklog-key>.md` before failing the gate.
 
@@ -74,7 +75,7 @@ Global directives for all AI agents. Loaded automatically every turn
    Output PLAN ONLY (no code).
    Plan MUST include:
    Docs:
-   - .agentcortex/specs/&lt;feature&gt;.md
+   - docs/specs/&lt;feature&gt;.md
 8. **Implementation confirmation**:
    After plan is presented, AI waits for user confirmation before implementing.
    Requirement: Work Log must contain plan reference.

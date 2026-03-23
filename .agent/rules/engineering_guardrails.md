@@ -25,6 +25,7 @@ Non-negotiable principles for agent-driven development.
 
 - Assumptions, preconditions, limitations MUST be explicitly stated.
 - Implicit magic behavior is PROHIBITED.
+- Persistence-layer ↔ domain-model conversions MUST use explicit named methods (e.g., `fromRecord()`, `toRecord()`). Implicit casting or field-by-field spread at call sites is PROHIBITED.
 
 ### 1.3 Reproducibility by Default
 
@@ -74,6 +75,15 @@ This check is silent when confidence is high — no extra output needed above 90
   2. Only proceed after user responds **YES**.
   3. Set status to `draft`, make changes, then re-freeze during `/ship`.
 
+### 4.3 Pre-Implementation Checklist
+
+Before writing any code, AI MUST complete ALL steps in order and record each in the Work Log:
+
+1. **Read project governance docs** — confirm active AGENTS.md directives and project-specific rules file.
+2. **Read relevant existing code** — prevent duplicate implementations; understand current patterns before introducing new ones.
+
+Skipping any step = **Bootstrap Gate FAIL**.
+
 ## 5. Testing & Verification
 
 - Logic Change -> Add Test.
@@ -81,14 +91,43 @@ This check is silent when confidence is high — no extra output needed above 90
 - **Sanity Check**: Is output bounding safe? Side-effects?
 - **Doc-First Pillar**: Architecture/Core logic changes MUST precede with Spec/ADR in `docs/`.
 - **Naming/Locations**:
-  - ADRs: `.agentcortex/adr/ADR-[ID]-[kebab-case].md`
-  - Specs: `.agentcortex/specs/[feature-name].md`
+  - ADRs: `docs/adr/ADR-[ID]-[kebab-case].md`
+  - Specs: `docs/specs/[feature-name].md`
   - Guides: `docs/guides/[topic].md`
   - Agent Work Logs: `.agentcortex/context/work/`
+- **Write Path Guard**: Agents MUST NOT write project specs to `.agentcortex/specs/` or project ADRs to `.agentcortex/adr/`. Those directories contain framework-owned template fixtures only. All project artifacts MUST go to `docs/specs/` and `docs/adr/`. If the SSoT Spec Index references `.agentcortex/specs/`, READ from it but WRITE new work to `docs/specs/`.
   - Private Context: `.agentcortex/context/private/` (local-only, gitignored)
     - USE FOR: personal dev environment configs, private remote URLs, internal credentials references, team-specific workflows not intended for public repos.
     - DO NOT USE FOR: project architecture docs, contribution guides, public development standards.
     - WHEN UNCERTAIN: Agent MUST present options to user in `/plan` phase. Autonomous path decisions on ambiguous content are PROHIBITED.
+
+### 5.1 Service & Provider Test Coverage
+
+- Every new Service class or Provider MUST have ≥ 1 unit test before Ship. No test = **Ship Gate FAIL**.
+- Test count regression (fewer passing tests than the last committed baseline) MUST have written justification in the Work Log. Undocumented regression = **Ship Gate FAIL**.
+
+### 5.2 Error Surface Rules
+
+- Service/Provider layer errors MUST `return null` or a sealed error type. Unhandled exceptions that escape a Service or Provider boundary = **Gate FAIL**.
+- Every `catch` block MUST include at minimum a log statement. Silent `catch {}` with no logging = **Review Gate FAIL**.
+
+### 5.3 Spec Drift Prevention & Test Quality
+
+**Spec Drift Prevention**
+- Before implementing any feature, the agent MUST read the corresponding Spec file in `docs/specs/`. Missing spec for a non-trivial feature = **Bootstrap Gate FAIL**.
+- If implementation deviates from the spec (even slightly), STOP and report the deviation before proceeding. Silent scope expansion or shrinkage = **Gate FAIL**.
+- Never silently expand or shrink scope — surface every delta to the user and obtain confirmation before continuing.
+
+**Test Quality**
+- Unit tests MUST cover: happy path, error path, and at least one boundary condition. A test asserting only `expect(result, isNotNull)` is insufficient — test actual values.
+- For date-based, time-based, or numerical-boundary logic: always include edge cases (zero values, first/last day of period, maximum boundary).
+- Tests MUST verify behaviour, not implementation. Mirroring the implementation formula in an assertion without validating the business rule is insufficient.
+
+### 5.4 YAGNI — You Aren't Gonna Need It
+
+- Do not introduce abstract base classes, mixins, or utility layers unless there are 3+ concrete use cases already in the codebase.
+- Single-file implementation first; refactor to a shared abstraction only when the second real consumer exists.
+- Adding a new dependency requires justification in the PR or Work Log: explain why existing code cannot solve the problem.
 
 ## 6. Explainability & Traceability
 

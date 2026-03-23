@@ -12,7 +12,7 @@ tasks:
 ## 0. Detection (Called from /bootstrap)
 
 This workflow is triggered when `/bootstrap` Step 1 detects:
-- `.agentcortex/adr/` contains NO project-specific ADR (only framework ADRs like `ADR-001-*`)
+- `docs/adr/` contains NO project-specific ADR
 - AND the task is NOT a `tiny-fix`
 
 Bootstrap outputs: `"🏗️ New project detected — no architecture ADR found. Running /app-init to establish project conventions before proceeding."`
@@ -46,7 +46,7 @@ Ask the user ONE batched question set (max 5 questions). Do NOT ask one at a tim
 
 ## 2. Generate Project ADR
 
-Create `.agentcortex/adr/ADR-002-project-architecture.md` using the template at `.agentcortex/templates/adr-tech-stack.md`.
+Create `docs/adr/ADR-002-project-architecture.md` using the template at `.agentcortex/templates/adr-tech-stack.md`.
 
 **Numbering**: If `ADR-002` already exists, increment to next available number.
 
@@ -118,7 +118,7 @@ Every generated SKILL.md MUST contain at minimum:
 
 ## 6. Update Spec Intake Awareness
 
-After generating skills, append to `.agentcortex/specs/_product-backlog.md` (if exists) or note in `current_state.md`:
+After generating skills, append to `docs/specs/_product-backlog.md` (if exists) or note in `current_state.md`:
 
 ```
 ## Project Skills
@@ -140,7 +140,7 @@ Output a summary:
 🏗️ App-Init Complete
 
 ## Generated Files
-1. ADR: .agentcortex/adr/ADR-00N-project-architecture.md
+1. ADR: docs/adr/ADR-00N-project-architecture.md
 2. Skills: [list of generated skill files]
 3. Spec Template: .agentcortex/templates/spec-app-feature-<project>.md
 
