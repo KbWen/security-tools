@@ -19,7 +19,7 @@
   - `[template-import-cleanup] .agentcortex/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
   - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
   - `[ghostcheck-mvp] .agentcortex/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]`
-  - `[ghostcheck-roadmap] .agentcortex/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-21]`
+  - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -60,6 +60,8 @@
 GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this Windows workspace, prefer repo-local safe whole-file rewrites only for newly added files or tightly scoped text-only files, then immediately re-verify with `git diff --check`.
 - [Detector Validation]: New integrity checks must be validated against real repo bytes before baselining, otherwise pure-LF files can be falsely classified as mixed EOL and pollute the baseline.
 - [Shell Dependency Guard]: Cross-platform validation entrypoints must not add new hard runtime dependencies unless the template explicitly requires them and the migration path is documented.
+- [regex-precision]: Broad regex patterns for secrets (like Generic) should be paired with low severity or high-entropy checks to avoid CLI noise.
+- [windows-python-path]: Windows environments often require `python -m module` instead of direct script calls if the PATH is not perfectly aligned.
 
 ## Ship History
 
@@ -94,6 +96,9 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - Tests: Pass (validate.ps1 & ghostcheck scan)
 
 ### Ship-v0.5.0-feature-multi-ast-severity-2026-03-21
-
 - Feature shipped: implemented Multi-Language AST scanning (JS/TS via `esprima`), Intelligent Severity Engine (context-aware adjustments), and deep `.env` file security checks.
 - Tests: Pass (pytest)
+
+### Ship-feat/v0.6.0-2026-03-23
+- Feature shipped: Zero-Config Onboarding (`ghostcheck init`), Git Diff scanning, Baseline/Inline suppression, and expanded 31 secret patterns.
+- Tests: Pass (pytest & manual verification)
