@@ -72,18 +72,4 @@ GhostCheck respects professional workflows:
 *   **Automation Ready:** Export results natively using `--format json` or `--format sarif` for seamless GitHub Advanced Security integration.
 
 ---
-
-<<<<<<< Updated upstream
 **Developed with ❤️ for the AI community by [KbWen](https://github.com/KbWen).**
-=======
-## 🧠 Powered by AgentCortex
-
-### Why AgentCortex?
-GhostCheck leverages the [AgentCortex](https://github.com/KbWen/AgentCortex) framework to enforce high standards of AI agent autonomy, verifiable security, and process-driven development.
-
-<div align="center">
-
-**Developed with ❤️ by [KbWen](https://github.com/KbWen) for the AI community.**
-
-</div>
->>>>>>> Stashed changes
