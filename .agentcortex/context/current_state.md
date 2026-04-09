@@ -102,3 +102,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ### Ship-feat/v0.6.0-2026-03-23
 - Feature shipped: Zero-Config Onboarding (`ghostcheck init`), Git Diff scanning, Baseline/Inline suppression, and expanded 31 secret patterns.
 - Tests: Pass (pytest & manual verification)
+
+### Ship-feat/v0.7.0-2026-04-09
+- Feature shipped: IaC (Terraform/K8s) scanning, CI/CD Pipeline auditing (GHA), Firebase Rules audit, Plugin Architecture, and Auto-Fix suggestions.
+- Tests: Pass (pytest 34/34)

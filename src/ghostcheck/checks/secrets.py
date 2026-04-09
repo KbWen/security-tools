@@ -34,7 +34,8 @@ class SecretScanner:
                         "line": i + 1,
                         "pattern_name": p['name'],
                         "severity": final_severity,
-                        "value_preview": masked
+                        "value_preview": masked,
+                        "suggestion": p.get('remediation', "Rotate or revoke this secret immediately.")
                     })
         return findings
 

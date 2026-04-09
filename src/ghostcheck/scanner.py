@@ -8,6 +8,10 @@ from .checks.severity_engine import SeverityEngine
 from .checks.env_scanner import EnvScanner
 from .checks.agent_rules import AgentRulesLinter
 from .checks.docker import DockerRiskChecker
+from .checks.iac_scanner import IaCScanner
+from .checks.ci_auditor import CIAuditor
+from .checks.firebase_rules_auditor import FirebaseRulesAuditor
+from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
 
 class Scanner:
@@ -50,6 +54,11 @@ class Scanner:
         self.js_ast_checker = JsAstSecretChecker(self.raw_secret_patterns)
         self.rules_linter = AgentRulesLinter(self.risky_rules_path)
         self.docker_checker = DockerRiskChecker()
+        self.iac_scanner = IaCScanner()
+        self.ci_auditor = CIAuditor()
+        self.firebase_rules_auditor = FirebaseRulesAuditor()
+        self.plugin_loader = PluginLoader()
+        self.plugin_loader.load_plugins()
         
         # AC-14: Ignore Handling
         ignore_file = os.path.join(self.root_path, '.ghostcheckignore')
@@ -139,6 +148,9 @@ class Scanner:
                             findings.extend(self.ast_secret_checker.scan_file(file_path, content))
                         elif file.endswith('.js') or file.endswith('.ts'):
                             findings.extend(self.js_ast_checker.scan_file(file_path, content))
+                        
+                        # Run plugins
+                        findings.extend(self.plugin_loader.run_all(file_path, content))
         return findings
 
     def scan_rules(self, limit_files=None):
@@ -174,6 +186,51 @@ class Scanner:
                         findings.extend(self.docker_checker.scan_file(file_path, content))
         return findings
 
+    def scan_iac(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                # .tf, .yaml, .yml
+                if any(file.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
+                    content = self._read_file_safe(file_path)
+                    if content:
+                        findings.extend(self.iac_scanner.scan_file(file_path, content))
+        return findings
+
+    def scan_ci(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                # .github/workflows, .gitlab-ci, Fastfile, Matchfile
+                is_ci = any(x in file_path.replace('\\', '/') for x in ['.github/workflows', '.gitlab-ci', 'Fastfile', 'Matchfile', 'Appfile'])
+                # Also check for sensitive mobile config files mentioned in ci_auditor
+                is_mobile_cfg = any(k in file for k in ['key.properties', 'GoogleService-Info.plist', 'google-services.json'])
+                
+                if is_ci or is_mobile_cfg:
+                    content = self._read_file_safe(file_path)
+                    if content:
+                        findings.extend(self.ci_auditor.scan_file(file_path, content))
+        return findings
+
+    def scan_firebase(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                if file.endswith('.rules') or 'database.rules.json' in file:
+                    content = self._read_file_safe(file_path)
+                    if content:
+                        findings.extend(self.firebase_rules_auditor.scan_file(file_path, content))
+        return findings
+
     def _get_fnd_id(self, fnd):
         """Extracts a stable ID for the finding regardless of which scanner produced it."""
         return fnd.get('pattern_name') or fnd.get('rule_name') or fnd.get('package') or "generic_issue"
@@ -184,7 +241,10 @@ class Scanner:
             self.scan_dependencies(limit_files) + 
             self.scan_secrets(limit_files) + 
             self.scan_rules(limit_files) + 
-            self.scan_docker(limit_files)
+            self.scan_docker(limit_files) +
+            self.scan_iac(limit_files) +
+            self.scan_ci(limit_files) +
+            self.scan_firebase(limit_files)
         )
         
         # v0.6.0: Inline suppression and Baseline filter

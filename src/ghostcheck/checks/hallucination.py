@@ -162,14 +162,32 @@ class HallucinationChecker:
                 if created_at:
                     age_days = (datetime.now() - datetime.strptime(created_at, '%Y-%m-%dT%H:%M:%S')).days
                     if age_days < 30:
-                        return {"package": pkg_name, "registry": "PyPI", "severity": "HIGH", "message": f"Package is very new ({age_days} days old). Potential hallucination or typosquatting."}
+                        return {
+                            "package": pkg_name, 
+                            "registry": "PyPI", 
+                            "severity": "HIGH", 
+                            "message": f"Package is very new ({age_days} days old). Potential hallucination or typosquatting.",
+                            "suggestion": "Verify the package author and source code before using."
+                        }
                     elif age_days < 90:
-                        return {"package": pkg_name, "registry": "PyPI", "severity": "MEDIUM", "message": f"Package is relatively new ({age_days} days old)."}
+                        return {
+                            "package": pkg_name, 
+                            "registry": "PyPI", 
+                            "severity": "MEDIUM", 
+                            "message": f"Package is relatively new ({age_days} days old).",
+                            "suggestion": "Monitor for updates and community feedback."
+                        }
                 
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return {"package": pkg_name, "registry": "PyPI", "severity": "CRITICAL", "message": "Package does not exist on PyPI. High risk of AI hallucination."}
+                return {
+                    "package": pkg_name, 
+                    "registry": "PyPI", 
+                    "severity": "CRITICAL", 
+                    "message": "Package does not exist on PyPI. High risk of AI hallucination.",
+                    "suggestion": "Check for typos or hallucinated package names."
+                }
         except Exception:
             pass
         return None
@@ -187,14 +205,32 @@ class HallucinationChecker:
                     created_at = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%S.%fZ')
                     age_days = (datetime.now() - created_at).days
                     if age_days < 30:
-                        return {"package": pkg_name, "registry": "npm", "severity": "HIGH", "message": f"Package is very new ({age_days} days old)."}
+                        return {
+                            "package": pkg_name, 
+                            "registry": "npm", 
+                            "severity": "HIGH", 
+                            "message": f"Package is very new ({age_days} days old).",
+                            "suggestion": "Verify the package author and source code."
+                        }
                     elif age_days < 90:
-                        return {"package": pkg_name, "registry": "npm", "severity": "MEDIUM", "message": f"Package is relatively new ({age_days} days old)."}
+                        return {
+                            "package": pkg_name, 
+                            "registry": "npm", 
+                            "severity": "MEDIUM", 
+                            "message": f"Package is relatively new ({age_days} days old).",
+                            "suggestion": "Check community adoption and issue tracker."
+                        }
                 
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                return {"package": pkg_name, "registry": "npm", "severity": "CRITICAL", "message": "Package does not exist on npm registry."}
+                return {
+                    "package": pkg_name, 
+                    "registry": "npm", 
+                    "severity": "CRITICAL", 
+                    "message": "Package does not exist on npm registry.",
+                    "suggestion": "Check if the package name is correct or hallucinated."
+                }
         except Exception:
             pass
         return None
