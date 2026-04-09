@@ -108,6 +108,17 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 ---
 
+### 🏷️ Epic 6: Developer Experience & SAST Ergonomics
+
+> **為什麼重要**: 安全工具如果產生過多誤判，最終會被團隊全面停用。目前已知當 GhostCheck 掃描其「自身原始碼」或「文件」中儲存的安全特徵碼時，會在 Pre-commit Hook 造成阻斷式誤判 (False Positives on Self)。需要有優雅的解決方案。
+
+| # | Feature | 優先 | 版本 | 狀態 | 說明 |
+|---|---------|------|------|------|------|
+| E6-F1 | **Smart Pre-commit Exemption (Self-Scan Safe)** | P1 | v0.9.0 | 🟡 | 實作智慧豁免機制以避免 SAST 掃描自身時引發誤報：<br>- 自動忽略 `ghostcheck` 自身安裝路徑或設定檔內的安全特徵碼。<br>- 支援 `.ghostcheckignore` 內明確標記 `inline-signature-bypass`。<br>- 即便命中規則，若偵測為「工具自身的展示/測試」，應降級為 INFO 而非 HIGH/CRITICAL。 |
+| E6-F2 | **Cross-Platform Output Encoding Fallback** | P1 | v0.9.0 | 🟡 | 提升控制台輸出的穩健度：<br>- 自動偵測終端機不支援 UTF-8 (如 Windows cp950) 時，自動降級/移除 Unicode Emoji 圖示。<br>- `--no-color` 之餘，新增 `--ascii-only` 模式。 |
+
+---
+
 ## 版本規劃 (AI-Era Features 歸屬)
 
 ### v0.8.0 — AI Agent Security Foundation ⭐
@@ -136,6 +147,8 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | E4-F2 | AI-Generated Code Marker |
 | E4-F3 | Data Exfiltration via AI Channel |
 | E5-F6 | OWASP LLM Compliance Report |
+| E6-F1 | Smart Pre-commit Exemption (Self-Scan Safe) |
+| E6-F2 | Cross-Platform Output Encoding Fallback |
 | (Roadmap) | Go/Java AST, Dart AST, Watch Mode |
 
 ### v1.0.0 — Universal AI-Era Scanner

@@ -62,6 +62,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Shell Dependency Guard]: Cross-platform validation entrypoints must not add new hard runtime dependencies unless the template explicitly requires them and the migration path is documented.
 - [regex-precision]: Broad regex patterns for secrets (like Generic) should be paired with low severity or high-entropy checks to avoid CLI noise.
 - [windows-python-path]: Windows environments often require `python -m module` instead of direct script calls if the PATH is not perfectly aligned.
+- [Exception Handling]: Silent 'except Exception: pass' violates engineering guardrails; always use the standard 'logging' module (e.g. logger.debug) to preserve debugging trails without polluting JSON or SARIF standard outputs.
 
 ## Ship History
 
