@@ -31,6 +31,22 @@ class CIAuditor:
             }
         ]
         
+        # GitLab CI patterns
+        self.gitlab_patterns = [
+            {
+                "name": "gitlab_privileged_runner",
+                "pattern": r'privileged:\s*true',
+                "severity": "HIGH",
+                "suggestion": "Running privileged GitLab CI runners introduces security risks."
+            },
+            {
+                "name": "gitlab_secret_exposure_in_run",
+                "pattern": r'echo\s+["\']\$[^"\']+["\']',
+                "severity": "MEDIUM",
+                "suggestion": "Avoid echoing secrets or using them directly in shell scripts. Use them as env vars if needed."
+            }
+        ]
+        
         # Mobile CI (Fastlane) patterns
         self.mobile_ci_patterns = [
             {
@@ -56,8 +72,10 @@ class CIAuditor:
         is_fastlane = "Fastfile" in file_path or "Matchfile" in file_path or "Appfile" in file_path
         
         patterns = []
-        if is_gha or is_gitlab:
+        if is_gha:
             patterns = self.gha_patterns
+        elif is_gitlab:
+            patterns = self.gitlab_patterns
         elif is_fastlane:
             patterns = self.mobile_ci_patterns
             

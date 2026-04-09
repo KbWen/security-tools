@@ -4,11 +4,13 @@ import sys
 from .base import BasePlugin
 
 class PluginLoader:
-    def __init__(self, plugin_dirs=None):
-        self.plugin_dirs = plugin_dirs or [
-            os.path.expanduser("~/.ghostcheck/plugins"),
-            os.path.join(os.getcwd(), ".ghostcheck", "plugins")
-        ]
+    def __init__(self, load_local=False, plugin_dirs=None):
+        if plugin_dirs is not None:
+            self.plugin_dirs = plugin_dirs
+        else:
+            self.plugin_dirs = [os.path.expanduser("~/.ghostcheck/plugins")]
+            if load_local:
+                self.plugin_dirs.append(os.path.join(os.getcwd(), ".ghostcheck", "plugins"))
         self.plugins = []
 
     def load_plugins(self):

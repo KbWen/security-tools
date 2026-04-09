@@ -54,6 +54,23 @@ def test_ci_auditor_gha():
     assert "gha_unpinned_action" in names
     assert "gha_secret_exposure_in_run" in names
 
+def test_ci_auditor_gitlab():
+    auditor = CIAuditor()
+    content = """
+    job1:
+      tags:
+        - docker
+      services:
+        - name: docker:dind
+          privileged: true
+      script:
+        - echo "$CI_JOB_TOKEN"
+    """
+    findings = auditor.scan_file(".gitlab-ci.yml", content)
+    names = [f['name'] for f in findings]
+    assert "gitlab_privileged_runner" in names
+    assert "gitlab_secret_exposure_in_run" in names
+
 def test_firebase_rules():
     auditor = FirebaseRulesAuditor()
     content = """

@@ -14,7 +14,8 @@ class GhostCheckConfig:
         "exclude_patterns": [],
         "enabled_checks": ["hallucination", "secrets", "rules", "docker"],
         "offline": False,
-        "custom_patterns": []
+        "custom_patterns": [],
+        "load_local_plugins": False
     }
 
     def __init__(self, project_root: str):
@@ -70,3 +71,5 @@ class GhostCheckConfig:
             self.config['severity_threshold'] = args.severity
         if hasattr(args, 'offline') and args.offline:
             self.config['offline'] = True
+        if hasattr(args, 'load_local_plugins') and args.load_local_plugins:
+            self.config['load_local_plugins'] = True
