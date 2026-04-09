@@ -112,3 +112,43 @@ def test_owasp_mapping(tmp_path, scanner):
     
     fnd = next(f for f in findings if f['name'] == "mcp_insecure_binding")
     assert fnd['owasp_llm'] == "LLM02: Sensitive Information Disclosure"
+
+def test_entropy_scanner(tmp_path, scanner):
+    # Test high entropy string (e.g. random base64)
+    content = "SECRET_TOKEN = 'G6fW9zR4vL2k7Qp8N3mJ5hX1bY0aD9cE7vS4wZi8uT1o'"
+    test_file = tmp_path / "app.js"
+    test_file.write_text(content)
+    
+    findings = scanner.scan_entropy(limit_files=[str(test_file)])
+    assert any(f['name'] == "high_entropy_secret" for f in findings)
+
+def test_vuln_scanner_mock(tmp_path, scanner, monkeypatch):
+    # Mock OSV response for requests.post
+    class MockResponse:
+        def __init__(self): self.status_code = 200
+        def json(self): return {"vulns": [{"id": "CVE-TEST-123", "summary": "Test Vuln"}]}
+
+    monkeypatch.setattr("requests.post", lambda *args, **kwargs: MockResponse())
+    
+    content = "requests==2.25.1"
+    req_file = tmp_path / "requirements.txt"
+    req_file.write_text(content)
+    
+    findings = scanner.scan_vulnerabilities(limit_files=[str(req_file)])
+    assert any(f['vuln_id'] == "CVE-TEST-123" for f in findings)
+
+def test_mobile_auditor(tmp_path, scanner):
+    content = '<application android:debuggable="true" />'
+    manifest = tmp_path / "AndroidManifest.xml"
+    manifest.write_text(content)
+    
+    findings = scanner.scan_mobile(limit_files=[str(manifest)])
+    assert any(f['name'] == "android_debuggable_enabled" for f in findings)
+
+def test_html_dashboard(tmp_path, scanner):
+    findings = [{"name": "test_issue", "severity": "HIGH", "file": "test.py"}]
+    grade, score = scanner.scoring_engine.calculate_score(findings)
+    from ghostcheck.reporters.html_reporter import HTMLReporter
+    reporter = HTMLReporter(str(tmp_path / "report.html"))
+    path = reporter.report(findings, grade, score)
+    assert os.path.exists(path)

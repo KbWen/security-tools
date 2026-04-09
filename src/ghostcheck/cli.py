@@ -6,12 +6,19 @@ from .scanner import Scanner
 from .reporters.console import ConsoleReporter
 from .reporters.json_reporter import JsonReporter
 from .reporters.sarif_reporter import SarifReporter
+from .reporters.html_reporter import HTMLReporter
 
 from .config import GhostCheckConfig
 from .init import GhostCheckInitializer
 from .checks.git_diff_scanner import GitDiffScanner
 
 def main():
+    if sys.stdout.encoding != 'utf-8':
+        try:
+            sys.stdout.reconfigure(encoding='utf-8')
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(
         description="GhostCheck: AI-Era Security Scanner",
         epilog="Addressing the unique risks of AI-assisted development."
@@ -19,7 +26,7 @@ def main():
     
     # parent parser for common scan arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--format", choices=["console", "json", "sarif"], default="console", help="Output format")
+    parent_parser.add_argument("--format", choices=["console", "json", "sarif", "html"], default="console", help="Output format")
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
@@ -53,7 +60,7 @@ def main():
     subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
     
     # Version flag
-    parser.add_argument("--version", action="version", version="GhostCheck 0.7.0")
+    parser.add_argument("--version", action="version", version="GhostCheck 0.8.0")
     
     args = parser.parse_args()
     
@@ -133,16 +140,26 @@ def main():
         threshold = severity_order.get(threshold_name, 4)
         findings = [f for f in findings if severity_order.get(f.get('severity', 'INFO'), 4) <= threshold]
         
+        # Calculate score
+        grade, score_val = scanner.scoring_engine.calculate_score(findings)
+        
         # Report
         if args.format == "json":
             reporter = JsonReporter()
+            reporter.report(findings)
         elif args.format == "sarif":
             reporter = SarifReporter()
+            reporter.report(findings)
+        elif args.format == "html":
+            reporter = HTMLReporter()
+            path = reporter.report(findings, grade, score_val)
+            print(f"✅ HTML Report generated at: {path}")
+            print(f"📊 Security Grade: {grade} ({score_val}/100)")
         else:
             reporter = ConsoleReporter(use_color=not args.no_color)
+            reporter.report(findings)
+            print(f"\n📊 {ConsoleReporter()._color('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
             
-        reporter.report(findings)
-        
         if findings:
             sys.exit(1)
         sys.exit(0)

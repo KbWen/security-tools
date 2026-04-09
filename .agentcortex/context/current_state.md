@@ -106,3 +106,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ### Ship-feat/v0.7.0-2026-04-09
 - Feature shipped: IaC (Terraform/K8s) scanning, CI/CD Pipeline auditing (GHA), Firebase Rules audit, Plugin Architecture, and Auto-Fix suggestions.
 - Tests: Pass (pytest 34/34)
+
+### Ship-feat/v0.8.0-2026-04-09
+- Feature shipped: AI Agent Security Foundation (Epic 1-5). Fixed unpinned npx/mcp server risks, enhanced agent rules (Unicode injection/sensitive paths), AI supply chain auditing, and OWASP LLM Top 10 compliance mapping.
+- Tests: Pass (pytest 7/7 new features)

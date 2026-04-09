@@ -14,6 +14,12 @@ from .checks.firebase_rules_auditor import FirebaseRulesAuditor
 from .checks.mcp_auditor import MCPAuditor
 from .checks.ai_supply_chain import AISupplyChainScanner
 from .checks.agency_auditor import AgencyAuditor
+from .checks.entropy_scanner import EntropyScanner
+from .checks.vuln_scanner import VulnScanner
+from .checks.mobile_config_auditor import MobileConfigAuditor
+from .checks.api_linter import APILinter
+from .checks.secret_validator import SecretValidator
+from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
 
@@ -67,6 +73,13 @@ class Scanner:
         self.mcp_auditor = MCPAuditor()
         self.ai_supply_chain = AISupplyChainScanner()
         self.agency_auditor = AgencyAuditor()
+        self.entropy_scanner = EntropyScanner()
+        self.vuln_scanner = VulnScanner(offline=offline)
+        self.mobile_auditor = MobileConfigAuditor()
+        self.api_linter = APILinter()
+        self.secret_validator = SecretValidator(enabled=not offline)
+        self.scoring_engine = ScoringEngine()
+        
         load_local = self.config.get('load_local_plugins', False) if self.config else False
         self.plugin_loader = PluginLoader(load_local=load_local)
         self.plugin_loader.load_plugins()
@@ -283,6 +296,45 @@ class Scanner:
                     findings.extend(self.agency_auditor.scan_file(file_path, content))
         return findings
 
+    def scan_vulnerabilities(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if file in ['requirements.txt', 'package.json']:
+                    findings.extend(self.vuln_scanner.scan_file(file_path))
+        return findings
+
+    def scan_mobile(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                content = self._read_file_safe(file_path)
+                if content:
+                    findings.extend(self.mobile_auditor.scan_file(file_path, content))
+        return findings
+
+    def scan_api(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                content = self._read_file_safe(file_path)
+                if content:
+                    findings.extend(self.api_linter.scan_content(file_path, content))
+        return findings
+
+    def scan_entropy(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                content = self._read_file_safe(file_path)
+                if content:
+                    findings.extend(self.entropy_scanner.scan_content(file_path, content))
+        return findings
+
     def _get_fnd_id(self, fnd):
         """Extracts a stable ID for the finding regardless of which scanner produced it."""
         return fnd.get('name') or fnd.get('pattern_name') or fnd.get('rule_name') or fnd.get('package') or "generic_issue"
@@ -299,7 +351,11 @@ class Scanner:
             self.scan_firebase(limit_files) +
             self.scan_mcp(limit_files) +
             self.scan_ai_supply_chain(limit_files) +
-            self.scan_agency(limit_files)
+            self.scan_agency(limit_files) +
+            self.scan_vulnerabilities(limit_files) +
+            self.scan_mobile(limit_files) +
+            self.scan_api(limit_files) +
+            self.scan_entropy(limit_files)
         )
         
         # v0.6.0: Inline suppression and Baseline filter
