@@ -13,8 +13,8 @@
   - Workflows & Policies: `.agent/workflows/*.md`, `.agent/rules/*.md`
 - **ADR Index**:
   - `.agentcortex/adr/ADR-001-vnext-self-managed-architecture.md`
-- **Active Backlog**: none
-  - When a multi-feature product spec is decomposed, the backlog path is recorded here (e.g., `.agentcortex/specs/_product-backlog.md`). Bootstrap reads this to detect ongoing product work.
+- **Active Backlog**: `docs/specs/_product-backlog.md`
+  - AI-Era Security Features backlog (MCP, Agent Rules, LLM Supply Chain, Agentic Workflow, OWASP LLM Top 10). Created 2026-04-09.
 - **Spec Index**:
   - `[template-import-cleanup] .agentcortex/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
   - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
