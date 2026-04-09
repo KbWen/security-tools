@@ -11,6 +11,9 @@ from .checks.docker import DockerRiskChecker
 from .checks.iac_scanner import IaCScanner
 from .checks.ci_auditor import CIAuditor
 from .checks.firebase_rules_auditor import FirebaseRulesAuditor
+from .checks.mcp_auditor import MCPAuditor
+from .checks.ai_supply_chain import AISupplyChainScanner
+from .checks.agency_auditor import AgencyAuditor
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
 
@@ -42,6 +45,10 @@ class Scanner:
         base_dir = os.path.dirname(__file__)
         self.secret_patterns_path = os.path.join(base_dir, 'data', 'secret_patterns.json')
         self.risky_rules_path = os.path.join(base_dir, 'data', 'risky_rules.json')
+        self.owasp_mapping_path = os.path.join(base_dir, 'data', 'owasp_mapping.json')
+        
+        with open(self.owasp_mapping_path, 'r') as f:
+            self.owasp_mapping = json.load(f)
         
         # Load raw patterns for AST scanner
         with open(self.secret_patterns_path, 'r') as f:
@@ -57,6 +64,9 @@ class Scanner:
         self.iac_scanner = IaCScanner()
         self.ci_auditor = CIAuditor()
         self.firebase_rules_auditor = FirebaseRulesAuditor()
+        self.mcp_auditor = MCPAuditor()
+        self.ai_supply_chain = AISupplyChainScanner()
+        self.agency_auditor = AgencyAuditor()
         load_local = self.config.get('load_local_plugins', False) if self.config else False
         self.plugin_loader = PluginLoader(load_local=load_local)
         self.plugin_loader.load_plugins()
@@ -89,7 +99,7 @@ class Scanner:
         try:
             if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
                 return None
-            with open(file_path, 'r', errors='ignore') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
         except (IOError, OSError):
             return None
@@ -168,7 +178,9 @@ class Scanner:
                     continue
                 # For directories, we check all markdown files in rule folders. 
                 # For single files, we check if it looks like a rule file or was explicitly hit.
-                if file.endswith('.md') or is_file_target:
+                rule_files = ['.cursorrules', 'AGENTS.md', 'CLAUDE.md', 'GEMINI.md']
+                is_rule_file = file.endswith('.md') or file.endswith('.mdc') or file in rule_files
+                if is_rule_file or is_file_target:
                     content = self._read_file_safe(file_path)
                     if content:
                         findings.extend(self.rules_linter.scan_file(file_path, content))
@@ -232,9 +244,48 @@ class Scanner:
                         findings.extend(self.firebase_rules_auditor.scan_file(file_path, content))
         return findings
 
+    def scan_mcp(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                # mcp.json, mcp_config.json, .cursor/mcp.json
+                is_mcp = any(x in file_path.replace('\\', '/') for x in ['mcp.json', 'mcp_config.json'])
+                if is_mcp or file_path.endswith('.py') or file_path.endswith('.ts'):
+                    content = self._read_file_safe(file_path)
+                    if content:
+                        findings.extend(self.mcp_auditor.scan_file(file_path, content))
+        return findings
+
+    def scan_ai_supply_chain(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                content = self._read_file_safe(file_path)
+                if content:
+                    findings.extend(self.ai_supply_chain.scan_file(file_path, content))
+        return findings
+
+    def scan_agency(self, limit_files=None):
+        findings = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                content = self._read_file_safe(file_path)
+                if content:
+                    findings.extend(self.agency_auditor.scan_file(file_path, content))
+        return findings
+
     def _get_fnd_id(self, fnd):
         """Extracts a stable ID for the finding regardless of which scanner produced it."""
-        return fnd.get('pattern_name') or fnd.get('rule_name') or fnd.get('package') or "generic_issue"
+        return fnd.get('name') or fnd.get('pattern_name') or fnd.get('rule_name') or fnd.get('package') or "generic_issue"
 
     def scan(self, limit_files=None):
         # Full scan combines all
@@ -245,7 +296,10 @@ class Scanner:
             self.scan_docker(limit_files) +
             self.scan_iac(limit_files) +
             self.scan_ci(limit_files) +
-            self.scan_firebase(limit_files)
+            self.scan_firebase(limit_files) +
+            self.scan_mcp(limit_files) +
+            self.scan_ai_supply_chain(limit_files) +
+            self.scan_agency(limit_files)
         )
         
         # v0.6.0: Inline suppression and Baseline filter
@@ -277,6 +331,9 @@ class Scanner:
             # (Simplification for now: check if the finding has a 'line_content' with ignore tag)
             if "ghostcheck-ignore" in str(fnd.get('context', '')):
                 continue
+
+            # Apply OWASP mapping
+            fnd['owasp_llm'] = self.owasp_mapping.get(fnd_id, "N/A")
 
             filtered.append(fnd)
 

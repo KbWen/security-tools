@@ -31,17 +31,23 @@ class ConsoleReporter:
 
         for f in sorted_findings:
             sev = f.get('severity', 'INFO')
-            title = f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
+            title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
             loc = f"{f.get('file')}:{f.get('line')}" if f.get('line') else f.get('file', 'N/A')
+            owasp = f.get('owasp_llm', 'N/A')
             
             # Header line
             print(f"{self._color(f' {sev:<10} ', sev)} {self.colors['RESET']}{title}")
             print(f"{self.colors['DIM']}Loc: {loc}{self.colors['RESET']}")
+            if owasp != "N/A":
+                print(f"{self.colors['DIM']}OWASP AI: {self.colors['RESET']}{self._color(owasp, 'INFO')}")
             
             if 'message' in f:
                 print(f"   {f['message']}")
-            if 'value_preview' in f:
+            if 'context' in f:
+                print(f"   {self.colors['DIM']}Context: {f['context']}{self.colors['RESET']}")
+            elif 'value_preview' in f:
                 print(f"   {self.colors['DIM']}Context: {f['value_preview']}{self.colors['RESET']}")
+            
             if 'remediation' in f:
                 print(f"   {self._color('Fix:', 'INFO')} {f['remediation']}")
             elif 'suggestion' in f:

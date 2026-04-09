@@ -1,0 +1,26 @@
+{
+    "mcp_insecure_binding": "LLM02: Sensitive Information Disclosure",
+    "hidden_prompt_injection": "LLM01: Prompt Injection",
+    "mcp_tool_poisoning_injection": "LLM01: Prompt Injection",
+    "Agent Rule Injection": "LLM01: Prompt Injection",
+    "risky_prompt_template": "LLM01: Prompt Injection",
+    
+    "mcp_hardcoded_api_key": "LLM02: Sensitive Information Disclosure",
+    "hardcoded_secret": "LLM02: Sensitive Information Disclosure",
+    "env_secret_found": "LLM02: Sensitive Information Disclosure",
+    "sensitive_path_access": "LLM02: Sensitive Information Disclosure",
+    "data_exfiltration_risk": "LLM02: Sensitive Information Disclosure",
+    
+    "mcp_npm_package_unfixed": "LLM03: Supply Chain Vulnerabilities",
+    "hallucinated_package": "LLM03: Supply Chain Vulnerabilities",
+    "ai_dependency_untrusted_source": "LLM03: Supply Chain Vulnerabilities",
+    "unverified_model_source": "LLM03: Supply Chain Vulnerabilities",
+    
+    "excessive_github_token_agency": "LLM06: Excessive Agency",
+    "no_confirmation_instruction": "LLM06: Excessive Agency",
+    "privileged_container": "LLM06: Excessive Agency",
+    "auto_approve_enabled": "LLM06: Excessive Agency",
+    
+    "package_not_found": "LLM09: Misinformation (Hallucination)",
+    "hallucinated_api_endpoint": "LLM09: Misinformation (Hallucination)"
+}
