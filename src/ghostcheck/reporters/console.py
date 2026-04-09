@@ -20,10 +20,10 @@ class ConsoleReporter:
 
     def report(self, findings):
         if not findings:
-            print(f"\n{self._color(' ✅ ', 'INFO')} {self._color('No security issues found. Project is clean.', 'INFO')}\n")
+            print(f"\n{self._color(' [OK] ', 'INFO')} {self._color('No security issues found. Project is clean.', 'INFO')}\n")
             return
 
-        print(f"\n{self._color(' 👻 GhostCheck Scan Results ', 'CRITICAL')}")
+        print(f"\n{self._color(' --- GhostCheck Scan Results --- ', 'CRITICAL')}")
         print(f"{self.colors['DIM']}{'='*60}{self.colors['RESET']}")
         
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
@@ -36,16 +36,16 @@ class ConsoleReporter:
             
             # Header line
             print(f"{self._color(f' {sev:<10} ', sev)} {self.colors['RESET']}{title}")
-            print(f"{self.colors['DIM']}📍 {loc}{self.colors['RESET']}")
+            print(f"{self.colors['DIM']}Loc: {loc}{self.colors['RESET']}")
             
             if 'message' in f:
                 print(f"   {f['message']}")
             if 'value_preview' in f:
                 print(f"   {self.colors['DIM']}Context: {f['value_preview']}{self.colors['RESET']}")
             if 'remediation' in f:
-                print(f"   {self._color('💡 Fix:', 'INFO')} {f['remediation']}")
+                print(f"   {self._color('Fix:', 'INFO')} {f['remediation']}")
             elif 'suggestion' in f:
-                print(f"   {self._color('💡 Suggestion:', 'INFO')} {f['suggestion']}")
+                print(f"   {self._color('Suggestion:', 'INFO')} {f['suggestion']}")
             print(f"{self.colors['DIM']}{'-'*60}{self.colors['RESET']}")
 
         summary = {}
@@ -53,7 +53,7 @@ class ConsoleReporter:
             sev = f.get('severity', 'INFO')
             summary[sev] = summary.get(sev, 0) + 1
         
-        print(f"\n📊 {self._color('Summary', 'INFO')}")
+        print(f"\nSummary")
         summary_line = []
         for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]:
             if sev in summary:
