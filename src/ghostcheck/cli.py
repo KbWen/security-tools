@@ -37,6 +37,7 @@ def main():
     # init command
     init_parser = subparsers.add_parser("init", help="Initialize GhostCheck in the current project")
     init_parser.add_argument("--force", action="store_true", help="Overwrite existing configuration")
+    init_parser.add_argument("--ci", choices=["github", "gitlab"], help="Generate CI pipeline configuration")
     
     # baseline command
     baseline_parser = subparsers.add_parser("baseline", help="Manage security check baselines")
@@ -51,7 +52,7 @@ def main():
     subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
     
     # Version flag
-    parser.add_argument("--version", action="version", version="GhostCheck 0.6.0")
+    parser.add_argument("--version", action="version", version="GhostCheck 0.7.0")
     
     args = parser.parse_args()
     
@@ -59,6 +60,9 @@ def main():
         initializer = GhostCheckInitializer(".")
         success, msg = initializer.initialize(force=args.force)
         print(f"{'✅' if success else '⚠️'} {msg}")
+        if success and args.ci:
+            success_ci, msg_ci = initializer.generate_ci_pipeline(args.ci)
+            print(f"{'✅' if success_ci else '⚠️'} {msg_ci}")
         sys.exit(0 if success else 1)
 
     # Load configuration

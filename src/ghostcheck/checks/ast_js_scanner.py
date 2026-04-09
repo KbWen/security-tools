@@ -100,7 +100,8 @@ class JsAstSecretChecker:
                         "line": line_no,
                         "pattern_name": f"{p['name']}{' (JS AST)' if is_ast else ''}",
                         "severity": p['severity'],
-                        "value_preview": masked
+                        "value_preview": masked,
+                        "suggestion": p.get('remediation', "Rotate or revoke this secret.")
                     })
             except Exception:
                 continue

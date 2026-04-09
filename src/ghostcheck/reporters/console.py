@@ -44,6 +44,8 @@ class ConsoleReporter:
                 print(f"   {self.colors['DIM']}Context: {f['value_preview']}{self.colors['RESET']}")
             if 'remediation' in f:
                 print(f"   {self._color('💡 Fix:', 'INFO')} {f['remediation']}")
+            elif 'suggestion' in f:
+                print(f"   {self._color('💡 Suggestion:', 'INFO')} {f['suggestion']}")
             print(f"{self.colors['DIM']}{'-'*60}{self.colors['RESET']}")
 
         summary = {}

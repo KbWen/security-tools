@@ -41,7 +41,8 @@ class DockerRiskChecker:
                 "line": 1,
                 "rule_name": "Missing USER Instruction",
                 "severity": "HIGH",
-                "message": "Dockerfile should specify a non-root USER."
+                "message": "Dockerfile should specify a non-root USER.",
+                "suggestion": "Add 'USER <username>' to your Dockerfile to avoid running as root."
             })
 
         for i, line in enumerate(lines):
@@ -52,7 +53,8 @@ class DockerRiskChecker:
                     "line": i + 1,
                     "rule_name": "Latest Tag Usage",
                     "severity": "MEDIUM",
-                    "message": "Using 'latest' tag in FROM is risky."
+                    "message": "Using 'latest' tag in FROM is risky.",
+                    "suggestion": "Pin your base image to a specific version or digest (e.g., node:20-alpine)."
                 })
             
             # Check for secrets in ENV
@@ -62,7 +64,8 @@ class DockerRiskChecker:
                     "line": i + 1,
                     "rule_name": "Hardcoded Secret",
                     "severity": "CRITICAL",
-                    "message": "Do not hardcode secrets in ENV instructions."
+                    "message": "Do not hardcode secrets in ENV instructions.",
+                    "suggestion": "Use runtime environment variables, Docker Secrets, or a secret manager."
                 })
 
         return findings
@@ -78,6 +81,7 @@ class DockerRiskChecker:
                         "line": i + 1,
                         "rule_name": risk['name'],
                         "severity": risk['severity'],
-                        "message": risk['message']
+                        "message": risk['message'],
+                        "suggestion": risk['message'] # Fallback for legacy risks
                     })
         return findings

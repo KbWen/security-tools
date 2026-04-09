@@ -20,6 +20,7 @@ class AgentRulesLinter:
                         "rule_name": p['name'],
                         "severity": p['severity'],
                         "matched_content": match.group(0),
-                        "remediation": p['remediation']
+                        "remediation": p['remediation'],
+                        "suggestion": p['remediation']
                     })
         return findings

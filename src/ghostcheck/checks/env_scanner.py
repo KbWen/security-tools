@@ -22,7 +22,8 @@ class EnvScanner:
                 "line": 1,
                 "pattern_name": "Unignored Environment File",
                 "severity": "CRITICAL",
-                "value_preview": f"{filename} is public/not-ignored"
+                "value_preview": f"{filename} is public/not-ignored",
+                "suggestion": f"Add {filename} to your .gitignore immediately."
             })
 
         # 2. Check for suspicious env values
@@ -44,7 +45,8 @@ class EnvScanner:
                         "line": i + 1,
                         "pattern_name": "Debug Enabled",
                         "severity": "MEDIUM",
-                        "value_preview": f"{key}={val}"
+                        "value_preview": f"{key}={val}",
+                        "suggestion": "Disable DEBUG mode in production environments."
                     })
                 
                 # Check for wildcard CORS/origins
@@ -55,7 +57,8 @@ class EnvScanner:
                             "line": i + 1,
                             "pattern_name": "Wildcard Origin",
                             "severity": "HIGH",
-                            "value_preview": "*"
+                            "value_preview": "*",
+                            "suggestion": "Specify trusted origins instead of using wildcards (*) for CORS."
                         })
 
         return findings

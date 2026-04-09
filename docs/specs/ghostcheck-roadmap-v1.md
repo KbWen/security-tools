@@ -230,6 +230,24 @@ security-tools/
 - 與 Feature B (CI/CD Auditor) 互補: Auditor 審核現有 pipeline，Generator 產生最佳實踐 pipeline
 - **來源**: Multi-Role Review v0.6.0 — DevOps Engineer 建議
 
+#### Feature F: Firebase Security Rules Audit [NEW — Mobile Security]
+
+- **新增**: `src/ghostcheck/checks/firebase_rules_auditor.py`
+- 掃描 Firebase 安全規則檔案:
+  - `firestore.rules` — 偵測 `allow read, write: if true` 等過度開放規則 → CRITICAL
+  - `storage.rules` — 偵測 `allow read, write` 無條件限制 → HIGH
+  - `database.rules.json` — 偵測 `".read": true, ".write": true` → CRITICAL
+- 偵測缺少 `request.auth != null` 驗證的寫入規則 → HIGH
+- **理由**: Firebase Rules 本質上是 Infrastructure-as-Code，Flutter/React Native + Firebase 開發者最常犯的錯就是開發期 `allow all` 規則忘記收緊
+
+#### Feature G: CI/CD Secret Hygiene (Fastlane / Mobile CI) [NEW — Mobile Security]
+
+- 擴展 Feature B (CI/CD Auditor) 加入行動端 CI 掃描:
+  - 偵測 Fastlane `Matchfile` / `Appfile` 中的硬編碼密碼 → HIGH
+  - 偵測 `Fastfile` 中未使用環境變數的 signing credentials → HIGH
+  - 偵測 `android/key.properties` 未被 `.gitignore` → CRITICAL
+  - 偵測 `ios/Runner/GoogleService-Info.plist` 含 production secrets 被提交 → HIGH
+
 #### Verification
 
 ```bash
@@ -238,6 +256,8 @@ security-tools/
 # Plugin: 撰寫一個簡單的 plugin, 載入並執行
 # Config: 設定 toml 後驗證行為改變
 # CI Gen: 執行 ghostcheck init --ci github，驗證產生的 workflow 檔案
+# Firebase Rules: 準備含 allow all 的 firestore.rules 測試檔案
+# Mobile CI: 準備含硬編碼 signing creds 的 Fastfile 測試檔案
 ```
 
 ---
@@ -257,9 +277,10 @@ security-tools/
 
 - **新增**: `src/ghostcheck/checks/vuln_scanner.py`
 - 查詢 OSV.dev / GitHub Advisory Database 檢查已知 CVE
-- 支援: `requirements.txt`, `package.json`, `package-lock.json`, `go.sum`, `Cargo.lock`
+- 支援: `requirements.txt`, `package.json`, `package-lock.json`, `go.sum`, `Cargo.lock`, **`pubspec.lock`** (Dart/Flutter)
 - `ghostcheck check-deps --vuln` — 列出含已知漏洞的套件
 - 離線模式: 快取 CVE 資料庫 (24h TTL)
+- **[NEW]** pub.dev 套件幻覺偵測: 擴展 `hallucination.py` 新增 pub.dev registry 驗證，偵測 `pubspec.yaml` 中不存在的 Dart 套件
 
 #### Feature C: API Endpoint Security Linter
 
@@ -269,6 +290,8 @@ security-tools/
   - FastAPI/Flask: 偵測缺少 auth dependency, 開放 debug mode
   - Next.js: 偵測 `api/` routes 缺少 auth middleware
 - 偵測 SSRF 風險: 使用者輸入直接傳入 `fetch()` / `requests.get()`
+- **[NEW] GraphQL 安全**: 偵測 GraphQL introspection 未關閉、缺少 query depth limiting、缺少 rate limiting
+- **[NEW] WebSocket 安全**: 偵測 WebSocket URL 中的明文 token (`ws://host?token=xxx`)、缺少 origin 驗證
 
 #### Feature D: Risk Score & HTML Dashboard
 
@@ -289,21 +312,46 @@ security-tools/
 - 預設 opt-in (`ghostcheck scan --verify-secrets`)，避免非預期外部請求
 - **來源**: Multi-Role Review v0.6.0 — Security Researcher 建議
 
+#### Feature F: Mobile Config Audit [NEW — Mobile Security] ⭐ 核心
+
+- **新增**: `src/ghostcheck/checks/mobile_config_auditor.py`
+- Android 掃描:
+  - `AndroidManifest.xml`: 偵測 `android:debuggable="true"` → CRITICAL
+  - `AndroidManifest.xml`: 偵測 `android:allowBackup="true"` → HIGH
+  - `AndroidManifest.xml`: 偵測 `android:exported="true"` 未受保護的 Activity/Receiver → HIGH
+  - `AndroidManifest.xml`: 偵測過度請求的危險權限 (CAMERA / LOCATION / CONTACTS 等) → MEDIUM
+- iOS 掃描:
+  - `Info.plist`: 偵測 App Transport Security (ATS) 被禁用 (`NSAllowsArbitraryLoads`) → HIGH
+  - `Info.plist`: 偵測敏感 URL Scheme 未限制 → MEDIUM
+- Firebase 設定檔:
+  - `google-services.json`: 偵測未被 `.gitignore` 排除 → HIGH
+  - `GoogleService-Info.plist`: 偵測未被 `.gitignore` 排除 → HIGH
+- **理由**: 行動端 config 檔案是最容易被忽略的安全風險面
+
+#### Feature G: Monorepo / Multi-Package Security [NEW]
+
+- 偵測跨 package 的 dependency confusion 風險
+- 偵測 `.env` 檔案散落在子目錄中未被 `.gitignore`
+- 偵測 monorepo 中重複但版本不一致的 dependencies
+
 #### Verification
 
 ```bash
 # Entropy: 測試高亂度假字串是否觸發警報
-# CVE: 測試含已知漏洞版本的 requirements.txt
+# CVE: 測試含已知漏洞版本的 requirements.txt 和 pubspec.lock
 # API: 準備含 CORS wildcard 的 Express.js 程式碼
+# GraphQL: 準備含 introspection enabled 的 schema 設定
 # Risk Score: 驗證分數計算邏輯與邊界條件
 # Secret Validation: 使用測試 token 驗證 API 呼叫邏輯
+# Mobile Config: 準備含 debuggable=true 的 AndroidManifest.xml
+# pub.dev: 測試含不存在套件的 pubspec.yaml
 ```
 
 ---
 
 ### 🟤 v0.9.0 — Multi-Language AST Expansion & Watch Mode
 
-> **目標**: 將 AST 語法分析擴展到主流語言，並加入即時監控。
+> **目標**: 將 AST 語法分析擴展到主流語言（含 Dart），並加入即時監控。
 
 #### Feature A: Go AST Scanner
 
@@ -320,9 +368,21 @@ security-tools/
 #### Feature C: Taint Analysis Lite
 
 - **實作**: 追蹤被識別為機密的變數是否被傳遞至危險輸出口
-- 偵測: `console.log(secret)`, `print(api_key)`, `logger.info(token)`
+- 偵測: `console.log(secret)`, `print(api_key)`, `logger.info(token)`, **`debugPrint(secret)`** (Dart)
 - 偵測: `fetch(url, { headers: { Authorization: hardcoded } })`
-- 跨語言: Python / JavaScript
+- 跨語言: Python / JavaScript / **Dart**
+
+#### Feature F: Dart AST Scanner [NEW — Mobile Security] ⭐ 核心
+
+- **新增**: `src/ghostcheck/checks/ast_dart_scanner.py`
+- 解析 `.dart` 檔案的 AST (使用 `tree-sitter-dart` 或正則 fallback)
+- 偵測規則:
+  - 硬編碼 API keys (`const apiKey = "AIzaSy..."`) → CRITICAL
+  - `String` concatenation / interpolation 混淆的密鑰 → HIGH
+  - `print()` / `debugPrint()` 輸出敏感變數 → 整合 Taint Analysis Lite → MEDIUM
+  - `http.get()` / `dio.get()` 中的硬編碼 URL（尤其是 staging/debug URLs）→ MEDIUM
+  - `SharedPreferences` 明文儲存敏感資料 → HIGH
+- **安全強化**: Dart AST 遞歸限制 (同 Python/JS AST 防護模式)
 
 #### Feature D: Watch Mode
 
@@ -345,7 +405,8 @@ security-tools/
 ```bash
 # Go AST: 準備含硬編碼 creds 的 .go 測試檔
 # Java: 準備含 @Value 密碼的 .java 測試檔
-# Taint: 測試 console.log(secret) 是否被偵測
+# Dart AST: 準備含硬編碼 API keys 和 debugPrint(secret) 的 .dart 測試檔
+# Taint: 測試 console.log(secret) / debugPrint(secret) 是否被偵測
 # Watch: 啟動後修改檔案，觀察即時偵測
 # Fixer: 使用 Ollama 測試修復建議產生
 ```
@@ -365,9 +426,34 @@ security-tools/
   - `fastapi` — 偵測 CORS, auth, debug mode
   - `django` — 偵測 `SECRET_KEY`, `DEBUG=True`, ALLOWED_HOSTS
   - `express` — 偵測 helmet, rate-limit, CORS, session config
-  - `flutter` — 偵測 API keys in Dart files, Firebase config
+  - `flutter` — **[擴展]** 完整 Flutter 安全掃描 (見下方詳細規則)
+  - `react-native` — **[NEW]** React Native 安全掃描
   - `terraform` — 偵測 state 檔案, hardcoded creds
   - `generic` — 通用掃描 (default)
+
+##### Flutter Preset 詳細規則 [NEW — Mobile Security]
+
+| 檢查項目 | 說明 | 嚴重度 |
+| ---- | ---- | ---- |
+| Dart 密鑰掃描 | 正則 + AST (v0.9.0 Dart AST) | CRITICAL |
+| Firebase config 安全 | `google-services.json` / `GoogleService-Info.plist` 未排除 | HIGH |
+| `--obfuscate` flag | 偵測 release build 未啟用 Dart 程式碼混淆 | MEDIUM |
+| Certificate Pinning 缺失 | 偵測 HTTP client (`dio` / `http`) 未設定 SSL pinning | HIGH |
+| AdMob Test ID 殘留 | 偵測 production code 中殘留的測試廣告 ID (`ca-app-pub-3940256099942544`) | MEDIUM |
+| Deep Link 安全 | 偵測 GoRouter / `AndroidManifest.xml` 中未受保護的 deep link scheme | HIGH |
+| Local DB 加密 | 偵測 Drift / SQLite 未啟用加密 (`encrypted_moor` / `sqlcipher_flutter_libs`) | HIGH |
+| RevenueCat Key 混淆 | 偵測 public API key 與 secret key 混淆使用 | CRITICAL |
+| Firebase Rules | 整合 v0.7.0 Firebase Rules Audit | CRITICAL |
+
+##### React Native Preset [NEW]
+
+| 檢查項目 | 說明 | 嚴重度 |
+| ---- | ---- | ---- |
+| JS/TS 密鑰掃描 | 已有 AST 支援 (v0.5.0) | CRITICAL |
+| `.env` 檔案掃描 | 已有 `.env` 掃描 (v0.5.0) | HIGH |
+| Hermes bytecode | 偵測未啟用 Hermes 引擎 | MEDIUM |
+| CodePush / OTA | 偵測不安全的 OTA 更新機制 | HIGH |
+| `react-native-config` | 偵測 config 中明文 secrets | HIGH |
 
 #### Feature B: Complete Documentation
 
@@ -377,7 +463,7 @@ security-tools/
   - `API.md` — Python API 參考
   - `CHANGELOG.md` — 版本變更紀錄
   - `SECURITY.md` — 安全政策
-  - `PRESETS.md` — 框架預設策略文件
+  - `PRESETS.md` — 框架預設策略文件（含 Flutter / React Native preset 說明）
 
 #### Feature C: PyPI Publishing & Performance
 
@@ -399,7 +485,8 @@ security-tools/
 ```bash
 # Full regression: pytest --cov ≥80%
 # Install: pip install ghostcheck && ghostcheck init && ghostcheck scan .
-# Presets: 在 Next.js / Django / Terraform 專案各執行一次
+# Presets: 在 Next.js / Django / Terraform / Flutter / React Native 專案各執行一次
+# Flutter: 驗證 AdMob test ID / deep link / Drift 加密 / RevenueCat key 偵測
 # Performance: time ghostcheck scan <large-repo> < 60s
 # Publish: test upload to TestPyPI
 ```
@@ -449,15 +536,16 @@ security-tools/
 
 ```mermaid
 graph LR
-    v0.5["v0.5.0 ✅<br/>Multi-Lang AST"] --> v0.6["v0.6.0<br/>Zero-Config + Git"]
-    v0.6 --> v0.7["v0.7.0<br/>IaC + CI/CD"]
-    v0.7 --> v0.8["v0.8.0<br/>Advanced Detection"]
-    v0.8 --> v0.9["v0.9.0<br/>Multi-Lang + Watch"]
+    v0.5["v0.5.0 ✅<br/>Multi-Lang AST"] --> v0.6["v0.6.0 ✅<br/>Zero-Config + Git"]
+    v0.6 --> v0.7["v0.7.0<br/>IaC + CI/CD + Firebase Rules"]
+    v0.7 --> v0.8["v0.8.0<br/>Advanced Detection + Mobile Config"]
+    v0.8 --> v0.9["v0.9.0<br/>Multi-Lang + Dart AST + Watch"]
     v0.9 --> v1.0["v1.0.0<br/>Universal Scanner"]
 
     v0.6 -.->|"init + config"| v1.0
-    v0.7 -.->|"IaC patterns"| v1.0
-    v0.8 -.->|"Entropy + CVE"| v1.0
+    v0.7 -.->|"IaC + Firebase Rules"| v1.0
+    v0.8 -.->|"Entropy + CVE + Mobile Config"| v1.0
+    v0.9 -.->|"Dart AST"| v1.0
     v0.5 -.->|"Severity Engine"| v0.8
 ```
 
@@ -486,9 +574,12 @@ graph LR
 | Terraform / IaC | v0.7.0 | 硬編碼 creds、Security Group、State 檔案 |
 | Kubernetes | v0.7.0 | privileged pods、缺少 securityContext |
 | GitHub Actions / GitLab CI | v0.7.0 | 權限過寬、明文 secrets、未固定版本 |
+| Firebase / Serverless | v0.7.0+ | Rules Audit (v0.7.0)、Cloud Functions secrets |
+| **Flutter/Dart** | **v0.6.0+ → v1.0.0** | **正則密鑰 (v0.6.0+)、pub.dev 幻覺偵測 (v0.8.0)、Mobile Config Audit (v0.8.0)、Dart AST (v0.9.0)、Framework Preset (v1.0.0)** |
+| **React Native** | **v0.5.0+ → v1.0.0** | **JS AST (v0.5.0+)、.env (v0.5.0+)、Framework Preset (v1.0.0)** |
 | Go | v0.9.0 | AST 密鑰偵測、不安全 exec |
 | Java/Kotlin (Spring) | v0.9.0 | JDBC 連接字串、@Value 密碼 |
-| Flutter/Dart | v1.0.0 | API keys、Firebase config |
+| **GraphQL API** | **v0.8.0** | **Introspection、Depth Limit、Rate Limit** |
 | 通用 (任何語言) | v0.1.0+ | 正則密鑰掃描、entropy 偵測 (v0.8.0+) |
 
 ---
@@ -512,3 +603,12 @@ graph LR
 | **[新增] Contextual Secret Validation** | 🔴 v0.8.0 | Review 建議: Security |
 | **[新增] Go / Java AST** | 🟤 v0.9.0 | 多語言覆蓋 |
 | **[新增] Framework Presets** | 🟣 v1.0.0 | 框架感知 |
+| **[新增] Firebase Rules Audit** | 🟠 v0.7.0 | Mobile + IaC 安全 |
+| **[新增] Mobile Config Audit** | 🔴 v0.8.0 | AndroidManifest / Info.plist / Firebase config |
+| **[新增] pub.dev 幻覺偵測 + CVE** | 🔴 v0.8.0 | Dart/Flutter 套件安全 |
+| **[新增] GraphQL / WebSocket 安全** | 🔴 v0.8.0 | API 安全擴展 |
+| **[新增] Monorepo 安全** | 🔴 v0.8.0 | 跨 package dependency confusion |
+| **[新增] Dart AST Scanner** | 🟤 v0.9.0 | Flutter/Dart 語法分析 |
+| **[新增] Flutter Preset (擴展)** | 🟣 v1.0.0 | 完整 Flutter 安全掃描 |
+| **[新增] React Native Preset** | 🟣 v1.0.0 | RN 安全掃描 |
+| **[新增] CI/CD Secret Hygiene (Fastlane)** | 🟠 v0.7.0 | Mobile CI 安全 |

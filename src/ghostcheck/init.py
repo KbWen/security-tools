@@ -79,3 +79,91 @@ project_type = "{project_type}"
                     f.write(f"{e}\n")
 
         return True, f"Successfully initialized {project_type} project in {config_path}"
+
+    def generate_ci_pipeline(self, provider: str):
+        provider = provider.lower()
+        if provider == "github":
+            return self._generate_github_action()
+        elif provider == "gitlab":
+            return self._generate_gitlab_ci()
+        return False, f"Unsupported CI provider: {provider}"
+
+    def _generate_github_action(self):
+        workflows_dir = os.path.join(self.project_root, ".github", "workflows")
+        os.makedirs(workflows_dir, exist_ok=True)
+        
+        ci_path = os.path.join(workflows_dir, "ghostcheck.yml")
+        content = """name: GhostCheck Security Scan
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  schedule:
+    - cron: '0 0 * * *' # Daily scan
+
+jobs:
+  scan:
+    name: GhostCheck
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # For SARIF upload
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for git-diff scan
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install GhostCheck
+        run: |
+          python -m pip install --upgrade pip
+          pip install ghostcheck
+
+      - name: Run GhostCheck Scan
+        run: |
+          # Scan everything and output SARIF for GitHub Security Tab
+          ghostcheck scan . --format sarif --output ghostcheck-results.sarif
+        continue-on-error: true # Don't block pipeline by default, but report to Security Tab
+
+      - name: Upload SARIF report
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: ghostcheck-results.sarif
+"""
+        with open(ci_path, "w") as f:
+            f.write(content)
+        return True, f"GitHub Action generated at {ci_path}"
+
+    def _generate_gitlab_ci(self):
+        ci_path = os.path.join(self.project_root, ".gitlab-ci.yml")
+        content = """stages:
+  - test
+  - security
+
+ghostcheck-scan:
+  stage: security
+  image: python:3.10-slim
+  script:
+    - pip install ghostcheck
+    - ghostcheck scan . --format json --output ghostcheck-report.json
+  artifacts:
+    reports:
+      sast: ghostcheck-report.json
+    paths:
+      - ghostcheck-report.json
+  only:
+    - main
+    - merge_requests
+"""
+        with open(ci_path, "w") as f:
+            f.write(content)
+        return True, f"GitLab CI generated at {ci_path}"
