@@ -57,7 +57,8 @@ class Scanner:
         self.iac_scanner = IaCScanner()
         self.ci_auditor = CIAuditor()
         self.firebase_rules_auditor = FirebaseRulesAuditor()
-        self.plugin_loader = PluginLoader()
+        load_local = self.config.get('load_local_plugins', False) if self.config else False
+        self.plugin_loader = PluginLoader(load_local=load_local)
         self.plugin_loader.load_plugins()
         
         # AC-14: Ignore Handling

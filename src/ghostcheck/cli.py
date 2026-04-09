@@ -25,6 +25,7 @@ def main():
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
     parent_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
     parent_parser.add_argument("--baseline", help="Path to baseline file to suppress known findings")
+    parent_parser.add_argument("--load-local-plugins", action="store_true", help="Enable loading plugins from local workspace .ghostcheck/plugins")
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
