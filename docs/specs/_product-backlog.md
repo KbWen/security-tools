@@ -43,8 +43,8 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E1-F1 | **MCP Server Config Auditor** | P0 | v0.8.0 | 🟢 | 掃描 `mcp.json` / `mcp_config.json` / `.cursor/mcp.json` / VS Code MCP 設定，偵測：<br>- 繫結 `0.0.0.0` 而非 `127.0.0.1` (NeighborJack) → CRITICAL<br>- 缺少認證/token 的 MCP server → HIGH<br>- 使用 `stdio` transport 搭配 `npx` 執行未固定版本套件 → HIGH<br>- `env` block 中明文寫入 API keys → CRITICAL |
-| E1-F2 | **MCP Tool Poisoning Detector** | P0 | v0.8.0 | 🟡 | 掃描 MCP server 原始碼 (Python/TS)，偵測 tool description 中的隱藏指令：<br>- Tool description 含 `<IMPORTANT>` / invisible Unicode / base64 payload → CRITICAL<br>- Tool description 長度異常 (>500 chars) 可能藏有 injection → MEDIUM<br>- Parameter description 含 injection pattern (`ignore previous`, `you must`) → HIGH |
+| E1-F1 | **MCP Server Config Auditor** | P0 | v0.8.0 | ✅ | 掃描 `mcp.json` / `mcp_config.json` / `.cursor/mcp.json` / VS Code MCP 設定，偵測：<br>- 繫結 `0.0.0.0` 而非 `127.0.0.1` (NeighborJack) → CRITICAL<br>- 缺少認證/token 的 MCP server → HIGH<br>- 使用 `stdio` transport 搭配 `npx` 執行未固定版本套件 → HIGH<br>- `env` block 中明文寫入 API keys → CRITICAL |
+| E1-F2 | **MCP Tool Poisoning Detector** | P0 | v0.8.0 | ✅ | 掃描 MCP server 原始碼 (Python/TS)，偵測 tool description 中的隱藏指令：<br>- Tool description 含 `<IMPORTANT>` / invisible Unicode / base64 payload → CRITICAL<br>- Tool description 長度異常 (>500 chars) 可能藏有 injection → MEDIUM<br>- Parameter description 含 injection pattern (`ignore previous`, `you must`) → HIGH |
 | E1-F3 | **MCP Permission Boundary Checker** | P1 | v0.9.0 | 🟡 | 分析 MCP server 宣告的 capabilities vs 實際行為：<br>- Server 宣稱 read-only 但 code 中有 `fs.writeFile` / `os.remove` → HIGH<br>- Server 存取的路徑超出宣告 scope → MEDIUM<br>- Server 對外發送 HTTP 請求至非白名單域名 → HIGH |
 | E1-F4 | **MCP Rug Pull Detection** | P2 | v1.0.0 | 🟡 | 監控 MCP server npm/pip 套件版本變更：<br>- 記錄已安裝 MCP server 的 tool description hash<br>- 下次掃描比對變化 → 若 description 被修改則告警<br>- 可整合 `ghostcheck watch` |
 
@@ -58,8 +58,8 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E2-F1 | **Agent Rules Injection Scanner (強化版)** | P0 | v0.8.0 | 🟢 | 擴展現有 `agent_rules.py`，新增偵測：<br>- 隱藏的 prompt injection patterns (invisible chars, Unicode RTL, zero-width spaces) → CRITICAL<br>- 指示 agent 讀取 `~/.ssh/`, `~/.aws/`, `.env` 等敏感路徑 → CRITICAL<br>- 指示 agent 發送 HTTP 請求至外部 URL → HIGH<br>- 指示 agent 執行 `curl`, `wget`, `nc`, `base64` 等危險指令 → HIGH<br>- 指示 agent 繞過安全檢查 (`skip review`, `ignore warnings`, `auto-approve`) → MEDIUM |
-| E2-F2 | **Multi-Format Rules Support** | P1 | v0.8.0 | 🟢 | 擴展掃描範圍至所有 AI IDE 設定檔格式：<br>- `.cursorrules` / `.cursor/rules/*.mdc`<br>- `AGENTS.md` / `.agents/*.md`<br>- `.github/copilot-instructions.md`<br>- `.windsurf/rules/*.md`<br>- `CLAUDE.md` / `.claude/settings.json`<br>- `.gemini/settings.json` / `GEMINI.md`<br>- `.aider/config.yml` |
+| E2-F1 | **Agent Rules Injection Scanner (強化版)** | P0 | v0.8.0 | ✅ | 擴展現有 `agent_rules.py`，新增偵測：<br>- 隱藏的 prompt injection patterns (invisible chars, Unicode RTL, zero-width spaces) → CRITICAL<br>- 指示 agent 讀取 `~/.ssh/`, `~/.aws/`, `.env` 等敏感路徑 → CRITICAL<br>- 指示 agent 發送 HTTP 請求至外部 URL → HIGH<br>- 指示 agent 執行 `curl`, `wget`, `nc`, `base64` 等危險指令 → HIGH<br>- 指示 agent 繞過安全檢查 (`skip review`, `ignore warnings`, `auto-approve`) → MEDIUM |
+| E2-F2 | **Multi-Format Rules Support** | P1 | v0.8.0 | ✅ | 擴展掃描範圍至所有 AI IDE 設定檔格式：<br>- `.cursorrules` / `.cursor/rules/*.mdc`<br>- `AGENTS.md` / `.agents/*.md`<br>- `.github/copilot-instructions.md`<br>- `.windsurf/rules/*.md`<br>- `CLAUDE.md` / `.claude/settings.json`<br>- `.gemini/settings.json` / `GEMINI.md`<br>- `.aider/config.yml` |
 | E2-F3 | **Cross-File Influence Analysis** | P2 | v1.0.0 | 🟡 | 偵測 agent rules 引用其他檔案時的信任邊界問題：<br>- Rules 指令 agent 讀取某檔案 → 該檔案也需被掃描<br>- 偵測 include chain 形成的間接注入 |
 
 ---
@@ -72,7 +72,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E3-F1 | **AI Dependency Manifest Scanner** | P0 | v0.8.0 | 🟢 | 掃描 AI 專案特有的 dependency 宣告：<br>- `mcp.json` 中的 MCP server → 驗證 npm/pip 套件是否存在<br>- LangChain / LlamaIndex `requirements.txt` → 已知 CVE 檢查<br>- `docker-compose.yml` 中的 LLM inference server (ollama, vllm, text-generation-inference) → 版本安全<br>- `.env` 中的 model name → 驗證 Hugging Face model 是否存在 (防幻覺) |
+| E3-F1 | **AI Dependency Manifest Scanner** | P0 | v0.8.0 | ✅ | 掃描 AI 專案特有的 dependency 宣告：<br>- `mcp.json` 中的 MCP server → 驗證 npm/pip 套件是否存在<br>- LangChain / LlamaIndex `requirements.txt` → 已知 CVE 檢查<br>- `docker-compose.yml` 中的 LLM inference server (ollama, vllm, text-generation-inference) → 版本安全<br>- `.env` 中的 model name → 驗證 Hugging Face model 是否存在 (防幻覺) |
 | E3-F2 | **Prompt Template Injection Scanner** | P1 | v0.9.0 | 🟡 | 掃描專案中的 prompt template 檔案 (`.prompt`, `.jinja2`, `prompts/`目錄)：<br>- 偵測 template 中缺少 input sanitization placeholder → MEDIUM<br>- 偵測 template 允許使用者直接控制 system prompt → HIGH<br>- 偵測 hardcoded API keys 在 prompt 字串中 → CRITICAL |
 | E3-F3 | **Model Provenance Checker** | P2 | v1.0.0 | 🟡 | 掃描 model 設定檔 (`Modelfile`, `.gguf` references, HuggingFace `config.json`)：<br>- 偵測使用未經驗證來源的 model weights<br>- 偵測 LoRA adapter 從非官方來源載入<br>- 建議使用 signed model checksums |
 
@@ -85,7 +85,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E4-F1 | **Excessive Agency Detector** | P0 | v0.8.0 | 🟢 | 偵測 AI Agent 設定中過度寬鬆的權限：<br>- GitHub Actions 中 AI bot 使用 `GITHUB_TOKEN` 且有 `contents: write` + `pull-requests: write` → HIGH<br>- Agent rules 指示 `auto-apply`, `auto-run`, `no confirmation` → HIGH<br>- Dockerfile 中以 `root` 運行 AI agent service → CRITICAL<br>- CI/CD pipeline 中 AI agent 可直接 deploy to production → CRITICAL |
+| E4-F1 | **Excessive Agency Detector** | P0 | v0.8.0 | ✅ | 偵測 AI Agent 設定中過度寬鬆的權限：<br>- GitHub Actions 中 AI bot 使用 `GITHUB_TOKEN` 且有 `contents: write` + `pull-requests: write` → HIGH<br>- Agent rules 指示 `auto-apply`, `auto-run`, `no confirmation` → HIGH<br>- Dockerfile 中以 `root` 運行 AI agent service → CRITICAL<br>- CI/CD pipeline 中 AI agent 可直接 deploy to production → CRITICAL |
 | E4-F2 | **AI-Generated Code Marker** | P1 | v0.9.0 | 🟡 | 偵測可能由 AI 生成但未被審查的程式碼：<br>- 偵測 `// Generated by` / `# Auto-generated` 等標記<br>- 偵測 commit message 含 AI 工具名稱 (`Copilot`, `Cursor`, `Claude`) 但缺少 review 標記<br>- 生成 AI-authored code coverage 報告 |
 | E4-F3 | **Data Exfiltration via AI Channel** | P1 | v0.9.0 | 🟡 | 擴展現有 exfiltration 偵測至 AI 特有管道：<br>- 偵測將敏感資料作為 prompt 傳送給 LLM API → HIGH<br>- 偵測 MCP server 將本地檔案內容回傳 → MEDIUM<br>- 偵測 agent 輸出被直接寫入可公開存取的位置 → HIGH |
 | E4-F4 | **Human-in-the-Loop Verification** | P2 | v1.0.0 | 🟡 | 偵測高風險操作缺少人工確認機制：<br>- AI agent 執行 `git push --force` 無確認 → CRITICAL<br>- AI agent 執行 `rm -rf` / `DROP TABLE` 無確認 → CRITICAL<br>- AI agent 修改 `.env` / `secrets` 無確認 → HIGH |
@@ -99,11 +99,11 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E5-F1 | **LLM01: Prompt Injection Detection** | P0 | v0.8.0 | 🟢 | 整合 E2 (Agent Rules) + E1-F2 (Tool Poisoning) 的偵測結果，對應 LLM01 |
-| E5-F2 | **LLM02: Sensitive Info Disclosure** | P0 | v0.8.0 | 🟢 | 整合現有 secret scanner + E4-F3 (Data Exfil)，偵測 AI 管道中敏感資訊洩漏 |
-| E5-F3 | **LLM03: Supply Chain** | P0 | v0.8.0 | 🟢 | 整合 E3 (AI Supply Chain) + 既有幻覺偵測，對應 LLM03 |
-| E5-F4 | **LLM06: Excessive Agency** | P0 | v0.8.0 | 🟢 | 整合 E4-F1，對應 LLM06 |
-| E5-F5 | **LLM09: Misinformation (Hallucination)** | P0 | v0.8.0 | 🟢 | 整合既有 hallucination checker，對應 LLM09 |
+| E5-F1 | **LLM01: Prompt Injection Detection** | P0 | v0.8.0 | ✅ | 整合 E2 (Agent Rules) + E1-F2 (Tool Poisoning) 的偵測結果，對應 LLM01 |
+| E5-F2 | **LLM02: Sensitive Info Disclosure** | P0 | v0.8.0 | ✅ | 整合現有 secret scanner + E4-F3 (Data Exfil)，偵測 AI 管道中敏感資訊洩漏 |
+| E5-F3 | **LLM03: Supply Chain** | P0 | v0.8.0 | ✅ | 整合 E3 (AI Supply Chain) + 既有幻覺偵測，對應 LLM03 |
+| E5-F4 | **LLM06: Excessive Agency** | P0 | v0.8.0 | ✅ | 整合 E4-F1，對應 LLM06 |
+| E5-F5 | **LLM09: Misinformation (Hallucination)** | P0 | v0.8.0 | ✅ | 整合既有 hallucination checker，對應 LLM09 |
 | E5-F6 | **OWASP LLM Compliance Report** | P1 | v0.9.0 | 🟡 | 新增報告格式 `--format owasp-llm`：<br>- 依 LLM01-LLM10 分類列出發現<br>- 含合規百分比與 remediation 優先順序<br>- 可匯出 PDF / HTML |
 
 ---

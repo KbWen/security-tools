@@ -10,8 +10,20 @@ class AgencyAuditor:
                 "suggestion": "Limit GITHUB_TOKEN permissions to contents: read unless write access is strictly required for the AI agent workflow."
             },
             {
+                "name": "agency_excessive_permissions",
+                "pattern": r'write-all|write_all|full-access|full_access|sudo|admin|permissions:\s*\*',
+                "severity": "CRITICAL",
+                "suggestion": "AI agents should operate with least-privilege. Avoid 'write-all' or 'admin' permissions in rule files."
+            },
+            {
+                "name": "agency_destructive_ops",
+                "pattern": r'destructive|delete-files|remove-dir|purge|danger',
+                "severity": "HIGH",
+                "suggestion": "Granting AI agents destructive operations is high risk. Ensure strict human oversight or sandboxing."
+            },
+            {
                 "name": "no_confirmation_instruction",
-                "pattern": r'auto-approve|no\s+confirmation|auto-apply|skip\s+review',
+                "pattern": r'auto-approve|no\s+confirmation|auto-apply|skip\s+review|non-interactive',
                 "severity": "MEDIUM",
                 "suggestion": "Avoid giving AI agents full autonomy without human-in-the-loop confirmation for critical operations."
             }

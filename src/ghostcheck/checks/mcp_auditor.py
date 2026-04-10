@@ -12,9 +12,15 @@ class MCPAuditor:
             },
             {
                 "name": "mcp_hardcoded_api_key",
-                "pattern": r'"(API_KEY|TOKEN|SECRET)"\s*:\s*"[^"]+"',
+                "pattern": r'"[^"]*(API_KEY|TOKEN|SECRET)[^"]*"\s*:\s*"[^"]+"',
                 "severity": "CRITICAL",
                 "suggestion": "Do not hardcode API keys in MCP config. Use environment variables or a secret manager."
+            },
+            {
+                "name": "mcp_untrusted_endpoint",
+                "pattern": r'https?://(?!openai\.com|anthropic\.com|google\.com|localhost|127\.0\.0\.1|azure\.com)[^"\'\s]+',
+                "severity": "MEDIUM",
+                "suggestion": "Detected non-standard AI model endpoint. Verify the trustworthiness of this service provider."
             },
             {
                 "name": "mcp_tool_poisoning_injection",
@@ -33,18 +39,24 @@ class MCPAuditor:
         
         for i, line in enumerate(lines):
             for p in self.patterns:
-                if re.search(p['pattern'], line, re.IGNORECASE):
+                match = re.search(p['pattern'], line, re.IGNORECASE)
+                if match:
                     # For tool poisoning, only check if it looks like a config or server code
                     if p['name'] == "mcp_tool_poisoning_injection":
                         if not (is_config or is_server_code):
                             continue
                     
+                    context_str = line.strip()
+                    if p['name'] == "mcp_hardcoded_api_key":
+                        # Redact the value part in JSON-like configuration lines
+                        context_str = re.sub(r'(":\s*")[^"]+(")', r'\1********\2', context_str)
+                        
                     findings.append({
                         "file": file_path,
                         "line": i + 1,
                         "name": p['name'],
                         "severity": p['severity'],
                         "suggestion": p['suggestion'],
-                        "context": line.strip()
+                        "context": context_str
                     })
         return findings

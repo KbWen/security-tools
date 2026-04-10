@@ -12,5 +12,5 @@ def test_rules_lint(tmp_path):
     findings = linter.scan_file("rules.md", content)
     
     assert len(findings) == 1
-    assert findings[0]['rule_name'] == "Dangerous"
+    assert findings[0]['name'] == "Dangerous"
     assert findings[0]['severity'] == "CRITICAL"

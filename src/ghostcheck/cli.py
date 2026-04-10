@@ -12,13 +12,17 @@ from .config import GhostCheckConfig
 from .init import GhostCheckInitializer
 from .checks.git_diff_scanner import GitDiffScanner
 
-def main():
-    if sys.stdout.encoding != 'utf-8':
-        try:
-            sys.stdout.reconfigure(encoding='utf-8')
-        except Exception:
-            pass
+def get_icon(icon_type, use_unicode=True):
+    icons = {
+        "ok": ("✅", "[OK]"),
+        "warn": ("⚠️", "[WARN]"),
+        "stats": ("📊", "[STATS]"),
+        "info": ("ℹ️", "[INFO]"),
+    }
+    char, fallback = icons.get(icon_type, ("?", "?"))
+    return char if use_unicode else fallback
 
+def main():
     parser = argparse.ArgumentParser(
         description="GhostCheck: AI-Era Security Scanner",
         epilog="Addressing the unique risks of AI-assisted development."
@@ -30,6 +34,7 @@ def main():
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
+    parent_parser.add_argument("--ascii-only", action="store_true", help="Disable Unicode/Emoji output")
     parent_parser.add_argument("--offline", action="store_true", help="Run in offline mode")
     parent_parser.add_argument("--baseline", help="Path to baseline file to suppress known findings")
     parent_parser.add_argument("--load-local-plugins", action="store_true", help="Enable loading plugins from local workspace .ghostcheck/plugins")
@@ -60,27 +65,27 @@ def main():
     subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
     
     # Version flag
-    parser.add_argument("--version", action="version", version="GhostCheck 0.8.0")
+    parser.add_argument("--version", action="version", version="GhostCheck 0.9.0")
     
     args = parser.parse_args()
     
+    # Determine encoding/unicode support
+    stdout_encoding = (sys.stdout.encoding or 'ascii').lower()
+    use_unicode = not args.ascii_only and stdout_encoding == 'utf-8'
+
     if args.command == "init":
         initializer = GhostCheckInitializer(".")
         success, msg = initializer.initialize(force=args.force)
-        print(f"{'✅' if success else '⚠️'} {msg}")
+        print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
         if success and args.ci:
             success_ci, msg_ci = initializer.generate_ci_pipeline(args.ci)
-            print(f"{'✅' if success_ci else '⚠️'} {msg_ci}")
+            print(f"{get_icon('ok', use_unicode) if success_ci else get_icon('warn', use_unicode)} {msg_ci}")
         sys.exit(0 if success else 1)
 
     # Load configuration
     config = GhostCheckConfig(".")
     config.update_from_args(args)
     
-    if args.command == "demo":
-        runner = DemoRunner()
-        sys.exit(runner.run(reporter_type=args.format))
-        
     if not args.command:
         parser.print_help()
         sys.exit(0)
@@ -131,7 +136,7 @@ def main():
             scan_findings = scanner.scan()
             with open(args.output, "w") as f:
                 json.dump({"findings": scan_findings}, f, indent=4)
-            print(f"✅ Baseline created with {len(scan_findings)} findings at {args.output}")
+            print(f"{get_icon('ok', use_unicode)} Baseline created with {len(scan_findings)} findings at {args.output}")
             sys.exit(0)
 
         # Filter by severity
@@ -153,12 +158,12 @@ def main():
         elif args.format == "html":
             reporter = HTMLReporter()
             path = reporter.report(findings, grade, score_val)
-            print(f"✅ HTML Report generated at: {path}")
-            print(f"📊 Security Grade: {grade} ({score_val}/100)")
+            print(f"{get_icon('ok', use_unicode)} HTML Report generated at: {path}")
+            print(f"{get_icon('stats', use_unicode)} Security Grade: {grade} ({score_val}/100)")
         else:
-            reporter = ConsoleReporter(use_color=not args.no_color)
+            reporter = ConsoleReporter(use_color=not args.no_color, use_unicode=use_unicode)
             reporter.report(findings)
-            print(f"\n📊 {ConsoleReporter()._color('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
+            print(f"\n{get_icon('stats', use_unicode)} {reporter._color('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
             
         if findings:
             sys.exit(1)

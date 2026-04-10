@@ -1,8 +1,9 @@
 import json
 
 class ConsoleReporter:
-    def __init__(self, use_color=True):
+    def __init__(self, use_color=True, use_unicode=True):
         self.use_color = use_color
+        self.use_unicode = use_unicode
         self.colors = {
             "CRITICAL": "\033[97;41;1m", # White on Red
             "HIGH": "\033[91;1m",        # Bold Red
@@ -20,6 +21,9 @@ class ConsoleReporter:
 
     def report(self, findings):
         if not findings:
+            icon = " [OK] " if self.use_unicode else " [OK] " # OK is already ASCII-ish, but let's keep it consistent
+            # Actually line 23 used emoji before? No, it used ' [OK] '.
+            # Wait, let me check line 23 again.
             print(f"\n{self._color(' [OK] ', 'INFO')} {self._color('No security issues found. Project is clean.', 'INFO')}\n")
             return
 

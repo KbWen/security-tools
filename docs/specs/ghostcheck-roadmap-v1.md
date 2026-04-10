@@ -262,9 +262,22 @@ security-tools/
 
 ---
 
-### 🔴 v0.8.0 — Advanced Detection & Risk Intelligence
+### ✅ v0.8.0 — Advanced Detection & Risk Intelligence (2026-04-09)
 
-> **目標**: 提升偵測能力至接近商業工具水準，引入風險量化。
+> **目標**: 建立 AI Agent 安全基礎，並提升偵測能力至接近商業工具水準。
+
+| 功能 | 狀態 |
+|------|------|
+| E1-F1: MCP Server Config Auditor | ✅ 完成 |
+| E1-F2: MCP Tool Poisoning Detector | ✅ 完成 |
+| E2-F1: Agent Rules Injection Scanner (強化版) | ✅ 完成 |
+| E2-F2: Multi-Format Rules Support | ✅ 完成 |
+| E3-F1: AI Dependency Manifest Scanner | ✅ 完成 |
+| E4-F1: Excessive Agency Detector | ✅ 完成 |
+| E5-F1~F5: OWASP LLM Top 10 Mapping | ✅ 完成 |
+| (Roadmap) Entropy-based Secret Detection | ✅ 完成 |
+| (Roadmap) CVE Vulnerability Scanner | ✅ 完成 |
+| (Roadmap) Mobile Config Audit | ✅ 完成 |
 
 #### Feature A: Entropy-based Secret Detection ⭐ 核心
 
@@ -470,6 +483,7 @@ security-tools/
 - `pip install ghostcheck` 直接安裝
 - 平行掃描 (multi-threading for IO-bound checks)
 - 智慧跳過 (已掃描且未修改的檔案不重複掃描)
+- **Robust Baseline Fingerprinting**: 從 `file:line:name` 升級為基於內容雜湊 (Content Hash) 的 Fingerprint，解決路徑與行號變動導致的 Baseline 失效問題。
 - 大型 repo (>10,000 files) 效能基準 < 60s
 
 #### Feature D: Multi-Role Self-Review Protocol

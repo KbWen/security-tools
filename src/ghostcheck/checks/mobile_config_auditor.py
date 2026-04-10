@@ -49,6 +49,11 @@ class MobileConfigAuditor:
             matches = re.finditer(rule['pattern'], content)
             for match in matches:
                 line_idx = content.count('\n', 0, match.start())
+                val = match.group(0).strip()
+                masked = val
+                if rule['name'] == "mobile_hardcoded_google_api_key":
+                    masked = val[:4] + "*" * (len(val) - 8) + val[-4:] if len(val) > 8 else "****"
+                
                 findings.append({
                     "file": file_path,
                     "line": line_idx + 1,
@@ -56,6 +61,7 @@ class MobileConfigAuditor:
                     "severity": rule['severity'],
                     "message": rule['message'],
                     "remediation": rule['remediation'],
-                    "context": match.group(0).strip()
+                    "value_preview": masked,
+                    "context": masked
                 })
         return findings

@@ -5,7 +5,7 @@ class AISupplyChainScanner:
         self.patterns = [
             {
                 "name": "mcp_npm_package_unfixed",
-                "pattern": r'"command"\s*:\s*"npx\s+[^@"]+(?!"|@)', # npx without @version, simplified
+                "pattern": r'("command"|"args")\s*:\s*\[??"(npx|-y|@[a-z0-9-]+/[a-z0-9-]+)(?!"|@)',
                 "severity": "HIGH",
                 "suggestion": "Pin MCP server versions using @version (e.g., npx @modelcontextprotocol/server-everything@0.1.0) to prevent rug pull attacks."
             },
