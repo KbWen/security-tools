@@ -1,7 +1,7 @@
 import pytest
-from src.ghostcheck.checks.iac_scanner import IaCScanner
-from src.ghostcheck.checks.ci_auditor import CIAuditor
-from src.ghostcheck.checks.firebase_rules_auditor import FirebaseRulesAuditor
+from ghostcheck.checks.iac_scanner import IaCScanner
+from ghostcheck.checks.ci_auditor import CIAuditor
+from ghostcheck.checks.firebase_rules_auditor import FirebaseRulesAuditor
 
 def test_iac_scanner_terraform():
     scanner = IaCScanner()
