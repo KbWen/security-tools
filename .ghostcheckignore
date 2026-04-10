@@ -24,6 +24,21 @@ dist/
 build/
 *.egg-info/
 
-# Pattern Registry (contains real regex patterns that trigger findings)
+# Pattern Registry and Demo Fixtures (contain intentional patterns for testing/demo)
 src/ghostcheck/data/secret_patterns.json
+src/ghostcheck/data/demo_fixtures/
+
+# AI Platform Governance & Skill Directories (legitimate references to security commands)
+.codex/
+.claude/
+.agents/
+.antigravity/
+
+# Project Documentation & Specs (describe security patterns, not execute them)
+docs/specs/
+docs/context/
+README.md
+README_zh-TW.md
+CLAUDE.md
+AGENTS.md
 

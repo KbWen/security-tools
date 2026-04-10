@@ -18,7 +18,7 @@ class MCPAuditor:
             },
             {
                 "name": "mcp_untrusted_endpoint",
-                "pattern": r'https?://(?!openai\.com|anthropic\.com|google\.com|localhost|127\.0\.0\.1|azure\.com)[^"\'\s]+',
+                "pattern": r'https?://(?!openai\.com|anthropic\.com|google\.com|localhost|127\.0\.0\.1|azure\.com|github\.com|schema\.org|w3\.org|json-schema\.org|schemastore\.azurewebsites\.net)[^"\'\s]+',
                 "severity": "MEDIUM",
                 "suggestion": "Detected non-standard AI model endpoint. Verify the trustworthiness of this service provider."
             },

@@ -6,6 +6,9 @@ class SecretScanner:
     def __init__(self, patterns_path):
         with open(patterns_path, 'r') as f:
             self.patterns = json.load(f)
+        # Pre-compile patterns for speed
+        for p in self.patterns:
+            p['_compiled'] = re.compile(p['pattern'])
 
     def scan_file(self, file_path, content):
         findings = []
@@ -20,7 +23,7 @@ class SecretScanner:
                 continue
                 
             for p in self.patterns:
-                match = re.search(p['pattern'], line)
+                match = p['_compiled'].search(line)
                 if match:
                     original_severity = p['severity']
                     final_severity = self._adjust_severity(original_severity, severity_modifier)

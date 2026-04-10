@@ -1,7 +1,22 @@
 import sys
+import io
 import argparse
 import os
 import json
+
+# Fix: Reconfigure stdout to UTF-8 with replacement to avoid cp950/encoding crashes
+# on non-UTF-8 terminals (e.g., Windows cmd). Falls back gracefully.
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+elif hasattr(sys.stdout, 'buffer'):
+    try:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+    except Exception:
+        pass
+
 from .scanner import Scanner
 from .reporters.console import ConsoleReporter
 from .reporters.json_reporter import JsonReporter

@@ -377,45 +377,129 @@ class Scanner:
             
         return False
 
-    def scan(self, limit_files=None):
-        # Full scan combines all
-        raw_findings = (
-            self.scan_dependencies(limit_files) + 
-            self.scan_secrets(limit_files) + 
-            self.scan_rules(limit_files) + 
-            self.scan_docker(limit_files) +
-            self.scan_iac(limit_files) +
-            self.scan_ci(limit_files) +
-            self.scan_firebase(limit_files) +
-            self.scan_mcp(limit_files) +
-            self.scan_ai_supply_chain(limit_files) +
-            self.scan_agency(limit_files) +
-            self.scan_vulnerabilities(limit_files) +
-            self.scan_mobile(limit_files) +
-            self.scan_api(limit_files) +
-            self.scan_entropy(limit_files)
+    def _process_single_file(self, file_path):
+        """Processes a single file through all relevant scanners."""
+        findings = []
+        filename = os.path.basename(file_path)
+        path_lower = file_path.replace('\\', '/').lower()
+        
+        content = self._read_file_safe(file_path)
+        if not content:
+            # For vulnerability scanner, it doesn't need content to check manifest files
+            if filename in ['requirements.txt', 'package.json']:
+                findings.extend(self.vuln_scanner.scan_file(file_path))
+            return findings
+
+        # 1. Hallucination checks
+        if filename == 'requirements.txt':
+            findings.extend(self.hallucination_checker.check_requirements(content))
+        elif filename == 'package.json':
+            findings.extend(self.hallucination_checker.check_package_json(content))
+
+        # 2. Secret Scan (General + AST)
+        allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart', '.env']
+        if any(filename.endswith(ext) for ext in allowed_exts) or '.env' in filename:
+            findings.extend(self.secret_scanner.scan_file(file_path, content))
+            if filename.endswith('.py'):
+                findings.extend(self.ast_secret_checker.scan_file(file_path, content))
+            elif filename.endswith('.js') or filename.endswith('.ts'):
+                findings.extend(self.js_ast_checker.scan_file(file_path, content))
+            elif filename.endswith('.go'):
+                findings.extend(self.go_ast_scanner.scan_file(file_path, content))
+            elif filename.endswith('.java') or filename.endswith('.kt'):
+                findings.extend(self.java_ast_scanner.scan_file(file_path, content))
+            elif filename.endswith('.dart'):
+                findings.extend(self.dart_ast_scanner.scan_file(file_path, content))
+            
+            if '.env' in filename:
+                findings.extend(self.env_scanner.scan_file(file_path, content))
+
+        # 3. Agent Rules
+        rule_files = ['.cursorrules', 'AGENTS.md', 'CLAUDE.md', 'GEMINI.md']
+        is_rule_target = (
+            filename.endswith('.md') or 
+            filename.endswith('.mdc') or 
+            filename in rule_files or 
+            any(x in path_lower for x in ['.agent', '.agents', '.cursor', '.github/copilot'])
         )
+        if is_rule_target:
+            findings.extend(self.rules_linter.scan_file(file_path, content))
+
+        # 4. Docker / Infrastructure
+        if any(x in filename for x in ['Dockerfile', 'docker-compose']):
+            findings.extend(self.docker_checker.scan_file(file_path, content))
+        if any(filename.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
+            findings.extend(self.iac_scanner.scan_file(file_path, content))
+        if filename.endswith('.rules') or 'database.rules.json' in filename:
+            findings.extend(self.firebase_rules_auditor.scan_file(file_path, content))
+
+        # 5. MCP / AI Chain
+        if any(x in path_lower for x in ['mcp.json', 'mcp_config.json']) or filename.endswith('.py') or filename.endswith('.ts'):
+            findings.extend(self.mcp_auditor.scan_file(file_path, content))
+        
+        findings.extend(self.ai_supply_chain.scan_file(file_path, content))
+        findings.extend(self.agency_auditor.scan_file(file_path, content))
+
+        # 6. CI/CD & Mobile Config
+        is_ci = any(x in path_lower for x in ['.github/workflows', '.gitlab-ci', 'fastfile', 'matchfile', 'appfile'])
+        is_mobile_cfg = any(k in filename.lower() for k in ['key.properties', 'googleservice-info.plist', 'google-services.json'])
+        if is_ci or is_mobile_cfg:
+            findings.extend(self.ci_auditor.scan_file(file_path, content))
+        
+        findings.extend(self.mobile_auditor.scan_file(file_path, content))
+
+        # 7. Entropy & API
+        findings.extend(self.entropy_scanner.scan_content(file_path, content))
+        findings.extend(self.api_linter.scan_content(file_path, content))
+
+        # 8. Plugins & Vulnerabilities
+        findings.extend(self.plugin_loader.run_all(file_path, content))
+        if filename in ['requirements.txt', 'package.json']:
+            findings.extend(self.vuln_scanner.scan_file(file_path))
+
+        return findings
+
+    def scan(self, limit_files=None):
+        import concurrent.futures
+        
+        all_files = []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                all_files.append(file_path)
+
+        raw_findings = []
+        # Optimization: Use max_workers based on CPU count for I/O + Regex heavy tasks
+        with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
+            future_to_file = {executor.submit(self._process_single_file, f): f for f in all_files}
+            for future in concurrent.futures.as_completed(future_to_file):
+                try:
+                    result = future.result()
+                    if result:
+                        raw_findings.extend(result)
+                except Exception as e:
+                    print(f"Error scanning {future_to_file[future]}: {e}")
         
         # v0.6.0: Inline suppression and Baseline filter
         filtered = []
         for fnd in raw_findings:
             # Baseline check
-            # Use relative path for stability across environments
             file_path = fnd.get('file', '')
             if not file_path:
                 rel_path = ""
             else:
                 try:
                     rel_path = os.path.relpath(file_path, self.root_path).replace(os.sep, '/')
-                except ValueError:
+                except (ValueError, Exception):
                     rel_path = file_path.replace(os.sep, '/')
+            
             fnd_id = self._get_fnd_id(fnd)
             line = fnd.get('line', 0)
             
-            # Create a stable fingerprint
+            # Stable fingerprint
             fp = f"{rel_path}:{line}:{fnd_id}"
-            
-            # Also check absolute path fingerprint for compatibility with current create command
             abs_fp = f"{fnd.get('file')}:{line}:{fnd_id}"
 
             if fp in self.baseline_findings or abs_fp in self.baseline_findings:
@@ -425,17 +509,14 @@ class Scanner:
             if self._is_self_scan_exempt(fnd):
                 continue
             
-            # v0.6.0: Inline comment suppression (regex for ghostcheck-ignore)
-            # (Simplification for now: check if the finding has a 'line_content' with ignore tag)
+            # Inline suppression
             if "ghostcheck-ignore" in str(fnd.get('context', '')):
                 continue
 
             # Apply OWASP mapping
             fnd['owasp_llm'] = self.owasp_mapping.get(fnd_id, "N/A")
-
             filtered.append(fnd)
 
-        # v0.5.0: Post-process with Severity Engine
         return self.severity_engine.adjust_findings(filtered)
 
 
