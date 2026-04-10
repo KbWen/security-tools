@@ -19,6 +19,9 @@
 
 AI agents are rewriting the world, but they also introduce new attack surfaces. **GhostCheck** bridges the gap between traditional SAST and AI-native security, ensuring your code remains secure while you move at AI speed.
 
+## Why AgentCortex?
+**GhostCheck** is built with the AgentCortex philosophy, ensuring that AI-assisted security is built on a foundation of verifiable engineering directives.
+
 ## ✨ v0.9.0 Performance & Security Milestones
 
 *   🚀 **High-Performance Parallel Engine:** Leveraging `ThreadPoolExecutor` and a single-pass dispatch architecture. Scan speeds for large projects have been boosted significantly.

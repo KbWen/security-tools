@@ -63,6 +63,8 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [regex-precision]: Broad regex patterns for secrets (like Generic) should be paired with low severity or high-entropy checks to avoid CLI noise.
 - [windows-python-path]: Windows environments often require `python -m module` instead of direct script calls if the PATH is not perfectly aligned.
 - [Exception Handling]: Silent 'except Exception: pass' violates engineering guardrails; always use the standard 'logging' module (e.g. logger.debug) to preserve debugging trails without polluting JSON or SARIF standard outputs.
+- [Parallel-Scanning]: For I/O bound SAST scanners, using `ThreadPoolExecutor` with single-pass file distribution significantly outperforms serial multi-pass scans (O(N) vs O(M*N)).
+- [Terminal-Resilience]: Global `sys.stdout` reconfiguration with `errors='replace'` is mandatory for Windows (CP950) terminal compatibility when using high-fidelity Unicode/Emoji icons.
 
 ## Ship History
 
