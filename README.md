@@ -1,9 +1,9 @@
 <div align="center">
 
 # 👻 GhostCheck
-**High-performance, zero-dependency security scanner for the AI-assisted development era.**
+**Blazing-fast, zero-dependency security scanner for the AI-assisted development era.**
 
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-0.9.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -19,13 +19,13 @@
 
 AI agents are rewriting the world, but they also introduce new attack surfaces. **GhostCheck** bridges the gap between traditional SAST and AI-native security, ensuring your code remains secure while you move at AI speed.
 
-## ✨ What's New in v0.6.0?
+## ✨ v0.9.0 Performance & Security Milestones
 
-*   🎯 **Zero-Config Onboarding:** Run `ghostcheck init` to instantly generate best-practice security rules for your stack.
-*   🔍 **Smart Git Integration:** Scan only what matters. Support for scanning staged files (`ghostcheck scan --staged`) and uncommitted diffs (`--diff`).
+*   🚀 **High-Performance Parallel Engine:** Leveraging `ThreadPoolExecutor` and a single-pass dispatch architecture. Scan speeds for large projects have been boosted significantly.
+*   🛡️ **Red Team Hardened:** Fixed path traversal vulnerabilities and implemented automatic "redaction-at-rest" for scan reports, ensuring scanner output doesn't become a leak source.
 *   🔑 **Expanded Secret Detection:** Out-of-the-box detection for 30+ providers (AWS, GCP, Stripe, GitHub, Slack, etc.) using context-aware AST parsing.
-*   🛡️ **Frictionless Suppression:** Manage false positives elegantly via `ghostcheck.toml` baseline ignores or inline `# ghostcheck:disable` comments.
-*   ⚡ **uv-Powered:** Optimized CI pipelines with 10x faster matrix testing and dependency resolution using `uv`.
+*   🖥️ **Encoding Resilience:** Automatic stdout reconfiguration for Windows (CP950) terminals to prevent crashes when printing high-fidelity security icons.
+*   🤖 **MCP & AI Supply Chain Audit:** Industry-first support for Model Context Protocol (MCP) configuration auditing to prevent tool poisoning and excessive agency.
 
 ## 🛠️ Quick Start
 

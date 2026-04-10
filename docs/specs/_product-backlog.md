@@ -28,6 +28,8 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v0.5.0 | JS AST + 嚴重度引擎 + .env | ✅ |
 | v0.6.0 | Zero-Config + Git Diff + Baseline | ✅ |
 | v0.7.0 | IaC + CI/CD Audit + Firebase + Plugin | ✅ |
+| v0.8.0 | AI Agent Security Foundation | ✅ |
+| v0.9.0 | High Performance & Red Team Hardening | ✅ |
 
 ---
 
@@ -45,7 +47,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 |---|---------|------|------|------|------|
 | E1-F1 | **MCP Server Config Auditor** | P0 | v0.8.0 | ✅ | 掃描 `mcp.json` / `mcp_config.json` / `.cursor/mcp.json` / VS Code MCP 設定，偵測：<br>- 繫結 `0.0.0.0` 而非 `127.0.0.1` (NeighborJack) → CRITICAL<br>- 缺少認證/token 的 MCP server → HIGH<br>- 使用 `stdio` transport 搭配 `npx` 執行未固定版本套件 → HIGH<br>- `env` block 中明文寫入 API keys → CRITICAL |
 | E1-F2 | **MCP Tool Poisoning Detector** | P0 | v0.8.0 | ✅ | 掃描 MCP server 原始碼 (Python/TS)，偵測 tool description 中的隱藏指令：<br>- Tool description 含 `<IMPORTANT>` / invisible Unicode / base64 payload → CRITICAL<br>- Tool description 長度異常 (>500 chars) 可能藏有 injection → MEDIUM<br>- Parameter description 含 injection pattern (`ignore previous`, `you must`) → HIGH |
-| E1-F3 | **MCP Permission Boundary Checker** | P1 | v0.9.0 | 🟡 | 分析 MCP server 宣告的 capabilities vs 實際行為：<br>- Server 宣稱 read-only 但 code 中有 `fs.writeFile` / `os.remove` → HIGH<br>- Server 存取的路徑超出宣告 scope → MEDIUM<br>- Server 對外發送 HTTP 請求至非白名單域名 → HIGH |
+| E1-F3 | **MCP Permission Boundary Checker** | P1 | v0.9.0 | ✅ | 分析 MCP server 宣告的 capabilities vs 實際行為：<br>- Server 宣稱 read-only 但 code 中有 `fs.writeFile` / `os.remove` → HIGH<br>- Server 存取的路徑超出宣告 scope → MEDIUM<br>- Server 對外發送 HTTP 請求至非白名單域名 → HIGH |
 | E1-F4 | **MCP Rug Pull Detection** | P2 | v1.0.0 | 🟡 | 監控 MCP server npm/pip 套件版本變更：<br>- 記錄已安裝 MCP server 的 tool description hash<br>- 下次掃描比對變化 → 若 description 被修改則告警<br>- 可整合 `ghostcheck watch` |
 
 ---
@@ -104,7 +106,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | E5-F3 | **LLM03: Supply Chain** | P0 | v0.8.0 | ✅ | 整合 E3 (AI Supply Chain) + 既有幻覺偵測，對應 LLM03 |
 | E5-F4 | **LLM06: Excessive Agency** | P0 | v0.8.0 | ✅ | 整合 E4-F1，對應 LLM06 |
 | E5-F5 | **LLM09: Misinformation (Hallucination)** | P0 | v0.8.0 | ✅ | 整合既有 hallucination checker，對應 LLM09 |
-| E5-F6 | **OWASP LLM Compliance Report** | P1 | v0.9.0 | 🟡 | 新增報告格式 `--format owasp-llm`：<br>- 依 LLM01-LLM10 分類列出發現<br>- 含合規百分比與 remediation 優先順序<br>- 可匯出 PDF / HTML |
+| E5-F6 | **OWASP LLM Compliance Report** | P1 | v0.9.0 | ✅ | 新增報告格式 `--format owasp-llm`：<br>- 依 LLM01-LLM10 分類列出發現<br>- 含合規百分比與 remediation 優先順序<br>- 可匯出 PDF / HTML |
 
 ---
 
@@ -114,8 +116,8 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E6-F1 | **Smart Pre-commit Exemption (Self-Scan Safe)** | P1 | v0.9.0 | 🟡 | 實作智慧豁免機制以避免 SAST 掃描自身時引發誤報：<br>- 自動忽略 `ghostcheck` 自身安裝路徑或設定檔內的安全特徵碼。<br>- 支援 `.ghostcheckignore` 內明確標記 `inline-signature-bypass`。<br>- 即便命中規則，若偵測為「工具自身的展示/測試」，應降級為 INFO 而非 HIGH/CRITICAL。 |
-| E6-F2 | **Cross-Platform Output Encoding Fallback** | P1 | v0.9.0 | 🟡 | 提升控制台輸出的穩健度：<br>- 自動偵測終端機不支援 UTF-8 (如 Windows cp950) 時，自動降級/移除 Unicode Emoji 圖示。<br>- `--no-color` 之餘，新增 `--ascii-only` 模式。 |
+| E6-F1 | **Smart Pre-commit Exemption (Self-Scan Safe)** | P1 | v0.9.0 | ✅ | 實作智慧豁免機制以避免 SAST 掃描自身時引發誤報：<br>- 自動忽略 `ghostcheck` 自身安裝路徑或設定檔內的安全特徵碼。<br>- 支援 `.ghostcheckignore` 內明確標記 `inline-signature-bypass`。<br>- 即便命中規則，若偵測為「工具自身的展示/測試」，應降級為 INFO 而非 HIGH/CRITICAL。 |
+| E6-F2 | **Cross-Platform Output Encoding Fallback** | P1 | v0.9.0 | ✅ | 提升控制台輸出的穩健度：<br>- 自動偵測終端機不支援 UTF-8 (如 Windows cp950) 時，自動降級/移除 Unicode Emoji 圖示。<br>- `--no-color` 之餘，新增 `--ascii-only` 模式。 |
 
 ---
 

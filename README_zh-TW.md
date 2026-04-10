@@ -1,9 +1,9 @@
 <div align="center">
 
 # 👻 GhostCheck
-**為 AI 輔助開發時代量身打造的高性能、零依賴安全性掃描工具。**
+**為 AI 輔助開發時代量身打造的極速、零依賴安全性掃描工具。**
 
-[![版本](https://img.shields.io/badge/version-0.6.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![版本](https://img.shields.io/badge/version-0.9.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![授權](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -19,13 +19,13 @@
 
 AI Agent 正在重塑程式開發，但也帶來了全新的攻擊面。**GhostCheck** 彌補了傳統 SAST 與 AI 原生安全性之間的鴻溝，確保您的代碼在享受 AI 速度的同時，依然保持企業級的穩固與安全。
 
-## ✨ v0.6.0 亮點更新
+## ✨ v0.9.0 性能與安全里程碑
 
-*   🎯 **零配置快速上手 (Zero-Config)：** 輸入 `ghostcheck init` 就能針對您的專案技術堆疊，一秒生成最佳實踐安全配置。
-*   🔍 **聰明的 Git 整合掃描：** 拒絕全局慢速掃描。現在支援針對預備提交 (`ghostcheck scan --staged`) 或尚未提交的變更 (`--diff`) 進行精準掃描。
+*   🚀 **極速並行執行引擎：** 引入 `ThreadPoolExecutor` 與單次遍歷分發架構。在大型專案中，檔案處理速度提升數倍，且大幅減少磁碟 I/O。
+*   🛡️ **紅隊層級硬化 (Red Team Hardened)：** 修補了路徑遍歷漏洞，並全面實作掃描報告「自動脫敏」功能，確保 GhostCheck 產出的報告不會成為二次洩漏源。
 *   🔑 **海量密鑰與威脅偵測：** 內建支援 30+ 雲端供應商 (AWS, GCP, Stripe, GitHub 等)，並結合 AST 語法樹解析抓出被拆分拼接的密鑰。
-*   🛡️ **無痛的誤判排除機制：** 可透過 `ghostcheck.toml` 設定全局黑名單，或是在程式碼中加入 `# ghostcheck:disable` 進行單行白名單豁免。
-*   ⚡ **uv CI 加速整合：** 工作流程全面引入 `uv` 高速依賴解析，矩陣測試與安裝速度飆升 10 倍。
+*   🖥️ **跨平台編碼自動回退：** 完美支援 Windows CP950/UTF-8 終端機環境。偵測到非 UTF-8 環境時會自動降級圖示輸出的編碼，徹底防止崩潰。
+*   🤖 **AI 供應鏈與 MCP 審計：** 領先業界支援 Model Context Protocol (MCP) 設定文件審計，防止 Agent 權限過大與 Tool Poisoning 攻擊。
 
 ## 🛠️ 快速上手
 
@@ -73,8 +73,6 @@ GhostCheck 完美契合專業的開發工作流程：
 
 ---
 
-<<<<<<< Updated upstream
-=======
 ## 🧠 Powered by AgentCortex
 
 ### 為什麼採用 AgentCortex 架構？
@@ -82,7 +80,6 @@ GhostCheck 完美契合專業的開發工作流程：
 
 <div align="center">
 
->>>>>>> Stashed changes
 **由 [KbWen](https://github.com/KbWen) 為 AI 社群用心開發 ❤️**
 
 </div>
