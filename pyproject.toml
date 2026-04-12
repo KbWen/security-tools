@@ -17,6 +17,26 @@ dependencies = [
     "tomli; python_version < '3.11'",
 ]
 
+[project.urls]
+Homepage = "https://github.com/KbWen/security-tools"
+Repository = "https://github.com/KbWen/security-tools"
+"Bug Tracker" = "https://github.com/KbWen/security-tools/issues"
+Changelog = "https://github.com/KbWen/security-tools/releases"
+
+[project.classifiers]
+"Development Status :: 4 - Beta"
+"Intended Audience :: Developers"
+"Topic :: Security"
+"Topic :: Software Development :: Quality Assurance"
+"License :: OSI Approved :: MIT License"
+"Programming Language :: Python :: 3"
+"Programming Language :: Python :: 3.9"
+"Programming Language :: Python :: 3.10"
+"Programming Language :: Python :: 3.11"
+"Programming Language :: Python :: 3.12"
+"Environment :: Console"
+"Operating System :: OS Independent"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",

@@ -1,0 +1,37 @@
+name: Bug Report
+description: File a bug report to help us improve GhostCheck.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please provide as much detail as possible.
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How can we reproduce this? Include code snippets if possible.
+      placeholder: |
+        1. Run 'ghostcheck scan' on ...
+        2. See error ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: GhostCheck Version
+      description: e.g., v0.9.0
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Environment
+      description: OS version, Python version, etc.

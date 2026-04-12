@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Wen"
+  given-names: "Kb"
+title: "GhostCheck: AI-era security scanner for developers"
+version: 0.9.0
+date-released: 2026-04-12
+url: "https://github.com/KbWen/security-tools"

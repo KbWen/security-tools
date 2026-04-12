@@ -9,6 +9,8 @@
 
 *Identify high-risk vulnerabilities and "ghost" threats introduced by AI agents even before they reach your CI/CD pipeline.*
 
+<!-- SEO Keywords: security, sast, python scanner, ai-security, llm-security, mcp-audit, secrets-detection, static-analysis, owasp-llm, devsecops, cli-tool, ai-agent-security -->
+
 [English](README.md) | [繁體中文](README_zh-TW.md)
 
 </div>
@@ -30,10 +32,15 @@ AI agents are rewriting the world, but they also introduce new attack surfaces. 
 *   🖥️ **Encoding Resilience:** Automatic stdout reconfiguration for Windows (CP950) terminals to prevent crashes when printing high-fidelity security icons.
 *   🤖 **MCP & AI Supply Chain Audit:** Industry-first support for Model Context Protocol (MCP) configuration auditing to prevent tool poisoning and excessive agency.
 
-## 🛠️ Quick Start
+## 🛠️ Installation & Setup
 
-### 1. Installation
+### Install via pip
+Recommended for most users:
+```bash
+pip install ghostcheck
+```
 
+### Install from source
 ```bash
 git clone https://github.com/KbWen/security-tools.git
 cd security-tools

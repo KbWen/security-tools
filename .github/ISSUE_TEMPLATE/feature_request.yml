@@ -1,0 +1,22 @@
+name: Feature Request
+description: Suggest an idea or new feature for GhostCheck.
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have an idea? We'd love to hear it!
+  - type: textarea
+    id: feature-description
+    attributes:
+      label: Feature Description
+      description: What should the tool do?
+    validations:
+      required: true
+  - type: textarea
+    id: use-case
+    attributes:
+      label: Use Case / Problem
+      description: Why is this feature needed? What problem does it solve?
+    validations:
+      required: true
