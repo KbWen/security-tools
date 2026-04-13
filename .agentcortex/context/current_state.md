@@ -14,7 +14,7 @@
 - **ADR Index**:
   - `.agentcortex/adr/ADR-001-vnext-self-managed-architecture.md`
 - **Active Backlog**: `docs/specs/_product-backlog.md`
-  - AI-Era Security Features backlog (MCP, Agent Rules, LLM Supply Chain, Agentic Workflow, OWASP LLM Top 10). Created 2026-04-09.
+  - AI-Era Security Features backlog (MCP, Agent Rules, LLM Supply Chain, Agentic Workflow, OWASP LLM Top 10). Expanded Epic 7 & 8 on 2026-04-13.
 - **Spec Index**:
   - `[template-import-cleanup] .agentcortex/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
   - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
@@ -113,3 +113,8 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ### Ship-feat/v0.8.0-2026-04-09
 - Feature shipped: AI Agent Security Foundation (Epic 1-5). Fixed unpinned npx/mcp server risks, enhanced agent rules (Unicode injection/sensitive paths), AI supply chain auditing, and OWASP LLM Top 10 compliance mapping.
 - Tests: Pass (pytest 7/7 new features)
+
+### Ship-feat/seo-optimization-2026-04-12
+- Feature shipped: Full GitHub SEO & Community Health suite. Implemented P0-P3 items including README optimization, metadata tagging, security policy, and structured issue forms.
+- Tools used: `gh` CLI for metadata settings.
+- Tests: GhostCheck pre-commit scan Pass.

@@ -121,6 +121,36 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 ---
 
+### 🏷️ Epic 7: Next-Gen Agentic Security Extensions (v1.1.0+)
+
+> **為什麼重要**: 隨著 Agent 逐漸獲得自主權（如 RAG、長時記憶、多模態運算），攻擊面將從單純的 Prompt 擴展到資料存取層與物理邊界。GhostCheck 需要超前部署這些防禦能力。
+
+| # | Feature | 優先 | 版本 | 狀態 | 說明 |
+|---|---------|------|------|------|------|
+| E7-F1 | **RAG Data Poisoning Scanner** | P1 | v1.1.0 | 🟡 | 掃描被作為 context 的文件/知識庫，偵測隱藏的 injection patterns 阻止透過檢索觸發攻擊。 |
+| E7-F2 | **Agent Least Privilege Audit** | P0 | v1.1.0 | 🟡 | 自動化審計 AI 專案中的 Token 權限範圍（GitHub/OpenAI/MCP），確保符合最小權限原則。 |
+| E7-F3 | **Prompt Injection Honeypot** | P2 | v1.2.0 | 🟡 | 自動在專案中生成偽造的敏感檔案，回傳誘標資訊以偵測不誠實或被操控的 Agent 行為。 |
+| E7-F4 | **Multi-modal Injection Detection** | P1 | v1.2.0 | 🟡 | 針對 Vision-capable agents，掃描圖像/媒體檔案中藏匿的隱現指令（Steganographic prompt injection）。 |
+| E7-F5 | **Shadow AI Detection** | P1 | v1.1.0 | 🟡 | 偵測專案原始碼中私自引入的未授權 AI SDK、Local LLM 配置或第三方 AI Plugin。 |
+| E7-F6 | **LLM Cost/DoS Guard** | P1 | v1.2.0 | 🟡 | 偵測可能導致 Agent 陷入無限循環、遞迴呼叫或過度消費 Token 的邏輯漏洞。 |
+
+---
+
+### 🏷️ Epic 8: Advanced AI Resilience & Swarm Security (v1.2.0+)
+
+> **為什麼重要**: 隨著 AI 進入多 Agent 協作 (Swarm) 與長時記憶 (Long-term Memory) 時代，攻擊將變得高度隱蔽且具備連鎖反應。GhostCheck 需要具備偵測「時間維度」與「集群拓撲」攻擊的能力。
+
+| # | Feature | 優先 | 版本 | 狀態 | 說明 |
+|---|---------|------|------|------|------|
+| E8-F1 | **Memory Poisoning Audit** | P1 | v1.2.0 | 🟡 | 掃描 Agent 的持久化記憶系統（Vector DB / JSON Profile），偵測潛伏中的惡意指令或偏見。 |
+| E8-F2 | **Swarm Cascading Risk Analysis** | P2 | v1.3.0 | 🟡 | 分析 Multi-agent 工作流中的通訊拓補，找出單點 Agent 被劫持後可能導致的級聯失效點。 |
+| E8-F3 | **Lethal Trifecta Detector** | P0 | v1.2.0 | 🟡 | 自動偵測「私有資料存取+不受信輸入+工具執行」的危險組合，強制調高安全等級與審核要求。 |
+| E8-F4 | **Tool Metadata Poisoning Linter** | P1 | v1.2.0 | 🟡 | 深度掃描 MCP Server 或 Plugin 的 Metadata/Description，防止 Hidden Prompt 注入至 LLM 推理過程。 |
+| E8-F5 | **Agentic Kill-Switch Compliance** | P0 | v1.3.0 | 🟡 | 審核專案中是否實作了實體的斷路器機制（Token Cap/File Limit/Human-Confirm），防止 Autonomous 跑飛。 |
+| E8-F6 | **MCP Registry & Provenance Guard** | P2 | v1.3.0 | 🟡 | 建立 MCP Server 信任鏈驗證，檢查第三方工具的數位簽署、來源聲譽與已知惡意黑名單。 |
+
+---
+
 ## 版本規劃 (AI-Era Features 歸屬)
 
 ### v0.8.0 — AI Agent Security Foundation ⭐
@@ -163,6 +193,28 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | E4-F4 | Human-in-the-Loop Verification |
 | (Roadmap) | Framework Presets, PyPI Publish, Docs |
 
+### v1.1.0+ — Next-Gen Agentic Resilience
+
+| 歸屬 | 功能 |
+|------|------|
+| E7-F1 | RAG Data Poisoning Scanner |
+| E7-F2 | Agent Least Privilege Audit |
+| E7-F5 | Shadow AI Detection |
+| E7-F3 | Prompt Injection Honeypot |
+| E7-F4 | Multi-modal Injection Detection |
+| E7-F6 | LLM Cost/DoS Guard |
+
+### v1.2.0+ — Swarm Intelligence & Memory Safety
+
+| 歸屬 | 功能 |
+|------|------|
+| E8-F1 | Memory Poisoning Audit |
+| E8-F3 | Lethal Trifecta Detector |
+| E8-F4 | Tool Metadata Poisoning Linter |
+| E8-F2 | Swarm Cascading Risk Analysis |
+| E8-F5 | Agentic Kill-Switch Compliance |
+| E8-F6 | MCP Registry & Provenance Guard |
+
 ---
 
 ## 競品分析
@@ -188,3 +240,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 日期 | 變更 |
 |------|------|
 | 2026-04-09 | 初版建立，新增 Epic 1-5 (AI-Era Security Features) |
+| 2026-04-13 | 擴展 Epic 7 (Agentic Security) 與 Epic 8 (Advanced Resilience), 新增 v1.1.0-v1.2.0 規劃 |
