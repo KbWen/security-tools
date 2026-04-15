@@ -8,12 +8,22 @@ from datetime import datetime, timedelta
 import hashlib
 
 class HallucinationChecker:
-    def __init__(self, logger=None, offline=False):
+    def __init__(self, logger=None, offline=False, proxy=None):
         self.logger = logger
         self.offline = offline
+        self.proxy = proxy
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = os.path.join(self.cache_dir, "hallucination.json")
         self._load_cache()
+        self._setup_opener()
+
+    def _setup_opener(self):
+        handlers = []
+        if self.proxy:
+            handlers.append(urllib.request.ProxyHandler({'http': self.proxy, 'https': self.proxy}))
+        
+        opener = urllib.request.build_opener(*handlers)
+        urllib.request.install_opener(opener)
 
     def _load_cache(self):
         self.cache = {}

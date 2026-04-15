@@ -2,15 +2,16 @@ import fnmatch
 import os
 
 class IgnoreMatcher:
-    def __init__(self, ignore_file_path=None, base_path=None):
-        self.patterns = []
+    def __init__(self, ignore_file_path=None, base_path=None, patterns=None):
+        self.patterns = patterns or []
         self.base_path = os.path.realpath(base_path) if base_path else None
         if ignore_file_path and os.path.exists(ignore_file_path):
             with open(ignore_file_path, 'r') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
-                        self.patterns.append(line)
+                        if line not in self.patterns:
+                            self.patterns.append(line)
 
     def is_ignored(self, path):
         # 標準化路徑

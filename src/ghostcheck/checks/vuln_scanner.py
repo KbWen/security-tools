@@ -11,8 +11,10 @@ logger = logging.getLogger(__name__)
 class VulnScanner:
     OSV_API_URL = "https://api.osv.dev/v1/query"
 
-    def __init__(self, offline=False):
+    def __init__(self, offline=False, proxy=None):
         self.offline = offline
+        self.proxy = proxy
+        self.proxies = {"http": proxy, "https": proxy} if proxy else None
 
     def _query_osv(self, package_name, version, ecosystem):
         if self.offline or requests is None:
@@ -26,7 +28,7 @@ class VulnScanner:
             }
         }
         try:
-            response = requests.post(self.OSV_API_URL, json=payload, timeout=5)
+            response = requests.post(self.OSV_API_URL, json=payload, timeout=5, proxies=self.proxies)
             if response.status_code == 200:
                 return response.json()
         except requests.RequestException as e:

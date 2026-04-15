@@ -15,7 +15,8 @@ class GhostCheckConfig:
         "enabled_checks": ["hallucination", "secrets", "rules", "docker"],
         "offline": False,
         "custom_patterns": [],
-        "load_local_plugins": False
+        "load_local_plugins": False,
+        "proxy": None
     }
 
     def __init__(self, project_root: str):
@@ -55,10 +56,14 @@ class GhostCheckConfig:
         # Simple merge for keys
         for key in self.DEFAULT_CONFIG.keys():
             if key in new_data:
-                # Merge lists if needed, otherwise overwrite
                 if isinstance(self.config[key], list) and isinstance(new_data[key], list):
-                    # Combine lists unique
-                    self.config[key] = list(set(self.config[key] + new_data[key]))
+                    # 確保列表項目唯一，且處理非雜湊物件
+                    seen = []
+                    combined = self.config[key] + new_data[key]
+                    for item in combined:
+                        if item not in seen:
+                            seen.append(item)
+                    self.config[key] = seen
                 else:
                     self.config[key] = new_data[key]
 

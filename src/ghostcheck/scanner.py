@@ -69,8 +69,9 @@ class Scanner:
         with open(self.secret_patterns_path, 'r') as f:
             self.raw_secret_patterns = json.load(f)
             
-        # Initialize modules
-        self.hallucination_checker = HallucinationChecker(offline=offline)
+        # 初始化模組
+        proxy = self.config.get('proxy') if self.config else None
+        self.hallucination_checker = HallucinationChecker(offline=offline, proxy=proxy)
         self.secret_scanner = SecretScanner(self.secret_patterns_path)
         self.ast_secret_checker = AstSecretChecker(self.raw_secret_patterns)
         self.js_ast_checker = JsAstSecretChecker(self.raw_secret_patterns)
@@ -83,7 +84,7 @@ class Scanner:
         self.ai_supply_chain = AISupplyChainScanner()
         self.agency_auditor = AgencyAuditor()
         self.entropy_scanner = EntropyScanner()
-        self.vuln_scanner = VulnScanner(offline=offline)
+        self.vuln_scanner = VulnScanner(offline=offline, proxy=proxy)
         self.mobile_auditor = MobileConfigAuditor()
         self.api_linter = APILinter()
         self.secret_validator = SecretValidator(enabled=not offline)

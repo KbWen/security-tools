@@ -9,6 +9,7 @@ severity_threshold = "{severity}"
 exclude_patterns = {excludes}
 enabled_checks = {checks}
 offline = false
+# proxy = "http://proxy.example.com:8080"
 
 [tool.ghostcheck]
 project_name = "{project_name}"

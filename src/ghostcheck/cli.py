@@ -5,11 +5,7 @@ import os
 import json
 
 
-from .scanner import Scanner
-from .reporters.console import ConsoleReporter
-from .reporters.json_reporter import JsonReporter
-from .reporters.sarif_reporter import SarifReporter
-from .reporters.html_reporter import HTMLReporter
+# Lazy imports inside functions for performance
 
 from .config import GhostCheckConfig
 from .init import GhostCheckInitializer
@@ -131,6 +127,13 @@ def main():
                 print("No files changed since ref.")
                 sys.exit(0)
 
+    # Lazy import core scanner to speed up init
+    from .scanner import Scanner
+    from .reporters.console import ConsoleReporter
+    from .reporters.json_reporter import JsonReporter
+    from .reporters.sarif_reporter import SarifReporter
+    from .reporters.html_reporter import HTMLReporter
+
     # Initialize scanner
     scanner = Scanner(
         target_path, 
@@ -167,40 +170,55 @@ def main():
         grade, score_val = scanner.scoring_engine.calculate_score(findings)
         
         # Report
-        if args.format == "json":
-            reporter = JsonReporter()
-            reporter.report(findings, output_path=args.output)
-            if args.output:
-                print(f"{get_icon('ok', use_unicode)} JSON results saved to: {args.output}")
-        elif args.format == "sarif":
-            reporter = SarifReporter()
-            reporter.report(findings, output_path=args.output)
-            if args.output:
-                print(f"{get_icon('ok', use_unicode)} SARIF results saved to: {args.output}")
-        elif args.format == "html":
-            out_path = args.output or "ghostcheck-report.html"
-            reporter = HTMLReporter(output_path=out_path)
-            path = reporter.report(findings, grade, score_val)
-            print(f"{get_icon('ok', use_unicode)} HTML Report generated at: {path}")
-            print(f"{get_icon('stats', use_unicode)} Security Grade: {grade} ({score_val}/100)")
-        else:
-            reporter = ConsoleReporter(use_color=not args.no_color, use_unicode=use_unicode)
-            reporter.report(findings)
-            print(f"\n{get_icon('stats', use_unicode)} {reporter._color('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
-            if args.output:
-                 # Minimal file writer for console format if someone still asks for it
-                 with open(args.output, 'w', encoding='utf-8') as f:
-                     # Since ConsoleReporter prints directly, we'd need to capture it. 
-                     # For now, let's just warn or handle it simply.
-                     # Actually, users usually don't output console format to a file using --output.
-                     pass 
-            
-        if findings and not args.soft_fail:
-            sys.exit(1)
-        sys.exit(0)
-        
+        output_file = None
+        if args.output:
+            try:
+                output_file = open(args.output, 'w', encoding='utf-8')
+            except IOError as e:
+                print(f"Error: Could not open output file {args.output}: {str(e)}")
+                sys.exit(2)
+
+        try:
+            if args.format == "json":
+                reporter = JsonReporter()
+                reporter.report(findings, output_path=args.output)
+                if args.output:
+                    print(f"{get_icon('ok', use_unicode)} JSON results saved to: {args.output}")
+            elif args.format == "sarif":
+                reporter = SarifReporter()
+                reporter.report(findings, output_path=args.output)
+                if args.output:
+                    print(f"{get_icon('ok', use_unicode)} SARIF results saved to: {args.output}")
+            elif args.format == "html":
+                out_path = args.output or "ghostcheck-report.html"
+                reporter = HTMLReporter(output_path=out_path)
+                path = reporter.report(findings, grade, score_val)
+                print(f"{get_icon('ok', use_unicode)} HTML Report generated at: {path}")
+                print(f"{get_icon('stats', use_unicode)} Security Grade: {grade} ({score_val}/100)")
+            else:
+                # Console Reporter
+                reporter = ConsoleReporter(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+                reporter.report(findings, stream=output_file)
+                
+                # Report summary to console even if stream was file
+                summary_reporter = ConsoleReporter(use_color=not args.no_color, use_unicode=use_unicode)
+                print(f"\n{get_icon('stats', use_unicode)} {summary_reporter._color('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
+                if args.output:
+                     print(f"{get_icon('ok', use_unicode)} Console format results saved to: {args.output}")
+
+            if findings and not args.soft_fail:
+                sys.exit(1)
+            sys.exit(0)
+        finally:
+            if output_file:
+                output_file.close()
+
     except Exception as e:
         print(f"Fatal Error: {str(e)}")
+        # If debugging, print traceback
+        if os.environ.get("GHOSTCHECK_DEBUG") == "1":
+            import traceback
+            traceback.print_exc()
         sys.exit(2)
 
 if __name__ == "__main__":
