@@ -65,6 +65,9 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Exception Handling]: Silent 'except Exception: pass' violates engineering guardrails; always use the standard 'logging' module (e.g. logger.debug) to preserve debugging trails without polluting JSON or SARIF standard outputs.
 - [Parallel-Scanning]: For I/O bound SAST scanners, using `ThreadPoolExecutor` with single-pass file distribution significantly outperforms serial multi-pass scans (O(N) vs O(M*N)).
 - [Terminal-Resilience]: Global `sys.stdout` reconfiguration with `errors='replace'` is mandatory for Windows (CP950) terminal compatibility when using high-fidelity Unicode/Emoji icons.
+- [Harden-Packaging]: Distributed data files must be explicitly declared in `pyproject.toml` [tool.setuptools.package-data] for inclusion in wheel/sdist.
+- [Harden-Encoding]: Use bytes processing for CLI subprocesses to avoid decoding errors on non-UTF8 terminals (Windows).
+- [Harden-Path-Safety]: Windows multi-drive environments require explicit drive-letter comparison in path traversal checks.
 
 ## Ship History
 
@@ -118,3 +121,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - Feature shipped: Full GitHub SEO & Community Health suite. Implemented P0-P3 items including README optimization, metadata tagging, security policy, and structured issue forms.
 - Tools used: `gh` CLI for metadata settings.
 - Tests: GhostCheck pre-commit scan Pass.
+
+### Ship-feat/installation-resilience-2026-04-15
+- Feature shipped: GhostCheck 安裝與平台魯棒性優化。包含 Packaging 資料檔包含、CLI --output/--soft-fail 指令、Windows 編碼與跨磁碟安全性修復、忽略清單缺陷修正以及依賴缺失的優雅降級處理。
+- Tests: Pass
