@@ -125,3 +125,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ### Ship-feat/installation-resilience-2026-04-15
 - Feature shipped: GhostCheck 安裝與平台魯棒性優化。包含 Packaging 資料檔包含、CLI --output/--soft-fail 指令、Windows 編碼與跨磁碟安全性修復、忽略清單缺陷修正以及依賴缺失的優雅降級處理。
 - Tests: Pass
+
+### Ship-feat/resilience-and-proxy-2026-04-15
+- Feature shipped: 實作網路代理支援 (Proxy Support) 與系統韌性深度強化。包含 `proxy` 設定傳遞、設定檔合併 Bug 修復、CLI 延遲載入優化、以及 Console Reporter 檔案輸出支持。
+- Tests: Pass (新增 tests/test_harden_resilience.py)
