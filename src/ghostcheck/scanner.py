@@ -31,7 +31,8 @@ class Scanner:
 
     def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None):
         # Normalize and store absolute path for boundary checks
-        self.root_path = os.path.abspath(root_path)
+        # AC-H3: 使用 realpath 以確保符號連結下的一致性
+        self.root_path = os.path.realpath(root_path)
         self.ignore_enabled = ignore_enabled
         self.offline = offline
         self.config = config
@@ -107,13 +108,21 @@ class Scanner:
         self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
 
     def _is_safe_path(self, file_path):
-        """Prevents path traversal by ensuring file is within root_path."""
+        """防止路徑穿越，確保檔案位於 root_path 內。"""
         abs_path = os.path.realpath(file_path)
-        # If targeting a single file, it's safe if it exists. 
-        # But if root_path is a directory, verify the file is strictly inside it.
-        if os.path.isdir(self.root_path):
-             return os.path.commonpath([self.root_path, abs_path]) == self.root_path
-        return True # Single file target is its own root
+        root_abs = os.path.realpath(self.root_path)
+        
+        # AC-H2: Windows 跨磁碟檢查
+        if os.name == 'nt':
+            if os.path.splitdrive(abs_path)[0].lower() != os.path.splitdrive(root_abs)[0].lower():
+                return False
+
+        if os.path.isdir(root_abs):
+             try:
+                 return os.path.commonpath([root_abs, abs_path]) == root_abs
+             except ValueError:
+                 return False
+        return True # 單一檔案目標即為其根目錄
 
     def _read_file_safe(self, file_path):
         """Reads file with size limits and path safety."""

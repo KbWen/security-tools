@@ -6,7 +6,7 @@ class SarifReporter:
     def __init__(self, version="0.4.0"):
         self.version = version
 
-    def report(self, findings):
+    def report(self, findings, output_path=None):
         sarif_log = {
             "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
             "version": "2.1.0",
@@ -24,7 +24,12 @@ class SarifReporter:
                 }
             ]
         }
-        print(json.dumps(sarif_log, indent=2))
+        data = json.dumps(sarif_log, indent=2)
+        if output_path:
+            with open(output_path, 'w', encoding='utf-8') as f:
+                f.write(data)
+        else:
+            print(data)
 
     def _get_rules(self, findings):
         rules = {}

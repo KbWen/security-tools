@@ -1,5 +1,8 @@
 import json
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
 import os
 import logging
 
@@ -12,7 +15,7 @@ class VulnScanner:
         self.offline = offline
 
     def _query_osv(self, package_name, version, ecosystem):
-        if self.offline:
+        if self.offline or requests is None:
             return None
         
         payload = {

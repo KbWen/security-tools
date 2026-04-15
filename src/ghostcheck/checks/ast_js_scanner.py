@@ -1,4 +1,7 @@
-import esprima
+try:
+    import esprima
+except ImportError:
+    esprima = None
 import re
 
 class JsAstSecretChecker:
@@ -13,13 +16,15 @@ class JsAstSecretChecker:
 
     def scan_file(self, file_path, content):
         findings = []
+        if esprima is None:
+            return findings
+        
         try:
-            # esprima.parseScript handles standard JS. 
-            # For TS, we might need a more specialized parser later, 
-            # but standard esprima handles modern JS template literals.
+            # esprima.parseScript處理標準 JS。
+            # 標準 esprima 可處理現代 JS 模板字串。
             tree = esprima.parseScript(content, loc=True)
         except Exception:
-            # Gracefully handle syntax errors in non-standard JS/TS
+            # 優雅處理非標準 JS/TS 的語法錯誤
             return findings
 
         self._walk_and_check(tree, file_path, findings)

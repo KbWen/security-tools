@@ -7,14 +7,24 @@ class GitDiffScanner:
 
     def _run_git(self, args):
         try:
+            # AC-H1: 使用 Bytes 處理以避免 Windows 下的編碼崩潰
             result = subprocess.run(
                 ["git"] + args,
                 cwd=self.project_root,
                 capture_output=True,
-                text=True,
                 check=True
             )
-            return result.stdout.splitlines()
+            # 優先嘗試 UTF-8，失敗則回退至系統預設編碼
+            output = ""
+            try:
+                output = result.stdout.decode('utf-8')
+            except UnicodeDecodeError:
+                # 回退邏輯：嘗試系統編碼
+                import locale
+                encoding = locale.getpreferredencoding()
+                output = result.stdout.decode(encoding, errors='replace')
+            
+            return output.splitlines()
         except (subprocess.CalledProcessError, FileNotFoundError):
             return []
 
