@@ -4,7 +4,7 @@ import os
 
 class SecretScanner:
     def __init__(self, patterns_path):
-        with open(patterns_path, 'r') as f:
+        with open(patterns_path, 'r', encoding='utf-8') as f:
             self.patterns = json.load(f)
         # Pre-compile patterns for speed
         for p in self.patterns:

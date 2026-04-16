@@ -17,7 +17,7 @@ class IgnoreMatcher:
                 
         self.base_path = os.path.realpath(base_path) if base_path else None
         if ignore_file_path and os.path.exists(ignore_file_path):
-            with open(ignore_file_path, 'r') as f:
+            with open(ignore_file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
