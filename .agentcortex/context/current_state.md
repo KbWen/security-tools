@@ -78,13 +78,29 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - Feature shipped: AI Agent Security Foundation (Epic 1-5). Fixed unpinned npx/mcp server risks, enhanced agent rules (Unicode injection/sensitive paths), AI supply chain auditing, and OWASP LLM Top 10 compliance mapping.
 - Tests: Pass (pytest 7/7 new features)
 
-### Ship-v0.9.0-Stability-Release-2026-04-15
-- **Feature shipped**: GhostCheck v0.9.0 Resilience & Hardening.
-- **Key Fixes**:
-  - **Installation**: Fixed `pyproject.toml` sharing logic to prevent `FileNotFoundError`.
-  - **Performance**: Implemented CLI Lazy Loading for faster command starts.
-  - **Windows Robustness**: Fixed terminal encoding (UTF-8 reconfiguration) and multi-drive security boundary logic.
-  - **Enterprise Support**: Added proxy support for `HallucinationChecker` and `VulnScanner`.
-  - **CLI UX**: Added `--output` and `--soft-fail` flags, improved `IgnoreMatcher` recursion.
-- **Tests**: Pass (New integration suite: `tests/test_harden_resilience.py`)
-- **Status**: Stable & Ready for PyPI.
+### [v0.9.0] - 2026-04-16
+**Status**: COMPLETED ✅
+**Focus**: Installation Resilience & External User Hardening
+
+#### Key Improvements:
+- **Packaging Resilience**: Fixed `pyproject.toml` syntax for classifiers and included `package-data` for JSON rules.
+- **Windows Hardening**: Forced UTF-8 encoding for stdout/stderr and fixed `UnicodeDecodeError` when reading `.ghostcheckignore` and secret rules.
+- **Dependency Degradation**: Added `ImportError` guards for `requests` and `esprima`.
+- **Corporate Proxy Support**: Implemented proxy configuration in `HallucinationChecker`, `VulnScanner`, and `SecretValidator`.
+- **Bug Fixes**: 
+    - Fixed missing `hashlib` import breaking the results cache mechanism.
+    - Fixed CLI file locking when using `--output`.
+    - Synchronized package version in `__init__.py`.
+
+#### Evidence:
+- UI Testing: `tests/test_cli.py` PASSED
+- Resilience Testing: `tests/test_harden_resilience.py` PASSED
+- Integrity Testing: `tests/test_cache_integrity.py` PASSED
+- Total: 54/54 tests PASSED
+
+---
+
+## Deployment & Readiness
+- **Main Branch**: Correctly synchronized with all resilience fixes.
+- **Documentation**: README updated with installation instructions and proxy settings.
+- **Backlog**: Migrated deferred OWASP report to v0.9.1.
