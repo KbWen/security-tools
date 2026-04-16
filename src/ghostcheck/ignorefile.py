@@ -4,6 +4,17 @@ import os
 class IgnoreMatcher:
     def __init__(self, ignore_file_path=None, base_path=None, patterns=None):
         self.patterns = patterns or []
+        # AC-H5: 預設忽略二進位快取與版本控制目錄
+        default_ignores = [
+            '__pycache__/', '*.pyc', '*.pyo', '*.pyd',
+            '.git/', '.svn/', '.hg/',
+            'node_modules/', 'vendor/',
+            '.DS_Store', 'Thumbs.db'
+        ]
+        for p in default_ignores:
+            if p not in self.patterns:
+                self.patterns.append(p)
+                
         self.base_path = os.path.realpath(base_path) if base_path else None
         if ignore_file_path and os.path.exists(ignore_file_path):
             with open(ignore_file_path, 'r') as f:

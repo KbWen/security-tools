@@ -3,7 +3,7 @@ import re
 
 class AgentRulesLinter:
     def __init__(self, patterns_path):
-        with open(patterns_path, 'r') as f:
+        with open(patterns_path, 'r', encoding='utf-8') as f:
             self.patterns = json.load(f)
         
         # v0.8.0 advanced patterns

@@ -1,9 +1,11 @@
 import json
+import shutil
 
 class ConsoleReporter:
     def __init__(self, use_color=True, use_unicode=True):
         self.use_color = use_color
         self.use_unicode = use_unicode
+        self.terminal_width = min(shutil.get_terminal_size((80, 20)).columns, 80)
         self.colors = {
             "CRITICAL": "\033[97;41;1m", # White on Red
             "HIGH": "\033[91;1m",        # Bold Red
@@ -31,7 +33,7 @@ class ConsoleReporter:
             return
 
         _print(f"\n{self._color(' --- GhostCheck Scan Results --- ', 'CRITICAL')}")
-        _print(f"{self.colors['DIM']}{'='*60}{self.colors['RESET']}")
+        _print(f"{self.colors['DIM']}{'='*self.terminal_width}{self.colors['RESET']}")
         
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
         sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity', 'INFO'), 5))
@@ -59,7 +61,7 @@ class ConsoleReporter:
                 _print(f"   {self._color('Fix:', 'INFO')} {f['remediation']}")
             elif 'suggestion' in f:
                 _print(f"   {self._color('Suggestion:', 'INFO')} {f['suggestion']}")
-            _print(f"{self.colors['DIM']}{'-'*60}{self.colors['RESET']}")
+            _print(f"{self.colors['DIM']}{'-'*self.terminal_width}{self.colors['RESET']}")
 
         summary = {}
         for f in findings:
@@ -72,4 +74,4 @@ class ConsoleReporter:
             if sev in summary:
                 summary_line.append(f"{self._color(sev, sev)}: {summary[sev]}")
         _print("   " + " | ".join(summary_line))
-        _print(f"{self.colors['DIM']}{'='*60}{self.colors['RESET']}\n")
+        _print(f"{self.colors['DIM']}{'='*self.terminal_width}{self.colors['RESET']}\n")

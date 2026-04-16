@@ -9,7 +9,7 @@ severity_threshold = "{severity}"
 exclude_patterns = {excludes}
 enabled_checks = {checks}
 offline = false
-# proxy = "http://proxy.example.com:8080"
+# proxy = "http://127.0.0.1:8080"
 
 [tool.ghostcheck]
 project_name = "{project_name}"
@@ -31,16 +31,34 @@ project_type = "{project_type}"
             return "go"
         if os.path.exists(os.path.join(root, 'Cargo.toml')):
             return "rust"
-        if any(f.endswith('.tf') for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))):
-            return "terraform"
+        try:
+            if any(f.endswith('.tf') for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))):
+                return "terraform"
+        except (PermissionError, OSError):
+            pass
+            
         if os.path.exists(os.path.join(root, 'Dockerfile')):
             return "docker"
         return "generic"
 
     def initialize(self, force=False):
+        # Check if already in a project (upward search)
+        curr = os.path.abspath(self.project_root)
+        while True:
+            parent_config = os.path.join(curr, "ghostcheck.toml")
+            if os.path.exists(parent_config):
+                if curr == os.path.abspath(self.project_root):
+                    if not force:
+                        return False, f"ghostcheck.toml already exists at {parent_config}. Use --force to overwrite."
+                else:
+                    return False, f"Project already initialized at parent directory: {curr}. No need to re-initialize here."
+            
+            parent = os.path.dirname(curr)
+            if parent == curr:
+                break
+            curr = parent
+            
         config_path = os.path.join(self.project_root, "ghostcheck.toml")
-        if os.path.exists(config_path) and not force:
-            return False, "ghostcheck.toml already exists. Use --force to overwrite."
 
         project_type = self.detect_project_type()
         project_name = os.path.basename(os.path.abspath(self.project_root))
@@ -68,13 +86,13 @@ project_type = "{project_type}"
             project_type=project_type
         )
 
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding='utf-8') as f:
             f.write(content)
 
         # Also ensure .ghostcheckignore exists
         ignore_path = os.path.join(self.project_root, ".ghostcheckignore")
         if not os.path.exists(ignore_path):
-            with open(ignore_path, "w") as f:
+            with open(ignore_path, "w", encoding='utf-8') as f:
                 f.write("# GhostCheck Ignore File\n")
                 for e in excludes:
                     f.write(f"{e}\n")
@@ -143,7 +161,7 @@ jobs:
         with:
           sarif_file: ghostcheck-results.sarif
 """
-        with open(ci_path, "w") as f:
+        with open(ci_path, "w", encoding='utf-8') as f:
             f.write(content)
         return True, f"GitHub Action generated at {ci_path}"
 
@@ -168,6 +186,6 @@ ghostcheck-scan:
     - main
     - merge_requests
 """
-        with open(ci_path, "w") as f:
+        with open(ci_path, "w", encoding='utf-8') as f:
             f.write(content)
         return True, f"GitLab CI generated at {ci_path}"

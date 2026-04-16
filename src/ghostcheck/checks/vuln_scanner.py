@@ -11,9 +11,11 @@ logger = logging.getLogger(__name__)
 class VulnScanner:
     OSV_API_URL = "https://api.osv.dev/v1/query"
 
-    def __init__(self, offline=False, proxy=None):
+    def __init__(self, offline=False, proxy=None, ssl_verify=True, timeout=10):
         self.offline = offline
         self.proxy = proxy
+        self.ssl_verify = ssl_verify
+        self.timeout = timeout
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
 
     def _query_osv(self, package_name, version, ecosystem):
@@ -28,12 +30,20 @@ class VulnScanner:
             }
         }
         try:
-            response = requests.post(self.OSV_API_URL, json=payload, timeout=5, proxies=self.proxies)
+            response = requests.post(
+                self.OSV_API_URL, 
+                json=payload, 
+                timeout=self.timeout, 
+                proxies=self.proxies,
+                verify=self.ssl_verify
+            )
             if response.status_code == 200:
                 return response.json()
         except requests.RequestException as e:
             # Silently fail on network errors but could log here in debug mode
             logger.debug(f"OSV API request failed: {e}")
+            if os.environ.get("GHOSTCHECK_DEBUG") == "1":
+                print(f"[DEBUG] Vulnerability scan network error. If you are offline, use --offline. Error: {e}")
         return None
 
     def scan_file(self, file_path):
@@ -49,7 +59,7 @@ class VulnScanner:
 
     def _scan_requirements(self, file_path):
         findings = []
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
             for i, line in enumerate(f):
                 line = line.strip()
                 if not line or line.startswith('#'):
@@ -78,7 +88,7 @@ class VulnScanner:
     def _scan_package_json(self, file_path):
         findings = []
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 data = json.load(f)
                 deps = data.get('dependencies', {})
                 dev_deps = data.get('devDependencies', {})

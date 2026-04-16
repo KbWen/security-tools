@@ -4,8 +4,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 class SecretValidator:
-    def __init__(self, enabled=False):
+    def __init__(self, enabled=False, proxy=None, ssl_verify=True, timeout=10):
         self.enabled = enabled
+        self.proxy = proxy
+        self.ssl_verify = ssl_verify
+        self.timeout = timeout
+        self.proxies = {"http": proxy, "https": proxy} if proxy else None
 
     def validate(self, finding):
         if not self.enabled:
@@ -24,7 +28,13 @@ class SecretValidator:
         try:
             # Simple check against models list
             headers = {"Authorization": f"Bearer {token}"}
-            resp = requests.get("https://api.openai.com/v1/models", headers=headers, timeout=5)
+            resp = requests.get(
+                "https://api.openai.com/v1/models", 
+                headers=headers, 
+                timeout=self.timeout,
+                proxies=self.proxies,
+                verify=self.ssl_verify
+            )
             if resp.status_code == 200:
                 return {"valid": True, "status": "LIVE", "message": "Token is ACTIVE and valid."}
             elif resp.status_code == 401:

@@ -3,8 +3,13 @@ import sys
 
 try:
     import tomllib
-except ModuleNotFoundError:
-    import tomli as tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        print("Error: Missing dependency 'tomli'. Please install it using 'pip install tomli'.")
+        import sys
+        sys.exit(1)
 from typing import Dict, Any, Optional
 
 
@@ -16,7 +21,8 @@ class GhostCheckConfig:
         "offline": False,
         "custom_patterns": [],
         "load_local_plugins": False,
-        "proxy": None
+        "proxy": None,
+        "ssl_verify": True
     }
 
     def __init__(self, project_root: str):
@@ -30,17 +36,32 @@ class GhostCheckConfig:
         if os.path.exists(global_config_path):
             self._merge_config(self._read_toml(global_config_path))
 
-        # 2. Load Project Config (./ghostcheck.toml or pyproject.toml)
-        project_config_path = os.path.join(self.project_root, "ghostcheck.toml")
-        pyproject_path = os.path.join(self.project_root, "pyproject.toml")
-
-        if os.path.exists(project_config_path):
-            self._merge_config(self._read_toml(project_config_path))
-        elif os.path.exists(pyproject_path):
-            pyproject_data = self._read_toml(pyproject_path)
-            # Support [tool.ghostcheck] in pyproject.toml
-            if "tool" in pyproject_data and "ghostcheck" in pyproject_data["tool"]:
-                self._merge_config(pyproject_data["tool"]["ghostcheck"])
+        # 2. Upward search for project config
+        current = os.path.abspath(self.project_root)
+        search_paths = []
+        
+        while True:
+            search_paths.append(current)
+            # Stop at root or if we find .git (likely project root)
+            if os.path.exists(os.path.join(current, ".git")):
+                break
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+            
+        for path in reversed(search_paths):  # From top to bottom to allow overrides
+            # Check for ghostcheck.toml
+            project_config_path = os.path.join(path, "ghostcheck.toml")
+            if os.path.exists(project_config_path):
+                self._merge_config(self._read_toml(project_config_path))
+                
+            # Check pyproject.toml
+            pyproject_path = os.path.join(path, "pyproject.toml")
+            if os.path.exists(pyproject_path):
+                pyproject_data = self._read_toml(pyproject_path)
+                if "tool" in pyproject_data and "ghostcheck" in pyproject_data["tool"]:
+                    self._merge_config(pyproject_data["tool"]["ghostcheck"])
 
     def _read_toml(self, path: str) -> Dict[str, Any]:
         try:
@@ -78,3 +99,5 @@ class GhostCheckConfig:
             self.config['offline'] = True
         if hasattr(args, 'load_local_plugins') and args.load_local_plugins:
             self.config['load_local_plugins'] = True
+        if hasattr(args, 'insecure') and args.insecure:
+            self.config['ssl_verify'] = False

@@ -29,7 +29,8 @@ from .ignorefile import IgnoreMatcher
 class Scanner:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None):
+    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version="0.9.1"):
+        self.version = version
         # Normalize and store absolute path for boundary checks
         # AC-H3: 使用 realpath 以確保符號連結下的一致性
         self.root_path = os.path.realpath(root_path)
@@ -47,7 +48,7 @@ class Scanner:
         
         if baseline_path and os.path.exists(baseline_path):
             try:
-                with open(baseline_path, 'r') as f:
+                with open(baseline_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     for fnd in data.get('findings', []):
                         # Create fingerprint: file:line:rule_name
@@ -58,20 +59,37 @@ class Scanner:
 
         # Load data files
         base_dir = os.path.dirname(__file__)
+        self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
+        self.results_cache_file = os.path.join(self.cache_dir, "results_cache.json")
+        self.results_cache = self._load_results_cache()
+        self.cache_hits = 0
         self.secret_patterns_path = os.path.join(base_dir, 'data', 'secret_patterns.json')
         self.risky_rules_path = os.path.join(base_dir, 'data', 'risky_rules.json')
         self.owasp_mapping_path = os.path.join(base_dir, 'data', 'owasp_mapping.json')
         
-        with open(self.owasp_mapping_path, 'r') as f:
-            self.owasp_mapping = json.load(f)
-        
-        # Load raw patterns for AST scanner
-        with open(self.secret_patterns_path, 'r') as f:
-            self.raw_secret_patterns = json.load(f)
+        try:
+            with open(self.owasp_mapping_path, 'r', encoding='utf-8') as f:
+                self.owasp_mapping = json.load(f)
+        except (IOError, json.JSONDecodeError):
+            self.owasp_mapping = {}
+
+        try:
+            with open(self.secret_patterns_path, 'r', encoding='utf-8') as f:
+                self.raw_secret_patterns = json.load(f)
+        except (IOError, json.JSONDecodeError):
+            self.raw_secret_patterns = []
             
         # 初始化模組
         proxy = self.config.get('proxy') if self.config else None
-        self.hallucination_checker = HallucinationChecker(offline=offline, proxy=proxy)
+        ssl_verify = self.config.get('ssl_verify', True) if self.config else True
+        timeout = self.config.get('timeout', 10) if self.config else 10
+        
+        self.hallucination_checker = HallucinationChecker(
+            offline=offline, 
+            proxy=proxy, 
+            ssl_verify=ssl_verify, 
+            timeout=timeout
+        )
         self.secret_scanner = SecretScanner(self.secret_patterns_path)
         self.ast_secret_checker = AstSecretChecker(self.raw_secret_patterns)
         self.js_ast_checker = JsAstSecretChecker(self.raw_secret_patterns)
@@ -84,10 +102,20 @@ class Scanner:
         self.ai_supply_chain = AISupplyChainScanner()
         self.agency_auditor = AgencyAuditor()
         self.entropy_scanner = EntropyScanner()
-        self.vuln_scanner = VulnScanner(offline=offline, proxy=proxy)
+        self.vuln_scanner = VulnScanner(
+            offline=offline, 
+            proxy=proxy, 
+            ssl_verify=ssl_verify, 
+            timeout=timeout
+        )
         self.mobile_auditor = MobileConfigAuditor()
         self.api_linter = APILinter()
-        self.secret_validator = SecretValidator(enabled=not offline)
+        self.secret_validator = SecretValidator(
+            enabled=not offline, 
+            proxy=proxy, 
+            ssl_verify=ssl_verify, 
+            timeout=timeout
+        )
         self.go_ast_scanner = GoASTScanner(self.raw_secret_patterns)
         self.java_ast_scanner = JavaASTScanner(self.raw_secret_patterns)
         self.dart_ast_scanner = DartASTScanner(self.raw_secret_patterns)
@@ -109,21 +137,16 @@ class Scanner:
         self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
 
     def _is_safe_path(self, file_path):
-        """防止路徑穿越，確保檔案位於 root_path 內。"""
-        abs_path = os.path.realpath(file_path)
-        root_abs = os.path.realpath(self.root_path)
-        
-        # AC-H2: Windows 跨磁碟檢查
-        if os.name == 'nt':
-            if os.path.splitdrive(abs_path)[0].lower() != os.path.splitdrive(root_abs)[0].lower():
-                return False
-
-        if os.path.isdir(root_abs):
-             try:
-                 return os.path.commonpath([root_abs, abs_path]) == root_abs
-             except ValueError:
-                 return False
-        return True # 單一檔案目標即為其根目錄
+        """Ensures the path is within project root and handles potential directory traversal."""
+        try:
+            abs_path = os.path.normpath(os.path.realpath(file_path))
+            root_abs = os.path.normpath(self.root_path)
+            
+            if os.path.isdir(root_abs):
+                return os.path.commonpath([root_abs, abs_path]) == root_abs
+            return True
+        except (ValueError, OSError):
+            return False
 
     def _read_file_safe(self, file_path):
         """Reads file with size limits and path safety."""
@@ -387,6 +410,45 @@ class Scanner:
             
         return False
 
+    def _load_results_cache(self) -> dict:
+        if os.path.exists(self.results_cache_file):
+            try:
+                with open(self.results_cache_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    # AC-S3: Use same stable separators for verification
+                    if 'integrity' in data:
+                        stored_hash = data.pop('integrity')
+                        current_hash = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                        if stored_hash != current_hash:
+                            return {}
+                    return data
+            except Exception:
+                pass
+        return {}
+
+    def _save_results_cache(self):
+        try:
+            os.makedirs(self.cache_dir, exist_ok=True)
+            # AC-S3: Use stable JSON format for integrity check (no whitespace)
+            cache_to_save = self.results_cache.copy()
+            if 'integrity' in cache_to_save:
+                del cache_to_save['integrity']
+            
+            integrity_hash = hashlib.sha256(json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+            cache_to_save['integrity'] = integrity_hash
+            with open(self.results_cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_to_save, f, separators=(',', ':'))
+        except Exception:
+            pass
+
+    def _get_file_fingerprint(self, file_path: str) -> str:
+        try:
+            stat = os.stat(file_path)
+            # Use path, mtime, and size for quick fingerprint
+            return f"{file_path}|{stat.st_mtime}|{stat.st_size}"
+        except OSError:
+            return ""
+
     def _process_single_file(self, file_path):
         """Processes a single file through all relevant scanners."""
         findings = []
@@ -473,24 +535,49 @@ class Scanner:
         import concurrent.futures
         
         all_files = []
+        cached_results = []
+        files_to_scan = []
+
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
+                
+                # Check cache
+                fp = self._get_file_fingerprint(file_path)
+                if fp in self.results_cache:
+                    self.cache_hits += 1
+                    if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                        print(f"[DEBUG] Cache hit for {file_path}")
+                    cached_results.extend(self.results_cache[fp])
+                else:
+                    files_to_scan.append(file_path)
                 all_files.append(file_path)
 
-        raw_findings = []
+        raw_findings = list(cached_results)
+        new_scan_cache = {}
+
         # Optimization: Use max_workers based on CPU count for I/O + Regex heavy tasks
-        with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
-            future_to_file = {executor.submit(self._process_single_file, f): f for f in all_files}
-            for future in concurrent.futures.as_completed(future_to_file):
-                try:
-                    result = future.result()
-                    if result:
-                        raw_findings.extend(result)
-                except Exception as e:
-                    print(f"Error scanning {future_to_file[future]}: {e}")
+        if files_to_scan:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
+                future_to_file = {executor.submit(self._process_single_file, f): f for f in files_to_scan}
+                for future in concurrent.futures.as_completed(future_to_file):
+                    f_path = future_to_file[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            raw_findings.extend(result)
+                        
+                        # Update cache entry for this file
+                        fp = self._get_file_fingerprint(f_path)
+                        if fp:
+                            self.results_cache[fp] = result or []
+                    except Exception as e:
+                        print(f"Error scanning {f_path}: {e}")
+            
+            # Save cache after new scans
+            self._save_results_cache()
         
         # v0.6.0: Inline suppression and Baseline filter
         filtered = []
@@ -523,8 +610,26 @@ class Scanner:
             if "ghostcheck-ignore" in str(fnd.get('context', '')):
                 continue
 
+            # v0.8.0: Secret Validation (if applicable and enabled)
+            if 'secret' in fnd_id.lower() or 'token' in fnd_id.lower():
+                validation = self.secret_validator.validate(fnd)
+                if validation:
+                    fnd['validation'] = validation
+                    # Optional: Adjust severity if found valid
+                    if validation.get('valid') is True:
+                        fnd['severity'] = 'CRITICAL'
+                        fnd['message'] = (fnd.get('message', '') + " [VERIFIED ACTIVE]").strip()
+
             # Apply OWASP mapping
             fnd['owasp_llm'] = self.owasp_mapping.get(fnd_id, "N/A")
+            
+            # AC-H6: Relativize paths for reports
+            if 'file' in fnd:
+                try:
+                    fnd['file'] = os.path.relpath(fnd['file'], self.root_path).replace(os.sep, '/')
+                except (ValueError, Exception):
+                    fnd['file'] = fnd['file'].replace(os.sep, '/')
+
             filtered.append(fnd)
 
         return self.severity_engine.adjust_findings(filtered)

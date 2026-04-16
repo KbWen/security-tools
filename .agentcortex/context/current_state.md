@@ -71,61 +71,20 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
-### Ship-master-2026-03-06
-
-- Feature shipped: namespaced AgentCortex-owned executable, tooling, and reference assets under `.agentcortex/`, while preserving fixed anchors and legacy wrappers for downstream compatibility.
-- Tests: Pass
-
-### Ship-codex-template-import-cleanup-namespacing-2026-03-06
-
-- Feature shipped: normalized Work Log naming to filesystem-safe {worklog-key} paths, documented recoverable missing-log behavior for /bootstrap, /plan, and /handoff, and added regression validation for the contract.
-- Tests: Pass
-
-### Ship-codex-template-import-cleanup-namespacing-2026-03-07
-
-- Feature shipped: added a minimal text hardening kit with repo-level text defaults, baseline-backed integrity checks, validation integration, and rollout guidance for older projects.
-- Tests: Pass
-
-### Ship-claude-gallant-haibt-2026-03-18
-
-- Feature shipped: added Red Team / Adversarial Testing skill with auto-trigger during /review and /test phases, classification-based modes (Lite/Full/Beast), graduated blocking rules, and Work Log integration.
-- Tests: Pass (markdown-only, no executable code)
-
-### Ship-claude-admiring-turing-auto-untrack-2026-03-21
-
-- Feature shipped: hardened deploy script with atomic .gitignore write, skills flat-file conflict guard, and post-deploy git-add hint.
-- Tests: Pass (validate.sh)
-
-### Ship-agentcortex-update-v5.3.0-2026-03-21
-
-- Feature shipped: Updated AgentCortex framework to v5.3.0, migrated framework and project assets to `.agentcortex/` root namespace, and preserved project-specific Autopilot Protocol and pre-commit hooks.
-- Tests: Pass (validate.ps1 & ghostcheck scan)
-
-### Ship-v0.5.0-feature-multi-ast-severity-2026-03-21
-- Feature shipped: implemented Multi-Language AST scanning (JS/TS via `esprima`), Intelligent Severity Engine (context-aware adjustments), and deep `.env` file security checks.
-- Tests: Pass (pytest)
-
-### Ship-feat/v0.6.0-2026-03-23
-- Feature shipped: Zero-Config Onboarding (`ghostcheck init`), Git Diff scanning, Baseline/Inline suppression, and expanded 31 secret patterns.
-- Tests: Pass (pytest & manual verification)
-
-### Ship-feat/v0.7.0-2026-04-09
-- Feature shipped: IaC (Terraform/K8s) scanning, CI/CD Pipeline auditing (GHA), Firebase Rules audit, Plugin Architecture, and Auto-Fix suggestions.
-- Tests: Pass (pytest 34/34)
+> [!NOTE]
+> Older ship history has been moved to [.agentcortex/context/archive/ship_history_archived.md](file:///.agentcortex/context/archive/ship_history_archived.md) to save context tokens.
 
 ### Ship-feat/v0.8.0-2026-04-09
 - Feature shipped: AI Agent Security Foundation (Epic 1-5). Fixed unpinned npx/mcp server risks, enhanced agent rules (Unicode injection/sensitive paths), AI supply chain auditing, and OWASP LLM Top 10 compliance mapping.
 - Tests: Pass (pytest 7/7 new features)
 
-### Ship-feat/seo-optimization-2026-04-12
-- Feature shipped: Full GitHub SEO & Community Health suite. Implemented P0-P3 items including README optimization, metadata tagging, security policy, and structured issue forms.
-- Tools used: `gh` CLI for metadata settings.
-- Tests: GhostCheck pre-commit scan Pass.
-
-### Ship-feat/installation-resilience-2026-04-15
-- Feature shipped: GhostCheck 安裝與平台魯棒性優化。包含 Packaging 資料檔包含、CLI --output/--soft-fail 指令、Windows 編碼與跨磁碟安全性修復、忽略清單缺陷修正以及依賴缺失的優雅降級處理。
-- Tests: Pass
-
-### Ship-feat/resilience-and-proxy-2026-04-15
-- Feature shipped: 實作網路代理支援 (Proxy Support) 與系統韌性深度強化。包含 `proxy` 設定傳遞、設定檔合併 Bug 修復、CLI 延遲載入優化、以及 Console Reporter 檔案輸出支持。
-- Tests: Pass (新增 tests/test_harden_resilience.py)
+### Ship-v0.9.0-Stability-Release-2026-04-15
+- **Feature shipped**: GhostCheck v0.9.0 Resilience & Hardening.
+- **Key Fixes**:
+  - **Installation**: Fixed `pyproject.toml` sharing logic to prevent `FileNotFoundError`.
+  - **Performance**: Implemented CLI Lazy Loading for faster command starts.
+  - **Windows Robustness**: Fixed terminal encoding (UTF-8 reconfiguration) and multi-drive security boundary logic.
+  - **Enterprise Support**: Added proxy support for `HallucinationChecker` and `VulnScanner`.
+  - **CLI UX**: Added `--output` and `--soft-fail` flags, improved `IgnoreMatcher` recursion.
+- **Tests**: Pass (New integration suite: `tests/test_harden_resilience.py`)
+- **Status**: Stable & Ready for PyPI.

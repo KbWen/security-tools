@@ -45,8 +45,9 @@ class PluginLoader:
                     issubclass(attr, BasePlugin) and 
                     attr is not BasePlugin):
                     return attr()
-        except Exception:
-            # Silently skip failing plugins for now
+        except Exception as e:
+            if os.environ.get("GHOSTCHECK_DEBUG") == "1":
+                print(f"[DEBUG] Failed to load plugin {file_path}: {e}")
             pass
         return None
 
@@ -61,6 +62,8 @@ class PluginLoader:
                         if 'rule_name' not in f and 'name' not in f:
                             f['name'] = plugin.name
                     all_findings.extend(findings)
-            except Exception:
+            except Exception as e:
+                if os.environ.get("GHOSTCHECK_DEBUG") == "1":
+                    print(f"[DEBUG] Plugin execution failed ({getattr(plugin, 'name', 'unknown')}): {e}")
                 continue
         return all_findings

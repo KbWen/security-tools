@@ -8,10 +8,12 @@ from datetime import datetime, timedelta
 import hashlib
 
 class HallucinationChecker:
-    def __init__(self, logger=None, offline=False, proxy=None):
+    def __init__(self, logger=None, offline=False, proxy=None, ssl_verify=True, timeout=10):
         self.logger = logger
         self.offline = offline
         self.proxy = proxy
+        self.ssl_verify = ssl_verify
+        self.timeout = timeout
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = os.path.join(self.cache_dir, "hallucination.json")
         self._load_cache()
@@ -23,19 +25,31 @@ class HallucinationChecker:
             handlers.append(urllib.request.ProxyHandler({'http': self.proxy, 'https': self.proxy}))
         
         opener = urllib.request.build_opener(*handlers)
+        
+        # AC-S1: Handle insecure SSL context
+        if not self.ssl_verify:
+            import ssl
+            context = ssl.create_default_context()
+            context.check_hostname = False
+            context.verify_mode = ssl.CERT_NONE
+            
+            # Note: We need a custom handler for this
+            https_handler = urllib.request.HTTPSHandler(context=context)
+            opener.add_handler(https_handler)
+            
         urllib.request.install_opener(opener)
 
     def _load_cache(self):
         self.cache = {}
         if os.path.exists(self.cache_file):
             try:
-                with open(self.cache_file, 'r') as f:
+                with open(self.cache_file, 'r', encoding='utf-8') as f:
                     content = f.read()
                     data = json.loads(content)
                     # Verify integrity if hash exists
                     if 'integrity' in data:
                         stored_hash = data.pop('integrity')
-                        current_hash = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+                        current_hash = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
                         if stored_hash != current_hash:
                             if self.logger: self.logger.warning("Cache integrity check failed. Involving new cache.")
                             self.cache = {}
@@ -54,11 +68,11 @@ class HallucinationChecker:
             if 'integrity' in cache_to_save:
                 del cache_to_save['integrity']
             
-            integrity_hash = hashlib.sha256(json.dumps(cache_to_save, sort_keys=True).encode()).hexdigest()
+            integrity_hash = hashlib.sha256(json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             cache_to_save['integrity'] = integrity_hash
 
-            with open(self.cache_file, 'w') as f:
-                json.dump(cache_to_save, f)
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(cache_to_save, f, separators=(',', ':'))
         except IOError:
             pass
 
@@ -91,11 +105,11 @@ class HallucinationChecker:
         findings = []
         packages = self._parse_requirements(file_content)
         for pkg in packages:
-            result = self._check_package("PyPI", pkg)
+            result, network_called = self._check_package("PyPI", pkg)
             if result:
                 findings.append(result)
-            if not self.offline:
-                time.sleep(0.5)  # Rate limiting
+            if network_called and not self.offline:
+                time.sleep(0.5)  # Rate limiting only after network req
         return findings
 
     def check_package_json(self, file_content):
@@ -107,10 +121,10 @@ class HallucinationChecker:
             all_deps = {**deps, **dev_deps}
             
             for pkg in all_deps:
-                result = self._check_package("npm", pkg)
+                result, network_called = self._check_package("npm", pkg)
                 if result:
                     findings.append(result)
-                if not self.offline:
+                if network_called and not self.offline:
                     time.sleep(0.5)  # Rate limiting
         except json.JSONDecodeError:
             pass
@@ -132,15 +146,11 @@ class HallucinationChecker:
         # 1. Check Cache
         cached_data, is_stale = self._get_cached(registry, pkg_name)
         if cached_data is not None:
-            if is_stale and self.offline:
-                # In a real CLI, we might want to collect these and show at the end
-                # For now, we return it but it's marked as potentially stale
-                pass 
-            return cached_data if cached_data != "OK" else None
+            return (cached_data if cached_data != "OK" else None), False
 
         # 2. If Offline and not in cache, skip
         if self.offline:
-            return None
+            return None, False
 
         # 3. Perform real network check
         if registry == "PyPI":
@@ -150,12 +160,12 @@ class HallucinationChecker:
 
         # 4. Update Cache (store "OK" if no finding)
         self._set_cached(registry, pkg_name, result if result else "OK")
-        return result
+        return result, True
 
     def _check_pypi_online(self, pkg_name):
         url = f"https://pypi.org/pypi/{pkg_name}/json"
         try:
-            with urllib.request.urlopen(url, timeout=5) as response:
+            with urllib.request.urlopen(url, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode())
                 info = data.get('info', {})
                 releases = data.get('releases', {})
@@ -206,7 +216,7 @@ class HallucinationChecker:
         url = f"https://registry.npmjs.org/{pkg_name}"
         try:
             req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=5) as response:
+            with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode())
                 time_data = data.get('time', {})
                 created_at_str = time_data.get('created')
