@@ -1,4 +1,7 @@
-import requests
+try:
+    import requests
+except ImportError:
+    requests = None
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,7 +15,7 @@ class SecretValidator:
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
 
     def validate(self, finding):
-        if not self.enabled:
+        if not self.enabled or requests is None:
             return None
             
         token = finding.get('context')

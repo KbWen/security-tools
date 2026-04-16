@@ -1,5 +1,6 @@
 import os
 import json
+import hashlib
 from .checks.hallucination import HallucinationChecker
 from .checks.secrets import SecretScanner
 from .checks.ast_scanner import AstSecretChecker

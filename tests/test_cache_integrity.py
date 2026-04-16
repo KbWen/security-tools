@@ -9,7 +9,7 @@ def test_cache_integrity_failure(tmp_path):
     # Create valid cache
     data = {"PyPI:requests": {"timestamp": "2026-03-18T00:00:00", "data": "OK"}}
     # Calculate integrity
-    hasher = hashlib.sha256(json.dumps(data, sort_keys=True).encode())
+    hasher = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode())
     data['integrity'] = hasher.hexdigest()
     
     with open(cache_file, 'w') as f:
