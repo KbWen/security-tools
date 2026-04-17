@@ -66,12 +66,12 @@ def main():
     scan_parser.add_argument("--diff", help="Only scan files changed since specific Git ref (e.g. HEAD~1)")
     
     # init command
-    init_parser = subparsers.add_parser("init", help="Initialize GhostCheck in the current project")
+    init_parser = subparsers.add_parser("init", parents=[parent_parser], help="Initialize GhostCheck in the current project")
     init_parser.add_argument("--force", action="store_true", help="Overwrite existing configuration")
     init_parser.add_argument("--ci", choices=["github", "gitlab"], help="Generate CI pipeline configuration")
     
     # baseline command
-    baseline_parser = subparsers.add_parser("baseline", help="Manage security check baselines")
+    baseline_parser = subparsers.add_parser("baseline", parents=[parent_parser], help="Manage security check baselines")
     baseline_sub = baseline_parser.add_subparsers(dest="baseline_cmd")
     create_bl = baseline_sub.add_parser("create", help="Create a baseline from current findings")
     create_bl.add_argument("output", nargs="?", default=".ghostcheck-baseline.json", help="Output file path")
