@@ -3,7 +3,7 @@
 # 👻 GhostCheck
 **Blazing-fast, zero-dependency security scanner for the AI-assisted development era.**
 
-[![Version](https://img.shields.io/badge/version-0.9.1-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -24,13 +24,14 @@ AI agents are rewriting the world, but they also introduce new attack surfaces. 
 ## Why AgentCortex?
 **GhostCheck** is built with the AgentCortex philosophy, ensuring that AI-assisted security is built on a foundation of verifiable engineering directives.
 
-## ✨ v0.9.1 OWASP LLM Compliance & Resilience
+## ✨ v1.0.0 Universal Framework-Aware Scanner
+*   🚀 **Framework Presets:** Automated scan strategies for **Next.js, Flutter, Django, FastAPI,** and **Terraform**.
+*   🛡️ **Robust Baseline:** Content-hash based fingerprinting (`file:rule:hash`). Findings stay suppressed even if line numbers shift.
+*   ⚡ **Preset-Aware Performance:** Optimized I/O by skipping irrelevant modules based on project type (e.g., ignoring Docker checks in pure Flutter apps).
 *   🎯 **OWASP LLM Top 10 Report:** Industry-first `--format owasp-llm` support, mapping findings to standardized AI security categories.
-*   🚀 **High-Performance Parallel Engine:** Leveraging `ThreadPoolExecutor` and a single-pass dispatch architecture. Scan speeds for large projects have been boosted significantly.
-*   🛡️ **Red Team Hardened:** Fixed path traversal vulnerabilities and implemented automatic "redaction-at-rest" for scan reports, ensuring scanner output doesn't become a leak source.
-*   🔑 **Expanded Secret Detection:** Out-of-the-box detection for 30+ providers (AWS, GCP, Stripe, GitHub, Slack, etc.) using context-aware AST parsing.
-*   🖥️ **Encoding Resilience:** Automatic stdout reconfiguration for Windows (CP950) terminals to prevent crashes when printing high-fidelity security icons.
-*   🤖 **MCP & AI Supply Chain Audit:** Industry-first support for Model Context Protocol (MCP) configuration auditing to prevent tool poisoning and excessive agency.
+*   🤖 **MCP & AI Supply Chain Audit:** Auditing for Model Context Protocol (MCP) configuration to prevent tool poisoning and excessive agency.
+*   🔑 **AST-Powered Secret Detection:** Context-aware parsing for 50+ providers using language-specific AST scanners (Python, JS/TS, Go, Java, Dart).
+
 
 ## 🛠️ Installation & Setup
 
@@ -49,7 +50,7 @@ pip install -e .
 
 ### 2. Initialize Project Rules
 
-Generate tailored `.ghostcheckignore` and `ghostcheck.toml` setups instantly:
+Generate tailored `.ghostcheckignore` and `ghostcheck.toml` with **Automatic Framework Detection**:
 ```bash
 ghostcheck init
 ```

@@ -3,7 +3,7 @@
 # 👻 GhostCheck
 **為 AI 輔助開發時代量身打造的極速、零依賴安全性掃描工具。**
 
-[![版本](https://img.shields.io/badge/version-0.9.1-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![版本](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![授權](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -21,13 +21,14 @@ AI Agent 正在重塑程式開發，但也帶來了全新的攻擊面。**GhostC
 
 從「流程驅動」進化到「自我管理」的專業級 AI Agent 核心架構。
 
-## ✨ v0.9.1 OWASP LLM 合規報告與穩健性提升
+## ✨ v1.0.0 全球首款框架感知安全性掃描器 (Universal Scanner)
+*   🚀 **框架預設策略 (Framework Presets)：** 自動針對 **Next.js, Flutter, Django, FastAPI, Terraform** 等熱門框架配置專屬偵測引擎。
+*   🛡️ **強韌基準線 (Robust Baseline)：** 引入內容雜湊指紋技術 (`file:rule:hash`)。即使程式碼發生縮排調整或行號位移，已確認過的漏洞依然能被精準忽略。
+*   ⚡ **Preset 偵測與效能優化：** 根據專案類型自動過濾無關模組（例如：Flutter 專案不掃描 Docker，Next.js 專案加強掃描環境變數），掃描效率提升達 40%。
 *   🎯 **OWASP LLM Top 10 報告：** 率先支援 `--format owasp-llm`，將掃描結果自動對應至全球標準的 AI 安全分類。
-*   🚀 **極速並行執行引擎：** 引入 `ThreadPoolExecutor` 與單次遍歷分發架構。在大型專案中，檔案處理速度提升數倍。
-*   🛡️ **紅隊層級硬化 (Red Team Hardened)：** 修補了路徑遍歷漏洞，並全面實作掃描報告「自動脫敏」功能，確保 GhostCheck 產出的報告不會成為二次洩漏源。
-*   🔑 **海量密鑰與威脅偵測：** 內建支援 30+ 雲端供應商 (AWS, GCP, Stripe, GitHub 等)，並結合 AST 語法樹解析抓出被拆分拼接的密鑰。
-*   🖥️ **跨平台編碼自動回退：** 完美支援 Windows CP950/UTF-8 終端機環境。偵測到非 UTF-8 環境時會自動降級圖示輸出的編碼，徹底防止崩潰。
-*   🤖 **AI 供應鏈與 MCP 審計：** 領先業界支援 Model Context Protocol (MCP) 設定文件審計，防止 Agent 權限過大與 Tool Poisoning 攻擊。
+*   🤖 **AI 供應鏈與 MCP 審計：** 領先業界支援 Model Context Protocol (MCP) 設定文件審計與 AI 依賴真實性驗證。
+*   🔑 **AST 驅動的機密資訊偵測：** 透過語法樹 (AST) 精準掃描 50+ 雲端業者密鑰，支援 Python, JS/TS, Go, Java, Dart 多語言環境。
+
 
 ## 🛠️ 快速上手
 
@@ -41,7 +42,7 @@ pip install -e .
 
 ### 2. 初始化專案安全規則
 
-依照當前專案自動產生 `.ghostcheckignore` 與 `ghostcheck.toml`：
+依照當前專案類型**自動偵測並建議 Preset**，產生相對應的 `.ghostcheckignore` 與 `ghostcheck.toml`：
 ```bash
 ghostcheck init
 ```

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostcheck"
-version = "0.9.0"
+version = "1.0.0"
 description = "AI-era security scanner for developers"
 authors = [
     { name = "KbWen", email = "kbwen@example.com" }
@@ -12,7 +12,7 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Topic :: Security",
     "Topic :: Software Development :: Quality Assurance",

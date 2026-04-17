@@ -31,7 +31,7 @@ from .presets.manager import PresetManager
 class Scanner:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version="0.9.1"):
+    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version="1.0.0"):
         self.version = version
         # Normalize and store absolute path for boundary checks
         # AC-H3: 使用 realpath 以確保符號連結下的一致性
