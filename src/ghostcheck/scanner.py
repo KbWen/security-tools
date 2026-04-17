@@ -23,6 +23,7 @@ from .checks.secret_validator import SecretValidator
 from .checks.ast_go_scanner import GoASTScanner
 from .checks.ast_java_scanner import JavaASTScanner
 from .checks.ast_dart_scanner import DartASTScanner
+from .checks.logic_auditor import LogicAuditor
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -137,6 +138,7 @@ class Scanner:
         self.go_ast_scanner = GoASTScanner(self.raw_secret_patterns)
         self.java_ast_scanner = JavaASTScanner(self.raw_secret_patterns)
         self.dart_ast_scanner = DartASTScanner(self.raw_secret_patterns)
+        self.logic_auditor = LogicAuditor()
         self.scoring_engine = ScoringEngine()
         
         load_local = self.config.get('load_local_plugins', False) if self.config else False
@@ -510,7 +512,7 @@ class Scanner:
             # All modules enabled by default
             enabled_modules = [
                 "hallucination", "secrets", "env", "rules", "docker", 
-                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain"
+                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", "logic"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -596,6 +598,9 @@ class Scanner:
             findings.extend(self.entropy_scanner.scan_content(file_path, content))
         if "api" in enabled_modules:
             findings.extend(self.api_linter.scan_content(file_path, content))
+        
+        if "logic" in enabled_modules:
+            findings.extend(self.logic_auditor.scan_file(file_path, content))
 
         # 8. Plugins & Vulnerabilities
         findings.extend(self.plugin_loader.run_all(file_path, content))

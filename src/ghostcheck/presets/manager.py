@@ -8,28 +8,28 @@ class PresetManager:
             "next.js": {
                 "name": "Next.js",
                 "description": "Optimized for Next.js, React, and Vercel environments.",
-                "scan_modules": ["hallucination", "secrets", "env", "ci_cd", "api", "docker"],
+                "scan_modules": ["hallucination", "secrets", "env", "ci_cd", "api", "docker", "logic"],
                 "important_files": ["package.json", "next.config.js", "vercel.json", ".env"],
                 "priority_rules": ["hallucinated_package", "env_secret_found", "js_secret"]
             },
             "flutter": {
                 "name": "Flutter",
                 "description": "Deep scan for Flutter/Dart apps, registry verification, and mobile configs.",
-                "scan_modules": ["hallucination", "secrets", "mobile", "ci_cd", "rules", "iac"],
+                "scan_modules": ["hallucination", "secrets", "mobile", "ci_cd", "rules", "iac", "logic"],
                 "important_files": ["pubspec.yaml", "AndroidManifest.xml", "Info.plist", "google-services.json"],
                 "priority_rules": ["pub_dev_hallucination", "sensitive_mobile_config_found", "dart_secret"]
             },
             "django": {
                 "name": "Django",
                 "description": "Focused on Django settings, production security, and DB credentials.",
-                "scan_modules": ["hallucination", "secrets", "env", "docker", "iac"],
+                "scan_modules": ["hallucination", "secrets", "env", "docker", "iac", "logic"],
                 "important_files": ["settings.py", "manage.py", "wsgi.py", "requirements.txt"],
                 "priority_rules": ["django_debug_enabled", "hardcoded_secret", "docker_root_user"]
             },
             "fastapi": {
                 "name": "FastAPI",
                 "description": "Optimized for FastAPI/Uvicorn, Pydantic, and async API security.",
-                "scan_modules": ["hallucination", "secrets", "env", "api", "docker"],
+                "scan_modules": ["hallucination", "secrets", "env", "api", "docker", "logic"],
                 "important_files": ["main.py", "requirements.txt", "Dockerfile"],
                 "priority_rules": ["api_wildcard_cors", "hardcoded_api_key", "missing_auth_dependency"]
             },
