@@ -20,6 +20,7 @@ def test_logic_bypass_detection():
     
     finding_names = [f['name'] for f in findings]
     assert "potential_logic_bypass" in finding_names
+    assert "hardcoded_identity_bypass" in finding_names
     assert "client_side_only_entitlement" in finding_names
 
 def test_debug_mode_bypass():

@@ -10,9 +10,15 @@ class LogicAuditor:
         self.logic_patterns = [
             {
                 "name": "potential_logic_bypass",
-                "pattern": r'if\s*\(.*(is_?premium|is_?pro|is_?subscribed|has_?subscription|vip_?level|is_?admin|debug|is_?dev|is_?test|user_?id|email|username).*(==?|===|!=|!==)',
+                "pattern": r'if\s*\(.*(is_?premium|is_?pro|is_?subscribed|has_?subscription|vip_?level|is_?admin|debug|is_?dev|is_?test).*(==?|===|!=|!==)',
                 "severity": "MEDIUM",
                 "suggestion": "Detected sensitive logic check (subscription, admin, or debug mode). Ensure this is reinforced by server-side authorization and NOT easily bypassable via client-side state manipulation."
+            },
+            {
+                "name": "hardcoded_identity_bypass",
+                "pattern": r'if\s*\(.*(user_?id|email|username|\bid\b).*(==?|===|!=|!==)\s*["\'][^"\']+["\']',
+                "severity": "HIGH",
+                "suggestion": "Detected hardcoded identity comparison. This is a common pattern for 'backdoor' admin access. Use role-based access control (RBAC) instead."
             },
             {
                 "name": "client_side_only_entitlement",
