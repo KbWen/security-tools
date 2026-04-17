@@ -3,7 +3,7 @@
 # 👻 GhostCheck
 **為 AI 輔助開發時代量身打造的極速、零依賴安全性掃描工具。**
 
-[![版本](https://img.shields.io/badge/version-0.9.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![版本](https://img.shields.io/badge/version-0.9.1-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![授權](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -21,9 +21,9 @@ AI Agent 正在重塑程式開發，但也帶來了全新的攻擊面。**GhostC
 
 從「流程驅動」進化到「自我管理」的專業級 AI Agent 核心架構。
 
-## ✨ v0.9.0 性能與安全里程碑
-
-*   🚀 **極速並行執行引擎：** 引入 `ThreadPoolExecutor` 與單次遍歷分發架構。在大型專案中，檔案處理速度提升數倍，且大幅減少磁碟 I/O。
+## ✨ v0.9.1 OWASP LLM 合規報告與穩健性提升
+*   🎯 **OWASP LLM Top 10 報告：** 率先支援 `--format owasp-llm`，將掃描結果自動對應至全球標準的 AI 安全分類。
+*   🚀 **極速並行執行引擎：** 引入 `ThreadPoolExecutor` 與單次遍歷分發架構。在大型專案中，檔案處理速度提升數倍。
 *   🛡️ **紅隊層級硬化 (Red Team Hardened)：** 修補了路徑遍歷漏洞，並全面實作掃描報告「自動脫敏」功能，確保 GhostCheck 產出的報告不會成為二次洩漏源。
 *   🔑 **海量密鑰與威脅偵測：** 內建支援 30+ 雲端供應商 (AWS, GCP, Stripe, GitHub 等)，並結合 AST 語法樹解析抓出被拆分拼接的密鑰。
 *   🖥️ **跨平台編碼自動回退：** 完美支援 Windows CP950/UTF-8 終端機環境。偵測到非 UTF-8 環境時會自動降級圖示輸出的編碼，徹底防止崩潰。
@@ -71,7 +71,7 @@ GhostCheck 完美契合專業的開發工作流程：
 
 *   **精準排除：** 透過 `.ghostcheckignore` 隱式排除不需要掃描的安全路徑。
 *   **嚴重性過濾：** 支援 `--severity [CRITICAL|HIGH|MEDIUM|LOW]` 鎖定需要處理的漏洞等級。
-*   **自動化就緒：** 原生支援 `--format json` 及 `--format sarif`，可無縫串接 GitHub Advanced Security (GHAS) 與各大 IDE。
+*   **自動化就緒：** 原生支援 `--format json`、`sarif` 及 `owasp-llm`，提供標準化的合規報告輸出。
 
 ---
 

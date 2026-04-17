@@ -42,8 +42,9 @@ def main():
     
     # parent parser for common scan arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
-    parent_parser.add_argument("--format", choices=["console", "json", "sarif", "html"], default="console", help="Output format")
+    parent_parser.add_argument("--format", choices=["console", "json", "sarif", "html", "owasp-llm"], default="console", help="Output format")
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
+    parent_parser.add_argument("--preset", help="Use a framework-specific scan preset (e.g., next.js, flutter)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
     parent_parser.add_argument("--ascii-only", action="store_true", help="Disable Unicode/Emoji output")
@@ -88,7 +89,7 @@ def main():
     subparsers.add_parser("list-plugins", parents=[parent_parser], help="List all loaded plugins")
     
     # Version flag
-    parser.add_argument("--version", action="version", version="GhostCheck 0.9.0")
+    parser.add_argument("--version", action="version", version="GhostCheck 1.0.0")
     
     args = parser.parse_args()
     
@@ -162,6 +163,7 @@ def main():
     from .reporters.json_reporter import JsonReporter
     from .reporters.sarif_reporter import SarifReporter
     from .reporters.html_reporter import HTMLReporter
+    from .reporters.owasp_llm_reporter import OWASPLLMReporter
 
     # Initialize scanner
     scanner = Scanner(
@@ -238,6 +240,23 @@ def main():
             if findings and not args.soft_fail:
                 sys.exit(1)
             sys.exit(0)
+            
+        elif args.format == "owasp-llm":
+            if args.output:
+                try:
+                    output_file = open(args.output, 'w', encoding='utf-8')
+                except IOError as e:
+                    print(f"Error: Could not open output file {args.output}: {str(e)}")
+                    sys.exit(2)
+            try:
+                reporter = OWASPLLMReporter(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+                reporter.report(findings, stream=output_file)
+                if findings and not args.soft_fail:
+                    sys.exit(1)
+                sys.exit(0)
+            finally:
+                if output_file:
+                    output_file.close()
             
         else:
             # Console Reporter

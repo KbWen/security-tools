@@ -26,6 +26,7 @@ from .checks.ast_dart_scanner import DartASTScanner
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
+from .presets.manager import PresetManager
 
 class Scanner:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
@@ -52,11 +53,27 @@ class Scanner:
                 with open(baseline_path, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     for fnd in data.get('findings', []):
-                        # Create fingerprint: file:line:rule_name
-                        fp = f"{fnd.get('file')}:{fnd.get('line')}:{fnd.get('name')}"
+                        # Create fingerprints: legacy (file:line:rule) and robust (file:rule:hash)
+                        rule_name = fnd.get('name') or fnd.get('pattern_name') or fnd.get('rule_name') or fnd.get('package') or "generic_issue"
+                        fp = f"{fnd.get('file')}:{fnd.get('line')}:{rule_name}"
                         self.baseline_findings.add(fp)
+                        
+                        rfp = fnd.get('robust_fingerprint')
+                        if rfp:
+                            self.baseline_findings.add(rfp)
             except:
                 pass
+
+        self.preset_manager = PresetManager()
+        self.active_preset = None
+        preset_name = config.get('preset') if config else None
+        if preset_name:
+            self.active_preset = self.preset_manager.get_preset(preset_name)
+        else:
+            # Auto-detect if no preset specified
+            detected = self.preset_manager.detect_preset(self.root_path)
+            if detected != "generic":
+                self.active_preset = self.preset_manager.get_preset(detected)
 
         # Load data files
         base_dir = os.path.dirname(__file__)
@@ -419,10 +436,14 @@ class Scanner:
                     # AC-S3: Use same stable separators for verification
                     if 'integrity' in data:
                         stored_hash = data.pop('integrity')
-                        current_hash = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                        # Include active preset and enabled checks in integrity check to prevent cross-preset cache hits
+                        preset_info = self.config.get("preset", "none")
+                        meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", [])}
+                        current_hash = hashlib.sha256((json.dumps(data, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
                         if stored_hash != current_hash:
                             return {}
                     return data
+
             except Exception:
                 pass
         return {}
@@ -435,10 +456,14 @@ class Scanner:
             if 'integrity' in cache_to_save:
                 del cache_to_save['integrity']
             
-            integrity_hash = hashlib.sha256(json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-            cache_to_save['integrity'] = integrity_hash
+            # Include preset metadata in integrity hash
+            preset_info = self.config.get("preset", "none")
+            meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", [])}
+            
+            integrity_hash = hashlib.sha256((json.dumps(self.new_results_cache, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
+            self.new_results_cache['integrity'] = integrity_hash
             with open(self.results_cache_file, 'w', encoding='utf-8') as f:
-                json.dump(cache_to_save, f, separators=(',', ':'))
+                json.dump(self.new_results_cache, f, separators=(',', ':'))
         except Exception:
             pass
 
@@ -450,12 +475,49 @@ class Scanner:
         except OSError:
             return ""
 
+    def _get_finding_hash(self, file_path: str, line: int) -> str:
+        """Generates a stable hash based on matching line content."""
+        content = self._read_file_safe(file_path)
+        if not content or line <= 0:
+            return ""
+        
+        lines = content.splitlines()
+        if line > len(lines):
+            return ""
+            
+        # Target line
+        target_line = lines[line - 1]
+        
+        # Normalize: strip whitespace to ignore minor formatting changes
+        normalized = target_line.strip()
+        # AC-S4: Handle common suppression comments in hash to keep it stable
+        normalized = normalized.split('#')[0].strip() # Ignore comments after the line
+        
+        return hashlib.sha256(normalized.encode()).hexdigest()[:16]
+
+
+
     def _process_single_file(self, file_path):
         """Processes a single file through all relevant scanners."""
         findings = []
         filename = os.path.basename(file_path)
         path_lower = file_path.replace('\\', '/').lower()
         
+        # Determine enabled modules for this scan
+        if self.active_preset and 'scan_modules' in self.active_preset:
+            enabled_modules = self.active_preset['scan_modules']
+        else:
+            # All modules enabled by default
+            enabled_modules = [
+                "hallucination", "secrets", "env", "rules", "docker", 
+                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain"
+            ]
+        
+        if os.environ.get("GHOSTCHECK_DEBUG") == "1":
+            # Extra logs if needed later
+            pass
+
+
         content = self._read_file_safe(file_path)
         if not content:
             # For vulnerability scanner, it doesn't need content to check manifest files
@@ -464,15 +526,17 @@ class Scanner:
             return findings
 
         # 1. Hallucination checks
-        if filename == 'requirements.txt':
-            findings.extend(self.hallucination_checker.check_requirements(content))
-        elif filename == 'package.json':
-            findings.extend(self.hallucination_checker.check_package_json(content))
+        if "hallucination" in enabled_modules:
+            if filename == 'requirements.txt':
+                findings.extend(self.hallucination_checker.check_requirements(content))
+            elif filename == 'package.json':
+                findings.extend(self.hallucination_checker.check_package_json(content))
 
         # 2. Secret Scan (General + AST)
-        allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart', '.env']
-        if any(filename.endswith(ext) for ext in allowed_exts) or '.env' in filename:
-            findings.extend(self.secret_scanner.scan_file(file_path, content))
+        if "secrets" in enabled_modules:
+            allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart', '.env']
+            if any(filename.endswith(ext) for ext in allowed_exts) or '.env' in filename:
+                findings.extend(self.secret_scanner.scan_file(file_path, content))
             if filename.endswith('.py'):
                 findings.extend(self.ast_secret_checker.scan_file(file_path, content))
             elif filename.endswith('.js') or filename.endswith('.ts'):
@@ -484,7 +548,7 @@ class Scanner:
             elif filename.endswith('.dart'):
                 findings.extend(self.dart_ast_scanner.scan_file(file_path, content))
             
-            if '.env' in filename:
+            if '.env' in filename and "env" in enabled_modules:
                 findings.extend(self.env_scanner.scan_file(file_path, content))
 
         # 3. Agent Rules
@@ -495,35 +559,43 @@ class Scanner:
             filename in rule_files or 
             any(x in path_lower for x in ['.agent', '.agents', '.cursor', '.github/copilot'])
         )
-        if is_rule_target:
+        if is_rule_target and "rules" in enabled_modules:
             findings.extend(self.rules_linter.scan_file(file_path, content))
 
         # 4. Docker / Infrastructure
-        if any(x in filename for x in ['Dockerfile', 'docker-compose']):
-            findings.extend(self.docker_checker.scan_file(file_path, content))
-        if any(filename.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
+        if "docker" in enabled_modules:
+            if "Dockerfile" in filename:
+                findings.extend(self.docker_checker.check_dockerfile(content, file_path))
+            elif "docker-compose" in filename:
+                findings.extend(self.docker_checker.scan_file(file_path, content))
+        if "iac" in enabled_modules and any(filename.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
             findings.extend(self.iac_scanner.scan_file(file_path, content))
-        if filename.endswith('.rules') or 'database.rules.json' in filename:
+        if "iac" in enabled_modules and (filename.endswith('.rules') or 'database.rules.json' in filename):
             findings.extend(self.firebase_rules_auditor.scan_file(file_path, content))
 
         # 5. MCP / AI Chain
-        if any(x in path_lower for x in ['mcp.json', 'mcp_config.json']) or filename.endswith('.py') or filename.endswith('.ts'):
-            findings.extend(self.mcp_auditor.scan_file(file_path, content))
+        if "mcp" in enabled_modules:
+            if any(x in path_lower for x in ['mcp.json', 'mcp_config.json']) or filename.endswith('.py') or filename.endswith('.ts'):
+                findings.extend(self.mcp_auditor.scan_file(file_path, content))
         
-        findings.extend(self.ai_supply_chain.scan_file(file_path, content))
-        findings.extend(self.agency_auditor.scan_file(file_path, content))
+        if "supply_chain" in enabled_modules:
+            findings.extend(self.ai_supply_chain.scan_file(file_path, content))
+            findings.extend(self.agency_auditor.scan_file(file_path, content))
 
         # 6. CI/CD & Mobile Config
         is_ci = any(x in path_lower for x in ['.github/workflows', '.gitlab-ci', 'fastfile', 'matchfile', 'appfile'])
         is_mobile_cfg = any(k in filename.lower() for k in ['key.properties', 'googleservice-info.plist', 'google-services.json'])
-        if is_ci or is_mobile_cfg:
+        if "ci_cd" in enabled_modules and (is_ci or is_mobile_cfg):
             findings.extend(self.ci_auditor.scan_file(file_path, content))
         
-        findings.extend(self.mobile_auditor.scan_file(file_path, content))
+        if "mobile" in enabled_modules:
+            findings.extend(self.mobile_auditor.scan_file(file_path, content))
 
         # 7. Entropy & API
-        findings.extend(self.entropy_scanner.scan_content(file_path, content))
-        findings.extend(self.api_linter.scan_content(file_path, content))
+        if "secrets" in enabled_modules:
+            findings.extend(self.entropy_scanner.scan_content(file_path, content))
+        if "api" in enabled_modules:
+            findings.extend(self.api_linter.scan_content(file_path, content))
 
         # 8. Plugins & Vulnerabilities
         findings.extend(self.plugin_loader.run_all(file_path, content))
@@ -596,11 +668,22 @@ class Scanner:
             fnd_id = self._get_fnd_id(fnd)
             line = fnd.get('line', 0)
             
-            # Stable fingerprint
-            fp = f"{rel_path}:{line}:{fnd_id}"
-            abs_fp = f"{fnd.get('file')}:{line}:{fnd_id}"
+            # v1.0.0: Robust Hash-based FP
+            content_hash = ""
+            if file_path and line > 0:
+                content_hash = self._get_finding_hash(file_path, line)
+            
+            # Stable fingerprints
+            # legacy: file:line:rule
+            legacy_fp = f"{rel_path}:{line}:{fnd_id}"
+            abs_legacy_fp = f"{fnd.get('file')}:{line}:{fnd_id}"
+            
+            # robust: file:rule:hash
+            robust_fp = f"{rel_path}:{fnd_id}:{content_hash}" if content_hash else ""
 
-            if fp in self.baseline_findings or abs_fp in self.baseline_findings:
+            if legacy_fp in self.baseline_findings or \
+               abs_legacy_fp in self.baseline_findings or \
+               (robust_fp and robust_fp in self.baseline_findings):
                 continue
             
             # v0.9.0: Self-scan exemption
@@ -623,6 +706,9 @@ class Scanner:
 
             # Apply OWASP mapping
             fnd['owasp_llm'] = self.owasp_mapping.get(fnd_id, "N/A")
+            fnd['fingerprint'] = legacy_fp
+            if robust_fp:
+                fnd['robust_fingerprint'] = robust_fp
             
             # AC-H6: Relativize paths for reports
             if 'file' in fnd:

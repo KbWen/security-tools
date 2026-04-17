@@ -78,6 +78,19 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - Feature shipped: AI Agent Security Foundation (Epic 1-5). Fixed unpinned npx/mcp server risks, enhanced agent rules (Unicode injection/sensitive paths), AI supply chain auditing, and OWASP LLM Top 10 compliance mapping.
 - Tests: Pass (pytest 7/7 new features)
 
+### [v0.9.1] - 2026-04-17
+**Status**: COMPLETED ✅
+**Focus**: OWASP LLM Compliance Reporting
+
+#### Key Improvements:
+- **OWASP LLM Support**: Implemented `--format owasp-llm` for standardized AI security reporting.
+- **Mapping Engine**: Added `owasp_mapping.json` to link the internal finding IDs with LLM01-LLM10 categories.
+- **Remediation Database**: Integrated OWASP-aligned remediation advice into the compliance report.
+
+#### Evidence:
+- UI Testing: `tests/test_owasp_reporter.py` PASSED
+- CLI Verification: `scan --format owasp-llm` PASSED with compliance ratio calculation.
+
 ### [v0.9.0] - 2026-04-16
 **Status**: COMPLETED ✅
 **Focus**: Installation Resilience & External User Hardening
@@ -103,4 +116,4 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Deployment & Readiness
 - **Main Branch**: Correctly synchronized with all resilience fixes.
 - **Documentation**: README updated with installation instructions and proxy settings.
-- **Backlog**: Migrated deferred OWASP report to v0.9.1.
+- **Backlog**: Preparing for v1.0.0 (Universal Scanner & Framework Presets).

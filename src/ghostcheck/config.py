@@ -22,7 +22,8 @@ class GhostCheckConfig:
         "custom_patterns": [],
         "load_local_plugins": False,
         "proxy": None,
-        "ssl_verify": True
+        "ssl_verify": True,
+        "preset": None
     }
 
     def __init__(self, project_root: str):
@@ -101,3 +102,5 @@ class GhostCheckConfig:
             self.config['load_local_plugins'] = True
         if hasattr(args, 'insecure') and args.insecure:
             self.config['ssl_verify'] = False
+        if hasattr(args, 'preset') and args.preset:
+            self.config['preset'] = args.preset

@@ -29,7 +29,7 @@ class DockerRiskChecker:
             }
         ]
 
-    def check_dockerfile(self, content):
+    def check_dockerfile(self, content, file_path="Dockerfile"):
         """Specifically scan Dockerfile content for best practices."""
         findings = []
         lines = content.splitlines()
@@ -37,19 +37,31 @@ class DockerRiskChecker:
         # Check for missing USER instruction
         if not any(re.match(r"(?i)^USER\s+", line) for line in lines):
             findings.append({
-                "file": "Dockerfile",
+                "file": file_path,
                 "line": 1,
                 "rule_name": "Missing USER Instruction",
                 "severity": "HIGH",
                 "message": "Dockerfile should specify a non-root USER.",
                 "suggestion": "Add 'USER <username>' to your Dockerfile to avoid running as root."
             })
+        
+        # Check for USER root
+        for i, line in enumerate(lines):
+            if re.match(r"(?i)^USER\s+root\s*$", line.strip()):
+                findings.append({
+                    "file": file_path,
+                    "line": i + 1,
+                    "rule_name": "Root User Execution",
+                    "severity": "HIGH",
+                    "message": "Specify a non-root user for better security.",
+                    "suggestion": "Create a dedicated user and use 'USER <name>' instead of root."
+                })
 
         for i, line in enumerate(lines):
             # Check for latest tag in FROM
             if re.match(r"(?i)^FROM\s+.*:latest", line):
                 findings.append({
-                    "file": "Dockerfile",
+                    "file": file_path,
                     "line": i + 1,
                     "rule_name": "Latest Tag Usage",
                     "severity": "MEDIUM",
@@ -60,7 +72,7 @@ class DockerRiskChecker:
             # Check for secrets in ENV
             if re.match(r"(?i)^ENV\s+.*(PASSWORD|SECRET|KEY|TOKEN)=", line):
                 findings.append({
-                    "file": "Dockerfile",
+                    "file": file_path,
                     "line": i + 1,
                     "rule_name": "Hardcoded Secret",
                     "severity": "CRITICAL",

@@ -10,16 +10,24 @@
     "env_secret_found": "LLM02: Sensitive Information Disclosure",
     "sensitive_path_access": "LLM02: Sensitive Information Disclosure",
     "data_exfiltration_risk": "LLM02: Sensitive Information Disclosure",
+    "gha_secret_exposure_in_run": "LLM02: Sensitive Information Disclosure",
+    "gitlab_secret_exposure_in_run": "LLM02: Sensitive Information Disclosure",
+    "fastlane_hardcoded_password": "LLM02: Sensitive Information Disclosure",
+    "sensitive_mobile_config_found": "LLM02: Sensitive Information Disclosure",
     
     "mcp_npm_package_unfixed": "LLM03: Supply Chain Vulnerabilities",
     "hallucinated_package": "LLM03: Supply Chain Vulnerabilities",
     "ai_dependency_untrusted_source": "LLM03: Supply Chain Vulnerabilities",
     "unverified_model_source": "LLM03: Supply Chain Vulnerabilities",
+    "gha_unpinned_action": "LLM03: Supply Chain Vulnerabilities",
     
     "excessive_github_token_agency": "LLM06: Excessive Agency",
     "no_confirmation_instruction": "LLM06: Excessive Agency",
     "privileged_container": "LLM06: Excessive Agency",
     "auto_approve_enabled": "LLM06: Excessive Agency",
+    "gha_write_all_permission": "LLM06: Excessive Agency",
+    "gha_pull_request_target_risk": "LLM06: Excessive Agency",
+    "gitlab_privileged_runner": "LLM06: Excessive Agency",
     
     "package_not_found": "LLM09: Misinformation (Hallucination)",
     "hallucinated_api_endpoint": "LLM09: Misinformation (Hallucination)"

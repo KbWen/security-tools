@@ -1,5 +1,6 @@
 import os
 import json
+from .presets.manager import PresetManager
 
 class GhostCheckInitializer:
     DEFAULT_CONFIG_TEMPLATE = """# GhostCheck Configuration File
@@ -9,6 +10,7 @@ severity_threshold = "{severity}"
 exclude_patterns = {excludes}
 enabled_checks = {checks}
 offline = false
+preset = "{preset}"
 # proxy = "http://127.0.0.1:8080"
 
 [tool.ghostcheck]
@@ -18,28 +20,10 @@ project_type = "{project_type}"
 
     def __init__(self, project_root: str):
         self.project_root = project_root
+        self.preset_manager = PresetManager()
 
     def detect_project_type(self):
-        root = self.project_root
-        
-        # Priority mapping
-        if os.path.exists(os.path.join(root, 'package.json')):
-            return "nodejs"
-        if os.path.exists(os.path.join(root, 'requirements.txt')) or os.path.exists(os.path.join(root, 'pyproject.toml')):
-            return "python"
-        if os.path.exists(os.path.join(root, 'go.mod')):
-            return "go"
-        if os.path.exists(os.path.join(root, 'Cargo.toml')):
-            return "rust"
-        try:
-            if any(f.endswith('.tf') for f in os.listdir(root) if os.path.isfile(os.path.join(root, f))):
-                return "terraform"
-        except (PermissionError, OSError):
-            pass
-            
-        if os.path.exists(os.path.join(root, 'Dockerfile')):
-            return "docker"
-        return "generic"
+        return self.preset_manager.detect_preset(self.project_root)
 
     def initialize(self, force=False):
         # Check if already in a project (upward search)
@@ -78,10 +62,17 @@ project_type = "{project_type}"
         elif project_type == "python":
             checks.append("ast_python") # Note: internally these map to existing checkers
 
+        # Default settings based on preset
+        preset_info = self.preset_manager.get_preset(project_type)
+        if preset_info:
+            checks = preset_info.get("scan_modules", checks)
+            # Add important files to excludes notice? no, exclude_patterns remain general
+        
         content = self.DEFAULT_CONFIG_TEMPLATE.format(
             severity="INFO",
             excludes=json.dumps(excludes),
             checks=json.dumps(checks),
+            preset=project_type,
             project_name=project_name,
             project_type=project_type
         )

@@ -1,0 +1,81 @@
+﻿============================= test session starts =============================
+platform win32 -- Python 3.14.3, pytest-9.0.2, pluggy-1.6.0 -- C:\Python314\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\wen\.gemini\antigravity\scratch\security-tools
+configfile: pyproject.toml
+plugins: anyio-4.12.1, asyncio-1.3.0, cov-7.0.0, mock-3.15.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 54 items
+
+tests/test_agent_rules.py::test_rules_lint PASSED                        [  1%]
+tests/test_ast_js_scanner.py::test_js_ast_concat PASSED                  [  3%]
+tests/test_ast_js_scanner.py::test_js_ast_malformed PASSED               [  5%]
+tests/test_ast_scanner.py::test_ast_concat PASSED                        [  7%]
+tests/test_ast_scanner.py::test_ast_nested_concat PASSED                 [  9%]
+tests/test_ast_scanner.py::test_ast_recursion_limit PASSED               [ 11%]
+tests/test_ast_scanner.py::test_ast_syntax_error PASSED                  [ 12%]
+tests/test_ast_scanners.py::test_go_ast_scanner PASSED                   [ 14%]
+tests/test_ast_scanners.py::test_java_ast_scanner PASSED                 [ 16%]
+tests/test_ast_scanners.py::test_dart_ast_scanner PASSED                 [ 18%]
+tests/test_cache_integrity.py::test_cache_integrity_failure FAILED       [ 20%]
+tests/test_cli.py::test_cli_version PASSED                               [ 22%]
+tests/test_cli.py::test_cli_help PASSED                                  [ 24%]
+tests/test_docker.py::test_docker_latest_tag PASSED                      [ 25%]
+tests/test_docker.py::test_docker_missing_user PASSED                    [ 27%]
+tests/test_docker.py::test_docker_safe_file PASSED                       [ 29%]
+tests/test_env_scanner.py::test_env_unignored PASSED                     [ 31%]
+tests/test_env_scanner.py::test_env_debug PASSED                         [ 33%]
+tests/test_env_scanner.py::test_env_cors_wildcard PASSED                 [ 35%]
+tests/test_hallucination.py::test_parse_requirements PASSED              [ 37%]
+tests/test_hallucination.py::test_check_pypi_not_found PASSED            [ 38%]
+tests/test_hallucination.py::test_check_pypi_success PASSED              [ 40%]
+tests/test_hallucination.py::test_check_pypi_timeout PASSED              [ 42%]
+tests/test_hallucination.py::test_check_pypi_malformed_json PASSED       [ 44%]
+tests/test_hallucination.py::test_check_pypi_new_package PASSED          [ 46%]
+tests/test_hallucination.py::test_empty_requirements PASSED              [ 48%]
+tests/test_harden_resilience.py::test_config_robust_merge PASSED         [ 50%]
+tests/test_harden_resilience.py::test_proxy_propagation PASSED           [ 51%]
+tests/test_harden_resilience.py::test_hallucination_proxy_setup PASSED   [ 53%]
+tests/test_harden_resilience.py::test_scanner_safe_path_windows_root PASSED [ 55%]
+tests/test_harden_resilience.py::test_ignore_robustness PASSED           [ 57%]
+tests/test_secrets.py::test_secret_scan PASSED                           [ 59%]
+tests/test_secrets.py::test_severity_adjustment PASSED                   [ 61%]
+tests/test_secrets.py::test_adjust_severity PASSED                       [ 62%]
+tests/test_security_guards.py::test_path_traversal_protection PASSED     [ 64%]
+tests/test_security_guards.py::test_file_size_limit PASSED               [ 66%]
+tests/test_severity_engine.py::test_severity_downgrade PASSED            [ 68%]
+tests/test_severity_engine.py::test_severity_entropy PASSED              [ 70%]
+tests/test_v070_features.py::test_iac_scanner_terraform PASSED           [ 72%]
+tests/test_v070_features.py::test_iac_scanner_k8s PASSED                 [ 74%]
+tests/test_v070_features.py::test_ci_auditor_gha PASSED                  [ 75%]
+tests/test_v070_features.py::test_ci_auditor_gitlab PASSED               [ 77%]
+tests/test_v070_features.py::test_firebase_rules PASSED                  [ 79%]
+tests/test_v0_8_0_features.py::test_mcp_auditor PASSED                   [ 81%]
+tests/test_v0_8_0_features.py::test_mcp_tool_poisoning PASSED            [ 83%]
+tests/test_v0_8_0_features.py::test_agent_rules_hidden_injection PASSED  [ 85%]
+tests/test_v0_8_0_features.py::test_agent_rules_dangerous_instr PASSED   [ 87%]
+tests/test_v0_8_0_features.py::test_ai_supply_chain PASSED               [ 88%]
+tests/test_v0_8_0_features.py::test_agency_auditor PASSED                [ 90%]
+tests/test_v0_8_0_features.py::test_owasp_mapping PASSED                 [ 92%]
+tests/test_v0_8_0_features.py::test_entropy_scanner PASSED               [ 94%]
+tests/test_v0_8_0_features.py::test_vuln_scanner_mock PASSED             [ 96%]
+tests/test_v0_8_0_features.py::test_mobile_auditor PASSED                [ 98%]
+tests/test_v0_8_0_features.py::test_html_dashboard PASSED                [100%]
+
+================================== FAILURES ===================================
+________________________ test_cache_integrity_failure _________________________
+tests\test_cache_integrity.py:25: in test_cache_integrity_failure
+    assert checker.cache == expected
+E   AssertionError: assert {} == {'PyPI:reques...18T00:00:00'}}
+E     
+E     Right contains 1 more item:
+E     {'PyPI:requests': {'data': 'OK', 'timestamp': '2026-03-18T00:00:00'}}
+E     
+E     Full diff:
+E     + {}
+E     - {...
+E     
+E     ...Full output truncated (5 lines hidden), use '-vv' to show
+=========================== short test summary info ===========================
+FAILED tests/test_cache_integrity.py::test_cache_integrity_failure - Assertio...
+======================== 1 failed, 53 passed in 1.01s =========================
