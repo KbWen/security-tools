@@ -78,6 +78,20 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - Feature shipped: AI Agent Security Foundation (Epic 1-5). Fixed unpinned npx/mcp server risks, enhanced agent rules (Unicode injection/sensitive paths), AI supply chain auditing, and OWASP LLM Top 10 compliance mapping.
 - Tests: Pass (pytest 7/7 new features)
 
+### [v1.0.0] - 2026-04-17
+**Status**: COMPLETED ✅
+**Focus**: Universal Scanner & Framework Presets
+
+#### Key Improvements:
+- **Framework Presets**: Added `ghostcheck.presets.manager` to auto-detect and configure templates for Next.js, Flutter, Django, FastAPI, and Terraform.
+- **Robust Baseline**: Swapped brittle, line-based cache suppressions with resilient content hashing (`Scanner._get_finding_hash`).
+- **Module Filtering**: Reduced I/O overhead by skipping unrelated rule sets (e.g. Docker checks isolated purely to infrastructure profiles).
+- **Scanner Refactoring**: Hardened Docker scanning rules and isolated CI/CD logic.
+
+#### Evidence:
+- Testing: `test_v1_0_0_presets.py` and `test_robust_baseline.py` PASSED dynamically.
+- CLI Integration: Presets fully supported in `ghostcheck init` and `ghostcheck scan`.
+
 ### [v0.9.1] - 2026-04-17
 **Status**: COMPLETED ✅
 **Focus**: OWASP LLM Compliance Reporting
@@ -116,4 +130,5 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Deployment & Readiness
 - **Main Branch**: Correctly synchronized with all resilience fixes.
 - **Documentation**: README updated with installation instructions and proxy settings.
-- **Backlog**: Preparing for v1.0.0 (Universal Scanner & Framework Presets).
+- **Main Branch**: Implemented and synchronized GhostCheck v1.0.0 (Framework Presets & Robust Baseline).
+- **Backlog**: Preparing for Advanced Rule Integrations (v1.1.0+).
