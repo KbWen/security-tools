@@ -62,7 +62,7 @@ class Scanner:
                         rfp = fnd.get('robust_fingerprint')
                         if rfp:
                             self.baseline_findings.add(rfp)
-            except:
+            except (IOError, json.JSONDecodeError, KeyError):
                 pass
 
         self.preset_manager = PresetManager()
@@ -439,8 +439,8 @@ class Scanner:
                     if 'integrity' in data:
                         stored_hash = data.pop('integrity')
                         # Include active preset and enabled checks in integrity check to prevent cross-preset cache hits
-                        preset_info = self.config.get("preset", "none")
-                        meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", [])}
+                        preset_info = self.config.get("preset", "none") if self.config else "none"
+                        meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", []) if self.config else []}
                         current_hash = hashlib.sha256((json.dumps(data, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
                         if stored_hash != current_hash:
                             return {}
@@ -459,13 +459,13 @@ class Scanner:
                 del cache_to_save['integrity']
             
             # Include preset metadata in integrity hash
-            preset_info = self.config.get("preset", "none")
-            meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", [])}
+            preset_info = self.config.get("preset", "none") if self.config else "none"
+            meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", []) if self.config else []}
             
-            integrity_hash = hashlib.sha256((json.dumps(self.new_results_cache, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
-            self.new_results_cache['integrity'] = integrity_hash
+            integrity_hash = hashlib.sha256((json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
+            cache_to_save['integrity'] = integrity_hash
             with open(self.results_cache_file, 'w', encoding='utf-8') as f:
-                json.dump(self.new_results_cache, f, separators=(',', ':'))
+                json.dump(cache_to_save, f, separators=(',', ':'))
         except Exception:
             pass
 

@@ -49,5 +49,5 @@ class GitDiffScanner:
                 check=True
             )
             return True
-        except:
+        except (subprocess.CalledProcessError, FileNotFoundError, OSError):
             return False

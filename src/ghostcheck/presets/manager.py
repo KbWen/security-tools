@@ -1,4 +1,5 @@
 import os
+import json
 
 class PresetManager:
     """Manages framework-specific scan presets and auto-detection logic."""
@@ -74,9 +75,12 @@ class PresetManager:
                     content = f.read()
                     if '"next"' in content: return "next.js"
                     if '"react-native"' in content: return "react-native"
-            except: pass
+            except (IOError, json.JSONDecodeError): pass
 
-        if any(f.endswith('.tf') for f in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, f))):
-            return "terraform"
+        try:
+            if any(f.endswith('.tf') for f in os.listdir(root_path) if os.path.isfile(os.path.join(root_path, f))):
+                return "terraform"
+        except (OSError, PermissionError):
+            pass
 
         return "generic"
