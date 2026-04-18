@@ -423,10 +423,13 @@ class Scanner:
         if 'tests/' in file_path and any(x in fnd_id.lower() for x in ['secret', 'hallucination', 'rule']):
             return True
 
-        # Check implementations often contain the signatures themselves
+        # Check implementations often contain the regex signatures themselves
         if 'src/ghostcheck/checks/' in file_path:
-            # We only exempt it if the finding is likely a secondary match of the signature literal
-            return True
+            # Only exempt pattern-definition matches (e.g. regex strings), NOT actual secrets
+            if any(x in fnd_id.lower() for x in ['dangerous_system_command', 'risky_rule', 'hidden_instruction', 'logic_bypass']):
+                return True
+            # If it's a secret-type finding in a checker file, do NOT exempt — it could be real
+            return False
             
         return False
 

@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 
 class SarifReporter:
-    def __init__(self, version="0.4.0"):
+    def __init__(self, version="1.0.0"):
         self.version = version
 
     def report(self, findings, output_path=None):

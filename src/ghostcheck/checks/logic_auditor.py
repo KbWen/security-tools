@@ -16,7 +16,7 @@ class LogicAuditor:
             },
             {
                 "name": "hardcoded_identity_bypass",
-                "pattern": r'if\s*\(.*(user_?id|email|username|\bid\b).*(==?|===|!=|!==)\s*["\'][^"\']+["\']',
+                "pattern": r'if\s*\(.*(user_?id|email|username|\.id\b).*(==?|===|!=|!==)\s*["\'][^"\']+["\']',
                 "severity": "HIGH",
                 "suggestion": "Detected hardcoded identity comparison. This is a common pattern for 'backdoor' admin access. Use role-based access control (RBAC) instead."
             },
@@ -33,7 +33,7 @@ class LogicAuditor:
         lines = content.splitlines()
         
         # Determine if file is likely client-side (frontend) or server-side (backend)
-        path_lower = file_path.lower()
+        path_lower = file_path.lower().replace('\\', '/')
         is_client_side = any(path_lower.endswith(ext) for ext in ['.jsx', '.tsx', '.vue', '.svelte']) or \
                          any(folder in path_lower for folder in ['/components/', '/views/', '/pages/', '/frontend/'])
                          
