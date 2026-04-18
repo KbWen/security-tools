@@ -6,7 +6,7 @@ class ConsoleReporter:
         self.use_color = use_color
         self.use_unicode = use_unicode
         self.terminal_width = min(shutil.get_terminal_size((80, 20)).columns, 80)
-        self.colors = {
+        self._colors = {
             "CRITICAL": "\033[97;41;1m", # White on Red
             "HIGH": "\033[91;1m",        # Bold Red
             "MEDIUM": "\033[93;1m",      # Bold Yellow
@@ -19,7 +19,13 @@ class ConsoleReporter:
     def _color(self, text, severity):
         if not self.use_color:
             return text
-        return f"{self.colors.get(severity, '')}{text}{self.colors['RESET']}"
+        return f"{self._colors.get(severity, '')}{text}{self._colors['RESET']}"
+
+    def _dim(self, text):
+        """Helper to apply DIM color safely, respecting use_color flag."""
+        if not self.use_color:
+            return text
+        return f"{self._colors['DIM']}{text}{self._colors['RESET']}"
 
     def report(self, findings, stream=None):
         def _print(*args, **kwargs):
@@ -33,7 +39,7 @@ class ConsoleReporter:
             return
 
         _print(f"\n{self._color(' --- GhostCheck Scan Results --- ', 'CRITICAL')}")
-        _print(f"{self.colors['DIM']}{'='*self.terminal_width}{self.colors['RESET']}")
+        _print(self._dim('='*self.terminal_width))
         
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
         sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity', 'INFO'), 5))
@@ -45,23 +51,23 @@ class ConsoleReporter:
             owasp = f.get('owasp_llm', 'N/A')
             
             # Header line
-            _print(f"{self._color(f' {sev:<10} ', sev)} {self.colors['RESET']}{title}")
-            _print(f"{self.colors['DIM']}Loc: {loc}{self.colors['RESET']}")
+            _print(f"{self._color(f' {sev:<10} ', sev)} {title}")
+            _print(self._dim(f"Loc: {loc}"))
             if owasp != "N/A":
-                _print(f"{self.colors['DIM']}OWASP AI: {self.colors['RESET']}{self._color(owasp, 'INFO')}")
+                _print(f"{self._dim('OWASP AI:')} {self._color(owasp, 'INFO')}")
             
             if 'message' in f:
                 _print(f"   {f['message']}")
             if 'context' in f:
-                _print(f"   {self.colors['DIM']}Context: {f['context']}{self.colors['RESET']}")
+                _print(f"   {self._dim(f'Context: {f[\"context\"]}')}")
             elif 'value_preview' in f:
-                _print(f"   {self.colors['DIM']}Context: {f['value_preview']}{self.colors['RESET']}")
+                _print(f"   {self._dim(f'Context: {f[\"value_preview\"]}')}")
             
             if 'remediation' in f:
                 _print(f"   {self._color('Fix:', 'INFO')} {f['remediation']}")
             elif 'suggestion' in f:
                 _print(f"   {self._color('Suggestion:', 'INFO')} {f['suggestion']}")
-            _print(f"{self.colors['DIM']}{'-'*self.terminal_width}{self.colors['RESET']}")
+            _print(self._dim('-'*self.terminal_width))
 
         summary = {}
         for f in findings:
@@ -74,4 +80,4 @@ class ConsoleReporter:
             if sev in summary:
                 summary_line.append(f"{self._color(sev, sev)}: {summary[sev]}")
         _print("   " + " | ".join(summary_line))
-        _print(f"{self.colors['DIM']}{'='*self.terminal_width}{self.colors['RESET']}\n")
+        _print(self._dim('='*self.terminal_width) + "\n")

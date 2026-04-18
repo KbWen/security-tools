@@ -8,7 +8,6 @@ except ImportError:
         import tomli as tomllib
     except ImportError:
         print("Error: Missing dependency 'tomli'. Please install it using 'pip install tomli'.")
-        import sys
         sys.exit(1)
 from typing import Dict, Any, Optional
 

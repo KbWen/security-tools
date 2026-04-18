@@ -88,10 +88,10 @@ project_type = "{project_type}"
                 for e in excludes:
                     f.write(f"{e}\n")
 
-        print(f"  - 已生成設定檔: {config_path}")
-        print(f"  - 已生成忽略清單: {ignore_path}")
+        print(f"  - Config generated: {config_path}")
+        print(f"  - Ignore file generated: {ignore_path}")
 
-        return True, f"成功在 {project_type} 專案中初始化 GhostCheck"
+        return True, f"GhostCheck initialized for {project_type} project"
 
     def generate_ci_pipeline(self, provider: str):
         provider = provider.lower()

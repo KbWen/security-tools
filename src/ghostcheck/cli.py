@@ -141,17 +141,21 @@ def main():
         os.environ["GHOSTCHECK_DEBUG"] = "1"
 
     if args.command == "list-checks":
-        print(f"{get_icon('info', use_unicode)} Available Checks:")
+        print(f"{get_icon('info', use_unicode)} Available Checks (v1.0.0):")
         checks = [
             ("hallucination", "Scan for hallucinated packages in requirements.txt/package.json"),
-            ("secrets", "Scan for hardcoded secrets using regex & entropy"),
-            ("rules", "Lint AI agent rules (.cursorrules, AGENTS.md)"),
-            ("docker", "Audit Dockerfiles for security risks"),
-            ("iac", "Audit Terraform/CloudFormation templates"),
-            ("ci_cd", "Scan CI pipeline configs (GHA/GitLab)"),
-            ("mcp", "Audit Model Context Protocol configuration"),
-            ("ai_supply", "Check AI supply chain dependencies"),
-            ("vuln", "Query OSV for known vulnerabilities"),
+            ("secrets",       "Scan for hardcoded secrets using regex, AST & entropy analysis"),
+            ("env",           "Scan .env files for exposed secrets"),
+            ("rules",         "Lint AI agent rules (.cursorrules, AGENTS.md, CLAUDE.md)"),
+            ("docker",        "Audit Dockerfiles & docker-compose for security risks"),
+            ("iac",           "Audit Terraform/CloudFormation/K8s templates"),
+            ("ci_cd",         "Scan CI pipeline configs (GitHub Actions/GitLab CI)"),
+            ("mcp",           "Audit Model Context Protocol configuration"),
+            ("supply_chain",  "Check AI supply chain & agentic dependencies"),
+            ("mobile",        "Audit mobile configs (AndroidManifest.xml, Info.plist)"),
+            ("api",           "Lint API endpoints for CORS, auth, and rate-limit issues"),
+            ("vuln",          "Query OSV for known vulnerabilities in dependencies"),
+            ("logic",         "Detect business logic bypass patterns (subscription, admin, debug)"),
         ]
         for name, desc in checks:
             print(f"  - {name:<15}: {desc}")
