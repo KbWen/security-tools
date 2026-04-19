@@ -11,9 +11,15 @@ class AISupplyChainScanner:
             },
             {
                 "name": "ai_dependency_untrusted_source",
-                "pattern": r'https?://(?!github\.com|npmjs\.com|pypi\.org|huggingface\.co)[^"\'\s]+\.(zip|tar\.gz|whl)',
+                "pattern": r'https?://(?!github\.com|npmjs\.com|pypi\.org|huggingface\.co|openai\.com|anthropic\.com)[^"\'\s]+\.(zip|tar\.gz|whl|bin|gguf|pt)',
                 "severity": "MEDIUM",
                 "suggestion": "AI dependencies should be loaded from trusted sources. Verify the integrity of this external resource."
+            },
+            {
+                "name": "model_provenance_unverified",
+                "pattern": r'FROM\s+(?!(gpt-|claude-|gemini-|llama|mistral|cli|library/))([a-z0-9_-]+/[a-z0-9_-]+)',
+                "severity": "MEDIUM",
+                "suggestion": "Using a third-party model from a personal namespace. Ensure the model creator is verified and the weights haven't been tampered with."
             }
         ]
 
@@ -21,7 +27,7 @@ class AISupplyChainScanner:
         findings = []
         lines = content.splitlines()
         
-        is_ai_manifest = any(x in file_path for x in ['mcp.json', 'requirements.txt', 'package.json'])
+        is_ai_manifest = any(x in file_path.lower() for x in ['mcp.json', 'requirements.txt', 'package.json', 'modelfile', 'dockerfile'])
         
         if not is_ai_manifest:
             return []

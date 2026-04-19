@@ -27,6 +27,18 @@ class MCPAuditor:
                 "pattern": r'<(IMPORTANT|SYSTEM|INSTRUCTION)>|ignore\s+previous\s+instructions',
                 "severity": "HIGH",
                 "suggestion": "Potential tool poisoning detected in MCP description. Review for prompt injection patterns."
+            },
+            {
+                "name": "mcp_suspicious_description_length",
+                "pattern": r'"description"\s*:\s*"[^"]{500,}"',
+                "severity": "MEDIUM",
+                "suggestion": "Abnormally long MCP tool/server description. Attackers use large descriptions to hide prompt injection payloads or bypass context windows."
+            },
+            {
+                "name": "mcp_custom_registry",
+                "pattern": r'--(registry|index-url|extra-index-url)["\']?\s*[=,:]?\s*["\']?https?://(?!npmjs\.org|pypi\.org|python\.org)[^"\'\s]+',
+                "severity": "HIGH",
+                "suggestion": "MCP server uses a custom package registry. This is a common vector for dependency confusion and rug pull attacks."
             }
         ]
 

@@ -22,9 +22,21 @@ class AgentRulesLinter:
             },
             {
                 "name": "dangerous_system_command",
-                "pattern": r'\b(curl|wget|sh|bash|powershell|exec)\b',
+                "pattern": r'\b(curl|wget|sh|bash|powershell|exec|rm\s+-rf|git\s+push\s+--force|drop\s+table)\b',
                 "severity": "HIGH",
                 "suggestion": "Instruction contains dangerous system commands. Attackers use these to pivot or exfiltrate data."
+            },
+            {
+                "name": "human_in_the_loop_bypass",
+                "pattern": r'\b(auto-apply|auto-run|no\s+confirmation|without\s+asking|skip\s+review|approve\s+all)\b',
+                "severity": "HIGH",
+                "suggestion": "Agent is instructed to skip human confirmation for actions. This significantly increases the impact of prompt injection."
+            },
+            {
+                "name": "cross_file_rule_reference",
+                "pattern": r'\b(include|reference|import|load)(?::)?\s+["\']?([^"\']+\.(md|mdc|cursorrules|agents|json))["\']?',
+                "severity": "MEDIUM",
+                "suggestion": "Agent rule references an external file. Ensure the target file is also scanned for malicious instructions."
             }
         ]
 
