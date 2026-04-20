@@ -22,6 +22,15 @@ class EntropyScanner:
 
     def scan_content(self, file_path, content):
         findings = []
+        import os
+        filename = os.path.basename(file_path).lower()
+
+        # AC-S7: Skip binary files, lock-files, and massive build data for entropy
+        if any(ext in filename for ext in [".lock", ".map", ".min.js", ".bin", ".exe", ".iso"]):
+            return []
+        if filename in ["package-lock.json", "pnpm-lock.yaml", "yarn.lock"]:
+            return []
+
         # Look for potential secret strings: 16-128 chars of non-whitespace
         # Exclude common stuff like URI fragments or long class names
         potential_secrets = re.finditer(r'([a-zA-Z0-9+/=_-]{' + str(self.min_length) + r',128})', content)

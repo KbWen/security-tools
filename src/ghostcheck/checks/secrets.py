@@ -12,6 +12,12 @@ class SecretScanner:
 
     def scan_file(self, file_path, content):
         findings = []
+        filename = os.path.basename(file_path).lower()
+        
+        # AC-S6: Skip lock-files for secrets scan as they contain many integrity hashes
+        if filename in ["package-lock.json", "pnpm-lock.yaml", "yarn.lock"]:
+            return []
+
         lines = content.splitlines()
         
         # AC-15: Determine severity modifier based on file type/path
@@ -21,15 +27,32 @@ class SecretScanner:
             # Skip common false positives
             if any(hint in line.lower() for hint in ["example", "placeholder", "xxx", "your-key-here", "todo"]):
                 continue
-                
+            
+            # Skip property-like keys in JS/TS/JSON: confidenceKey: "...", audienceKey: "..."
+            # Regex to detect common property key patterns that aren't secrets
+            if re.search(r'["\']?[a-zA-Z0-9]+Key["\']?\s*[:=]', line):
+                # If it's a generic word + Key, it's likely a config property name, not a secret value
+                # We check if it followed by a long high-entropy string later
+                pass
+
             for p in self.patterns:
                 match = p['_compiled'].search(line)
                 if match:
+                    # Validate match context: if it's a JS property name, skip
+                    val = match.group(0)
+                    
+                    # Heuristic: if the match is the KEY of a JSON/JS object, skip
+                    # e.g. "aws_key": "..." -> the "aws_key" string itself might trigger regex 
+                    # but we only care about the VALUE.
+                    # This is naive but effective for many FPs.
+                    if line.strip().startswith(f'"{val}"') or line.strip().startswith(f"'{val}'"):
+                        if ":" in line:
+                            continue
+
                     original_severity = p['severity']
                     final_severity = self._adjust_severity(original_severity, severity_modifier)
                     
                     # Mask the value for reporting
-                    val = match.group(0)
                     masked = val[:4] + "*" * (len(val) - 8) + val[-4:] if len(val) > 8 else "****"
                     
                     findings.append({

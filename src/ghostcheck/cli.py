@@ -67,6 +67,7 @@ def main():
     
     # init command
     init_parser = subparsers.add_parser("init", parents=[parent_parser], help="Initialize GhostCheck in the current project")
+    init_parser.add_argument("path", nargs="?", default=".", help="Target path to initialize (default: .)")
     init_parser.add_argument("--force", action="store_true", help="Overwrite existing configuration")
     init_parser.add_argument("--ci", choices=["github", "gitlab"], help="Generate CI pipeline configuration")
     
@@ -98,7 +99,7 @@ def main():
     use_unicode = not args.ascii_only and stdout_encoding == 'utf-8'
 
     if args.command == "init":
-        initializer = GhostCheckInitializer(".")
+        initializer = GhostCheckInitializer(args.path)
         success, msg = initializer.initialize(force=args.force)
         print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
         if success and args.ci:

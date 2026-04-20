@@ -48,10 +48,12 @@ project_type = "{project_type}"
         project_name = os.path.basename(os.path.abspath(self.project_root))
 
         # Default excludes based on project type
-        excludes = [".git", "__pycache__", "venv", "node_modules", ".ghostcheck"]
-        if project_type == "nodejs":
-            excludes += ["dist", "build", ".next", ".vercel"]
-        elif project_type == "python":
+        excludes = [
+            ".git", "__pycache__", "venv", "node_modules", ".ghostcheck", 
+            "ghostcheck-report*", ".env*", "*.lock", "package-lock.json",
+            ".next", ".firebase", ".antigravity*", "dist", "build"
+        ]
+        if project_type == "python":
             excludes += ["*.pyc", ".pytest_cache"]
         elif project_type == "terraform":
             excludes += [".terraform", "*.tfstate"]

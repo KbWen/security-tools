@@ -35,12 +35,55 @@ class AgencyAuditor:
         
         # Only check workflow files or agent rules
         is_workflow = '.github/workflows' in file_path.replace('\\', '/')
-        is_rule = any(x in file_path for x in ['.cursorrules', '.mdc', 'AGENTS.md', 'CLAUDE.md'])
+        is_rule = any(x in file_path for x in ['.cursorrules', '.mdc', 'AGENTS.md', 'CLAUDE.md', '.agent/rules/'])
         
         if not (is_workflow or is_rule):
             return []
 
+        recent_lines = []
+        negative_keywords = [
+            "forbidden", "prohibited", "not allowed", "don't", "dont", "do not", 
+            "never", "avoid", "prevent", "rule: no", "strictly against",
+            "boundary", "restriction", "prohibit"
+        ]
+
         for i, line in enumerate(lines):
+            line_lower = line.lower()
+            recent_lines.append(line_lower)
+            if len(recent_lines) > 15:
+                recent_lines.pop(0)
+
+            # Context Check
+            is_safe = False
+            
+            # 1. Same-line context
+            if any(kw in line_lower for kw in negative_keywords):
+                is_safe = True
+            
+            # 2. Block context (for lists)
+            if not is_safe:
+                is_list_item = bool(re.match(r'^\s*[-*+]\s|^\s*\d+\.\s', line))
+                if is_list_item:
+                    context_line = ""
+                    for prev_line in reversed(recent_lines[:-1]):
+                        if prev_line.strip() == "" or prev_line.strip().startswith("```"):
+                            continue
+                        
+                        # Check if intermediate list parent nodes contain the negative keyword
+                        if any(kw in prev_line.lower() for kw in negative_keywords):
+                            is_safe = True
+                            break
+
+                        if not re.match(r'^\s*[-*+]\s|^\s*\d+\.\s', prev_line):
+                            context_line = prev_line
+                            break
+                            
+                    if not is_safe and context_line and any(kw in context_line.lower() for kw in negative_keywords):
+                        is_safe = True
+            
+            if is_safe:
+                continue
+
             for p in self.patterns:
                 if re.search(p['pattern'], line, re.IGNORECASE):
                     findings.append({

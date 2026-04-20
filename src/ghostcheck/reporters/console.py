@@ -59,9 +59,9 @@ class ConsoleReporter:
             if 'message' in f:
                 _print(f"   {f['message']}")
             if 'context' in f:
-                _print(f"   {self._dim(f'Context: {f[\"context\"]}')}")
+                _print(f"   {self._dim('Context: ' + str(f.get('context', '')))}")
             elif 'value_preview' in f:
-                _print(f"   {self._dim(f'Context: {f[\"value_preview\"]}')}")
+                _print(f"   {self._dim('Value: ' + str(f.get('value_preview', '')))}")
             
             if 'remediation' in f:
                 _print(f"   {self._color('Fix:', 'INFO')} {f['remediation']}")

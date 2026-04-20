@@ -42,3 +42,8 @@ README_zh-TW.md
 CLAUDE.md
 AGENTS.md
 
+# Scanner Logic (contains intentional patterns and regexes)
+src/ghostcheck/checks/
+src/ghostcheck/plugins/
+src/ghostcheck/presets/
+report.json

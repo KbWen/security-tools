@@ -44,7 +44,68 @@ class AgentRulesLinter:
         findings = []
         lines = content.splitlines()
         
+        # State mapping
+        in_code_block = False
+        recent_lines = [] # To catch context from headers like "### Forbidden"
+        
+        negative_keywords = [
+            "forbidden", "prohibited", "not allowed", "don't", "dont", "do not", 
+            "never", "avoid", "prevent", "rule: no", "strictly against",
+            "example:", "sample:", "placeholder", "mock"
+        ]
+
         for i, line in enumerate(lines):
+            # Track context
+            stripped = line.strip()
+            line_lower = line.lower()
+            
+            # Update recent lines window (last 15 lines to catch distant headers)
+            recent_lines.append(line_lower)
+            if len(recent_lines) > 15:
+                recent_lines.pop(0)
+
+            # Track code blocks
+            if stripped.startswith("```"):
+                in_code_block = not in_code_block
+                continue
+            
+            # Context Check
+            is_safe = False
+            
+            # 1. Same-line context
+            if any(kw in line_lower for kw in negative_keywords):
+                is_safe = True
+            
+            # 2. Block context (for lists or code blocks)
+            if not is_safe:
+                is_list_item = bool(re.match(r'^\s*[-*+]\s|^\s*\d+\.\s', line))
+                if is_list_item or in_code_block:
+                    context_line = ""
+                    for prev_line in reversed(recent_lines[:-1]):
+                        if prev_line.strip() == "" or prev_line.strip().startswith("```"):
+                            continue
+                        
+                        # Check if intermediate list parent nodes contain the negative keyword
+                        if any(kw in prev_line.lower() for kw in negative_keywords):
+                            is_safe = True
+                            break
+
+                        # Stop when we find a line that is NOT a list item
+                        if not re.match(r'^\s*[-*+]\s|^\s*\d+\.\s', prev_line):
+                            context_line = prev_line
+                            break
+                            
+                    if not is_safe and context_line and any(kw in context_line.lower() for kw in negative_keywords):
+                        is_safe = True
+            
+            if is_safe:
+                continue
+
+            # If it's a code block, only scan if it's a known risky shell/script block
+            if in_code_block and not any(x in line_lower for x in ["bash", "sh", "ps1", "powershell"]):
+                if not stripped.startswith(("-", "*", ">")):
+                    continue
+            
             # Base patterns from JSON
             for p in self.patterns:
                 match = re.search(p['pattern'], line)
