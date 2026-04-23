@@ -13,6 +13,12 @@ offline = false
 preset = "{preset}"
 # proxy = "http://127.0.0.1:8080"
 
+# [Custom Language Support]
+# Add custom negative keywords for documentation (e.g., "don't do this")
+# custom_safe_keywords = ["нельзя", "запрещено"]
+# Add custom example keywords for documentation (e.g., "for example")
+# custom_example_keywords = ["например", "образец"]
+
 [tool.ghostcheck]
 project_name = "{project_name}"
 project_type = "{project_type}"

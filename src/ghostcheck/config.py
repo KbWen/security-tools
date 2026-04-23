@@ -22,6 +22,8 @@ class GhostCheckConfig:
         "load_local_plugins": False,
         "proxy": None,
         "ssl_verify": True,
+        "custom_safe_keywords": [],
+        "custom_example_keywords": [],
         "preset": None
     }
 

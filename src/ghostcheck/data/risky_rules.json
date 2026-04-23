@@ -1,37 +1,37 @@
 [
     {
         "name": "Destructive Command",
-        "pattern": "(rm\\s+-rf|DROP\\s+TABLE|DELETE\\s+FROM|TRUNCATE\\s+TABLE|--force)",
+        "pattern": "\\b(rm\\s+-rf|DROP\\s+TABLE|DELETE\\s+FROM|TRUNCATE\\s+TABLE|--force)\\b",
         "severity": "CRITICAL",
         "remediation": "Avoid using destructive commands in agent rules to prevent accidental data loss."
     },
     {
         "name": "Privilege Escalation",
-        "pattern": "(sudo\\s+|chmod\\s+777|chown\\s+root|runas\\s+/user:administrator)",
+        "pattern": "\\b(sudo\\s+|chmod\\s+777|chown\\s+root|runas\\s+/user:administrator)\\b",
         "severity": "HIGH",
         "remediation": "Do not grant root/sudo permissions or world-writable permissions to agent workflows."
     },
     {
         "name": "Data Exfiltration",
-        "pattern": "(curl|wget|fetch|axios|requests|powershell|Invoke-WebRequest)\\s+.*(POST|PUT|PATCH|upload|Base64|dns).*http",
+        "pattern": "\\b(curl|wget|fetch|axios|requests|powershell|Invoke-WebRequest)\\s+.*(POST|PUT|PATCH|upload|Base64|dns).*http",
         "severity": "CRITICAL",
         "remediation": "Avoid rules that send potentially sensitive data to external endpoints via POST/PUT or encoded uploads."
     },
     {
         "name": "Tunneling / Proxy",
-        "pattern": "(ngrok|localtunnel|ssh\\s+-R|cloudflared|frp)",
+        "pattern": "\\b(ngrok|localtunnel|ssh\\s+-R|cloudflared|frp)\\b",
         "severity": "HIGH",
         "remediation": "Unauthorized tunneling tools can bypass firewall restrictions. Ensure these are explicitly approved."
     },
     {
         "name": "External Execution",
-        "pattern": "(curl\\s+.*\\|\\s*(bash|sh|zsh|ps1|powershell)|wget\\s+.*\\|\\s*(bash|sh)|python\\s+-c.*import\\s+os.*system)",
+        "pattern": "\\b(curl\\s+.*\\|\\s*(bash|sh|zsh|ps1|powershell)|wget\\s+.*\\|\\s*(bash|sh)|python\\s+-c.*import\\s+os.*system)\\b",
         "severity": "HIGH",
         "remediation": "Disable external script execution or piping network content directly to a shell."
     },
     {
         "name": "Non-interactive Execution",
-        "pattern": "(-y|--yes|--noconfirm|--assume-yes|DEBIAN_FRONTEND=noninteractive)",
+        "pattern": "(?:^|\\s)(-y|--yes|--noconfirm|--assume-yes|DEBIAN_FRONTEND=noninteractive)\\b",
         "severity": "MEDIUM",
         "remediation": "Avoid bypassing human confirmation for potentially dangerous system changes."
     },

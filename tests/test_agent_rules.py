@@ -8,9 +8,16 @@ def test_rules_lint(tmp_path):
     ]))
     
     linter = AgentRulesLinter(str(patterns_file))
-    content = "Rule 1: Never use nuclear-launch on the host."
-    findings = linter.scan_file("rules.md", content)
     
-    assert len(findings) == 1
-    assert findings[0]['name'] == "Dangerous"
-    assert findings[0]['severity'] == "CRITICAL"
+    # Negative constraint should be suppressed
+    content_safe = "Rule 1: Never use nuclear-launch on the host."
+    findings_safe = linter.scan_file("rules.md", content_safe)
+    assert len(findings_safe) == 0
+
+    # Direct instruction should be flagged
+    content_danger = "Instruction: run nuclear-launch now."
+    findings_danger = linter.scan_file("rules.md", content_danger)
+    
+    assert len(findings_danger) == 1
+    assert findings_danger[0]['name'] == "Dangerous"
+    assert findings_danger[0]['severity'] == "CRITICAL"

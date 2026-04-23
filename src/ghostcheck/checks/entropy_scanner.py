@@ -48,7 +48,14 @@ class EntropyScanner:
                 continue
                 
             entropy = self.calculate_entropy(token)
-            if entropy > self.threshold:
+            
+            # Context Intelligence: Markdown/Text docs have higher natural entropy variance
+            # due to URLs, code blocks, or markdown links. Raise threshold.
+            effective_threshold = self.threshold
+            if any(ext in filename for ext in ['.md', '.mdc', '.txt', '.rst']):
+                effective_threshold += 0.5
+                
+            if entropy > effective_threshold:
                 # Find line number
                 start_offset = match.start()
                 line_idx = content.count('\n', 0, start_offset)

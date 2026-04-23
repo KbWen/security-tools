@@ -22,7 +22,7 @@ class AgentRulesLinter:
             },
             {
                 "name": "dangerous_system_command",
-                "pattern": r'\b(curl|wget|sh|bash|powershell|exec|rm\s+-rf|git\s+push\s+--force|drop\s+table)\b',
+                "pattern": r'(?<!\.)\b(curl|wget|sh|bash|powershell|exec|rm\s+-rf|git\s+push\s+--force|drop\s+table)\b',
                 "severity": "HIGH",
                 "suggestion": "Instruction contains dangerous system commands. Attackers use these to pivot or exfiltrate data."
             },

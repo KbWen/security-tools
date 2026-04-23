@@ -24,6 +24,10 @@ class SecretScanner:
         severity_modifier = self._get_severity_modifier(file_path)
         
         for i, line in enumerate(lines):
+            # AC-S8: Chaos Protection - Skip extremely long lines to avoid Regex ReDoS
+            if len(line) > 2000:
+                continue
+
             # Skip common false positives
             if any(hint in line.lower() for hint in ["example", "placeholder", "xxx", "your-key-here", "todo"]):
                 continue

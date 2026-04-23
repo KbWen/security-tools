@@ -80,6 +80,7 @@ GhostCheck respects professional workflows:
 
 *   **Custom Exclusions:** Use `.ghostcheckignore` to silently bypass safe paths.
 *   **Severity Filters:** Run scans with targeted focus using `--severity [CRITICAL|HIGH|MEDIUM|LOW]`.
+*   **Multilingual Support:** Define custom safe keywords in `ghostcheck.toml` (`custom_safe_keywords = ["нельзя"]`) to prevent false positives in non-English documentation.
 *   **Automation Ready:** Export results natively using `--format json`, `--format sarif` or `--format owasp-llm` for seamless compliance reporting.
 
 ---

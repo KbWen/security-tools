@@ -72,6 +72,7 @@ GhostCheck 完美契合專業的開發工作流程：
 
 *   **精準排除：** 透過 `.ghostcheckignore` 隱式排除不需要掃描的安全路徑。
 *   **嚴重性過濾：** 支援 `--severity [CRITICAL|HIGH|MEDIUM|LOW]` 鎖定需要處理的漏洞等級。
+*   **多國語言支援：** 可在 `ghostcheck.toml` 內自訂文件專用的安全關鍵字 (`custom_safe_keywords = ["避免"]`)，大幅降低非英文文件的誤判率。
 *   **自動化就緒：** 原生支援 `--format json`、`sarif` 及 `owasp-llm`，提供標準化的合規報告輸出。
 
 ---

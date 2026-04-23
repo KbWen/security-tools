@@ -1,0 +1,23 @@
+{
+    "negative_keywords": [
+        "forbidden", "prohibit", "prohibited", "not allowed", "don't", "dont", "do not", 
+        "never", "avoid", "prevent", "rule: no", "strictly against",
+        "避免", "嚴禁", "不可", "請勿", "禁止", "不要", "不應該",
+        "prohibido", "no permitido", "evitar", "nunca", "no", 
+        "verboten", "nicht erlaubt", "vermeiden", "niemals",
+        "interdit", "ne pas", "éviter", "jamais",
+        "禁止", "してはいけない", "避ける", "絶対に", "禁止事項",
+        "금지", "하지 마십시오", "피하다", "절대",
+        "запрещено", "нельзя", "избегать", "никогда"
+    ],
+    "example_keywords": [
+        "example:", "sample:", "placeholder", "mock", "dummy", "e.g.", "for instance",
+        "例如", "範例", "如：", "像是", "舉例",
+        "ejemplo:", "muestra:", "marcador de posición", "por ejemplo",
+        "beispiel:", "muster:", "platzhalter", "z. b.",
+        "exemple:", "échantillon:", "espace réservé", "par exemple",
+        "例：", "サンプル：", "プレースホルダー", "ダミー",
+        "예:", "샘플:", "자리 표시 자",
+        "пример:", "образец:"
+    ]
+}

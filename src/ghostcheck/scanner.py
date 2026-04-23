@@ -24,6 +24,7 @@ from .checks.ast_go_scanner import GoASTScanner
 from .checks.ast_java_scanner import JavaASTScanner
 from .checks.ast_dart_scanner import DartASTScanner
 from .checks.logic_auditor import LogicAuditor
+from .checks.context_auditor import ContextAuditor
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -155,6 +156,7 @@ class Scanner:
         # v0.5.0 features
         self.severity_engine = SeverityEngine(self.root_path)
         self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
+        self.context_auditor = ContextAuditor(config=self.config)
 
     def _is_safe_path(self, file_path):
         """Ensures the path is within project root and handles potential directory traversal."""
@@ -169,13 +171,24 @@ class Scanner:
             return False
 
     def _read_file_safe(self, file_path):
-        """Reads file with size limits and path safety."""
+        """Reads file with size limits and path safety. Skips binary files."""
         if not self._is_safe_path(file_path):
             return None
         
         try:
             if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
                 return None
+                
+            # AC-S9: Quick binary check
+            with open(file_path, 'rb') as f:
+                chunk = f.read(1024)
+                if b'\x00' in chunk:
+                    # Likely binary (unless UTF-16, but we primarily target UTF-8 codebases)
+                    if not chunk.startswith(b'\xff\xfe') and not chunk.startswith(b'\xfe\xff'):
+                        if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                            print(f"[DEBUG] Skipping {file_path} as it appears to be binary.")
+                        return None
+                        
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
         except (IOError, OSError):
@@ -530,6 +543,14 @@ class Scanner:
                 findings.extend(self.vuln_scanner.scan_file(file_path))
             return findings
 
+        # AC-S8: Chaos Protection - Skip generated/minified files with huge unbroken lines
+        # that could hang Regex or AST parsers.
+        lines = content.split('\n')
+        if len(lines) > 0 and (len(content) / len(lines) > 500 or any(len(line) > 10000 for line in lines[:10])):
+            if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                print(f"[DEBUG] Skipping {filename} as it appears minified or has extremely long lines.")
+            return findings
+
         # 1. Hallucination checks
         if "hallucination" in enabled_modules:
             if filename == 'requirements.txt':
@@ -562,7 +583,7 @@ class Scanner:
             filename.endswith('.md') or 
             filename.endswith('.mdc') or 
             filename in rule_files or 
-            any(x in path_lower for x in ['.agent', '.agents', '.cursor', '.github/copilot'])
+            (any(x in path_lower for x in ['.agent', '.agents', '.cursor', '.github/copilot']) and not any(filename.endswith(ext) for ext in ['.sh', '.bash', '.ps1', '.cmd', '.py', '.js', '.ts', '.go', '.java']))
         )
         if is_rule_target and "rules" in enabled_modules:
             findings.extend(self.rules_linter.scan_file(file_path, content))
@@ -662,6 +683,7 @@ class Scanner:
         
         # v0.6.0: Inline suppression and Baseline filter
         filtered = []
+        file_content_cache = {}
         for fnd in raw_findings:
             # Baseline check
             file_path = fnd.get('file', '')
@@ -701,6 +723,19 @@ class Scanner:
             # Inline suppression
             if "ghostcheck-ignore" in str(fnd.get('context', '')):
                 continue
+
+            # Context Intelligence: Filter examples and negative constraints in docs
+            if fnd_id != "high_entropy_secret": # Entropy has its own logic
+                abs_file_path = fnd.get('file', '')
+                if abs_file_path and line > 0 and abs_file_path not in file_content_cache:
+                    file_content_cache[abs_file_path] = self._read_file_safe(abs_file_path)
+                
+                content_for_audit = file_content_cache.get(abs_file_path) if abs_file_path else None
+                if content_for_audit and self.context_auditor.is_safe_context(abs_file_path, content_for_audit, line):
+                    # Suppress or downgrade. Since we want to eliminate FPs in docs, we suppress.
+                    if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                        print(f"[DEBUG] ContextAuditor suppressed finding: {fnd_id} at {abs_file_path}:{line}")
+                    continue
 
             # v0.8.0: Secret Validation (if applicable and enabled)
             if 'secret' in fnd_id.lower() or 'token' in fnd_id.lower():
