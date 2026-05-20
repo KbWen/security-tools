@@ -20,6 +20,7 @@
   - `[template-import-cleanup] .agentcortex/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
   - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
   - `[ghostcheck-mvp] .agentcortex/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]`
+  - `[shadow-ai-detection] docs/specs/shadow-ai-detection.md [Frozen] [Updated: 2026-05-20]`
   - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
@@ -73,6 +74,10 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [FP-Exemption]: Auto-ignore ghostcheck self-scans or lower their severity to avoid pre-commit blockages on self-code.
 
 ## Ship History
+
+### Ship-feat/shadow-ai-detection-2026-05-20
+- Feature shipped: Shadow AI Detection (v1.0.2). Added `ShadowAIDetector` checking unauthorized Python/JS AI SDKs, manifest file dependencies, local LLM endpoints, environment configurations, and recommended VS Code extensions (GSA-01 to GSA-06).
+- Tests: Pass (pytest 8/8 shadow-ai tests, 90/90 total tests passing)
 
 ### Ship-feat/agent-least-privilege-audit-2026-05-20
 - Feature shipped: Agent Least Privilege Audit (v1.0.2). Added `PrivilegeAuditor` checking GITHUB_TOKEN scope audits (GPA-01 to GPA-03), MCP config broad mounts and sudo audits (GPA-04, GPA-05), and command-line/client-side API key exposures (GPA-06, GPA-07).
