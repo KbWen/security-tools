@@ -25,6 +25,7 @@ from .checks.ast_java_scanner import JavaASTScanner
 from .checks.ast_dart_scanner import DartASTScanner
 from .checks.logic_auditor import LogicAuditor
 from .checks.context_auditor import ContextAuditor
+from .checks.privilege_auditor import PrivilegeAuditor
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -157,6 +158,7 @@ class Scanner:
         self.severity_engine = SeverityEngine(self.root_path)
         self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
         self.context_auditor = ContextAuditor(config=self.config)
+        self.privilege_auditor = PrivilegeAuditor()
 
     def _is_safe_path(self, file_path):
         """Ensures the path is within project root and handles potential directory traversal."""
@@ -528,7 +530,7 @@ class Scanner:
             # All modules enabled by default
             enabled_modules = [
                 "hallucination", "secrets", "env", "rules", "docker", 
-                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", "logic"
+                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", "logic", "privilege"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -616,6 +618,14 @@ class Scanner:
         
         if "mobile" in enabled_modules:
             findings.extend(self.mobile_auditor.scan_file(file_path, content))
+
+        if "privilege" in enabled_modules:
+            is_workflow = '.github/workflows' in path_lower
+            is_mcp = any(x in path_lower for x in ['mcp.json', 'mcp_config.json'])
+            allowed_exts = ['.sh', '.bat', '.py', '.js', '.ts', '.html', '.vue', '.jsx', '.tsx', '.svelte']
+            is_code = any(filename.endswith(ext) for ext in allowed_exts)
+            if is_workflow or is_mcp or is_code:
+                findings.extend(self.privilege_auditor.scan_file(file_path, content))
 
         # 7. Entropy & API
         if "secrets" in enabled_modules:

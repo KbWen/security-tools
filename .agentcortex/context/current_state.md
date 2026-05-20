@@ -16,6 +16,7 @@
 - **Active Backlog**: `docs/specs/_product-backlog.md`
   - AI-Era Security Features backlog (MCP, Agent Rules, LLM Supply Chain, Agentic Workflow, OWASP LLM Top 10). Expanded Epic 7 & 8 on 2026-04-13.
 - **Spec Index**:
+  - `[agent-least-privilege-audit] docs/specs/agent-least-privilege-audit.md [Frozen] [Updated: 2026-05-20]`
   - `[template-import-cleanup] .agentcortex/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
   - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
   - `[ghostcheck-mvp] .agentcortex/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]`
@@ -72,6 +73,10 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [FP-Exemption]: Auto-ignore ghostcheck self-scans or lower their severity to avoid pre-commit blockages on self-code.
 
 ## Ship History
+
+### Ship-feat/agent-least-privilege-audit-2026-05-20
+- Feature shipped: Agent Least Privilege Audit (v1.0.2). Added `PrivilegeAuditor` checking GITHUB_TOKEN scope audits (GPA-01 to GPA-03), MCP config broad mounts and sudo audits (GPA-04, GPA-05), and command-line/client-side API key exposures (GPA-06, GPA-07).
+- Tests: Pass (pytest 9/9 privilege-specific tests, 82/82 total tests passing)
 
 ### Ship-fix/fp-reduction-and-context-intelligence-2026-05-20
 - Feature shipped: Context Intelligence & False Positive Reduction (v1.0.1). Added multilingual ContextAuditor, regex negative lookbehinds for shell paths, and minified file security protections.

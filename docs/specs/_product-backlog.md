@@ -128,7 +128,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
 | E7-F1 | **RAG Data Poisoning Scanner** | P1 | v1.1.0 | 🟡 | 掃描被作為 context 的文件/知識庫，偵測隱藏的 injection patterns 阻止透過檢索觸發攻擊。 |
-| E7-F2 | **Agent Least Privilege Audit** | P0 | v1.1.0 | 🟡 | 自動化審計 AI 專案中的 Token 權限範圍（GitHub/OpenAI/MCP），確保符合最小權限原則。 |
+| E7-F2 | **Agent Least Privilege Audit** | P0 | v1.1.0 | ✅ | 自動化審計 AI 專案中的 Token 權限範圍（GitHub/OpenAI/MCP），確保符合最小權限原則。 |
 | E7-F3 | **Prompt Injection Honeypot** | P2 | v1.2.0 | 🟡 | 自動在專案中生成偽造的敏感檔案，回傳誘標資訊以偵測不誠實或被操控的 Agent 行為。 |
 | E7-F4 | **Multi-modal Injection Detection** | P1 | v1.2.0 | 🟡 | 針對 Vision-capable agents，掃描圖像/媒體檔案中藏匿的隱現指令（Steganographic prompt injection）。 |
 | E7-F5 | **Shadow AI Detection** | P1 | v1.1.0 | 🟡 | 偵測專案原始碼中私自引入的未授權 AI SDK、Local LLM 配置或第三方 AI Plugin。 |
