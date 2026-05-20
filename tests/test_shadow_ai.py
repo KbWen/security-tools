@@ -139,3 +139,53 @@ def test_custom_config_filtering():
     content_url = "BASE_URL = 'http://localhost:11434/v1'"
     findings_url = detector.scan_file("src/config.py", content_url)
     assert len(findings_url) == 0
+
+def test_shadow_ai_malformed_manifests():
+    detector = ShadowAIDetector()
+
+    # Malformed package.json
+    malformed_pkg = """{
+        "dependencies": {
+            "openai": "^4.20.0",
+    """  # invalid JSON
+    findings = detector.scan_file("package.json", malformed_pkg)
+    assert len(findings) == 1
+    assert findings[0]["rule_id"] == "GSA-03"
+    assert "fallback" in findings[0]["message"]
+
+    # Malformed extensions.json
+    malformed_ext = """{
+        "recommendations": [
+            "github.copilot"
+    """  # invalid JSON
+    findings_ext = detector.scan_file(".vscode/extensions.json", malformed_ext)
+    assert len(findings_ext) == 1
+    assert findings_ext[0]["rule_id"] == "GSA-06"
+    assert "fallback" in findings_ext[0]["message"]
+
+def test_shadow_ai_js_namespaces():
+    detector = ShadowAIDetector()
+    
+    # Test namespace prefix matching
+    content = "import { Chat } from '@langchain/openai';"
+    findings = detector.scan_file("src/index.js", content)
+    assert len(findings) == 1
+    assert findings[0]["rule_id"] == "GSA-02"
+
+def test_shadow_ai_non_matching_files():
+    detector = ShadowAIDetector()
+    
+    # Text file that isn't a manifest should not run manifest scans
+    content = "openai>=1.0.0"
+    findings = detector.scan_file("README.md", content)
+    assert len(findings) == 0
+
+def test_shadow_ai_empty_config():
+    # Explicitly test with None and empty dict config parameter
+    d1 = ShadowAIDetector(config=None)
+    d2 = ShadowAIDetector(config={})
+    
+    content = "import openai"
+    assert len(d1.scan_file("src/agent.py", content)) == 1
+    assert len(d2.scan_file("src/agent.py", content)) == 1
+
