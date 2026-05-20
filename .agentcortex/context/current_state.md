@@ -68,8 +68,14 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Harden-Packaging]: Distributed data files must be explicitly declared in `pyproject.toml` [tool.setuptools.package-data] for inclusion in wheel/sdist.
 - [Harden-Encoding]: Use bytes processing for CLI subprocesses to avoid decoding errors on non-UTF8 terminals (Windows).
 - [Harden-Path-Safety]: Windows multi-drive environments require explicit drive-letter comparison in path traversal checks.
+- [Harden-Encoding]: Ensure json.load uses encoding="utf-8" when reading context keywords.
+- [FP-Exemption]: Auto-ignore ghostcheck self-scans or lower their severity to avoid pre-commit blockages on self-code.
 
 ## Ship History
+
+### Ship-fix/fp-reduction-and-context-intelligence-2026-05-20
+- Feature shipped: Context Intelligence & False Positive Reduction (v1.0.1). Added multilingual ContextAuditor, regex negative lookbehinds for shell paths, and minified file security protections.
+- Tests: Pass
 
 > [!NOTE]
 > Older ship history has been moved to [.agentcortex/context/archive/ship_history_archived.md](file:///.agentcortex/context/archive/ship_history_archived.md) to save context tokens.

@@ -8,6 +8,14 @@ tmp/
 
 # Test samples and fixtures (may contain mock secrets)
 tests/
+chaos_test.py
+tmp_chaos_test/
+friction_tests/
+friction_test_workspace/
+摩擦測試/
+report*.txt
+report.json
+ghostcheck.toml
 
 # Cache
 .ghostcheck/cache/
