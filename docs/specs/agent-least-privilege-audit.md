@@ -1,3 +1,7 @@
+---
+status: frozen
+---
+
 # Feature Spec: Agent Least Privilege Audit (E7-F2)
 
 ## Overview
