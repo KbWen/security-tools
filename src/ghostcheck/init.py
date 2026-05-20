@@ -11,7 +11,7 @@ exclude_patterns = {excludes}
 enabled_checks = {checks}
 offline = false
 preset = "{preset}"
-# proxy = "http://127.0.0.1:8080"
+# proxy = "http://proxy.example.com:8080"
 
 # [Custom Language Support]
 # Add custom negative keywords for documentation (e.g., "don't do this")

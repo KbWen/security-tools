@@ -26,6 +26,7 @@ from .checks.ast_dart_scanner import DartASTScanner
 from .checks.logic_auditor import LogicAuditor
 from .checks.context_auditor import ContextAuditor
 from .checks.privilege_auditor import PrivilegeAuditor
+from .checks.shadow_ai import ShadowAIDetector
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -159,6 +160,7 @@ class Scanner:
         self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
         self.context_auditor = ContextAuditor(config=self.config)
         self.privilege_auditor = PrivilegeAuditor()
+        self.shadow_ai_detector = ShadowAIDetector(config=self.config)
 
     def _is_safe_path(self, file_path):
         """Ensures the path is within project root and handles potential directory traversal."""
@@ -530,7 +532,7 @@ class Scanner:
             # All modules enabled by default
             enabled_modules = [
                 "hallucination", "secrets", "env", "rules", "docker", 
-                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", "logic", "privilege"
+                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", "logic", "privilege", "shadow_ai"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -626,6 +628,13 @@ class Scanner:
             is_code = any(filename.endswith(ext) for ext in allowed_exts)
             if is_workflow or is_mcp or is_code:
                 findings.extend(self.privilege_auditor.scan_file(file_path, content))
+
+        if "shadow_ai" in enabled_modules:
+            is_manifest = filename in ['package.json', 'requirements.txt', 'pyproject.toml']
+            is_vscode = filename == 'extensions.json' and '.vscode' in path_lower
+            is_src = any(filename.endswith(ext) for ext in ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.sh', '.bat', '.env']) or filename == '.env'
+            if is_manifest or is_vscode or is_src:
+                findings.extend(self.shadow_ai_detector.scan_file(file_path, content))
 
         # 7. Entropy & API
         if "secrets" in enabled_modules:
