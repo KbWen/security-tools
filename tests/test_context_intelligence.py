@@ -65,3 +65,13 @@ def test_entropy_scanner_markdown(tmp_path):
     
     assert len(doc_findings) == 0
     assert len(env_findings) == 1
+
+def test_context_intelligence_english_no_collision():
+    auditor = ContextAuditor()
+    
+    # English "no" collision should NOT make it safe
+    assert not auditor.is_safe_context("README.md", "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE # there is no key here", 1)
+    
+    # Spanish "no usar" negation SHOULD make it safe
+    assert auditor.is_safe_context("README.md", "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE # no usar en prod", 1)
+

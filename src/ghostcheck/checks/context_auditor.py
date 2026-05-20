@@ -3,6 +3,17 @@ import re
 import json
 import os
 
+def _has_keyword(text: str, keyword: str) -> bool:
+    keyword_lower = keyword.lower()
+    text_lower = text.lower()
+    if any(ord(char) > 0x2e80 for char in keyword_lower):
+        return keyword_lower in text_lower
+        
+    # Boundary check for space-delimited/alphanumeric languages
+    pattern = r'(?<![a-zA-Z0-9])' + re.escape(keyword_lower) + r'(?![a-zA-Z0-9])'
+    return bool(re.search(pattern, text_lower))
+
+
 class ContextAuditor:
     """
     Analyzes the context around a finding to determine if it's instructional,
@@ -55,14 +66,14 @@ class ContextAuditor:
         target_line = lines[target_idx].lower()
         
         # 1. Same-line context check
-        if any(kw in target_line for kw in self.negative_keywords):
+        if any(_has_keyword(target_line, kw) for kw in self.negative_keywords):
             return True
-        if any(kw in target_line for kw in self.example_keywords):
+        if any(_has_keyword(target_line, kw) for kw in self.example_keywords):
             return True
             
-        # 2. Block/List Context Check (Look back up to 15 lines)
+        # 2. Block/List Context Check (Look back up to 100 lines)
         # We look for the parent list item or the nearest text outside a code block.
-        start_idx = max(0, target_idx - 15)
+        start_idx = max(0, target_idx - 100)
         context_window = lines[start_idx:target_idx]
         
         # Are we in a code block?
@@ -79,7 +90,7 @@ class ContextAuditor:
             prev_lower = prev_line.lower()
             
             # If we hit a list parent item or preceding text containing a keyword, it's safe
-            if any(kw in prev_lower for kw in self.negative_keywords + self.example_keywords):
+            if any(_has_keyword(prev_lower, kw) for kw in self.negative_keywords + self.example_keywords):
                 return True
                 
             # If it's a major structural element (header), we stop looking further

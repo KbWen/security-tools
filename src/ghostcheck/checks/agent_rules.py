@@ -1,10 +1,40 @@
 import json
 import re
+import os
+
+def _has_keyword(text: str, keyword: str) -> bool:
+    keyword_lower = keyword.lower()
+    text_lower = text.lower()
+    if any(ord(char) > 0x2e80 for char in keyword_lower):
+        return keyword_lower in text_lower
+        
+    # Boundary check for space-delimited/alphanumeric languages
+    pattern = r'(?<![a-zA-Z0-9])' + re.escape(keyword_lower) + r'(?![a-zA-Z0-9])'
+    return bool(re.search(pattern, text_lower))
+
 
 class AgentRulesLinter:
     def __init__(self, patterns_path):
         with open(patterns_path, 'r', encoding='utf-8') as f:
             self.patterns = json.load(f)
+            
+        # Load multilingual keywords from data file
+        data_path = os.path.join(os.path.dirname(__file__), "..", "data", "context_keywords.json")
+        try:
+            with open(data_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                negative = data.get("negative_keywords", [])
+                example = data.get("example_keywords", [])
+                self.safe_keywords = list(set(negative + example))
+        except Exception:
+            # Fallback to English and Chinese if file is missing
+            self.safe_keywords = [
+                "forbidden", "prohibited", "not allowed", "don't", "dont", "do not", 
+                "never", "avoid", "prevent", "rule: no", "strictly against",
+                "example:", "sample:", "placeholder", "mock",
+                "避免", "嚴禁", "不可", "請勿", "禁止", "不要", "不應該",
+                "例如", "範例", "如："
+            ]
         
         # v0.8.0 advanced patterns
         self.advanced_patterns = [
@@ -48,20 +78,16 @@ class AgentRulesLinter:
         in_code_block = False
         recent_lines = [] # To catch context from headers like "### Forbidden"
         
-        negative_keywords = [
-            "forbidden", "prohibited", "not allowed", "don't", "dont", "do not", 
-            "never", "avoid", "prevent", "rule: no", "strictly against",
-            "example:", "sample:", "placeholder", "mock"
-        ]
+        safe_keywords = getattr(self, "safe_keywords", [])
 
         for i, line in enumerate(lines):
             # Track context
             stripped = line.strip()
             line_lower = line.lower()
             
-            # Update recent lines window (last 15 lines to catch distant headers)
+            # Update recent lines window (last 100 lines to catch distant headers)
             recent_lines.append(line_lower)
-            if len(recent_lines) > 15:
+            if len(recent_lines) > 100:
                 recent_lines.pop(0)
 
             # Track code blocks
@@ -73,30 +99,25 @@ class AgentRulesLinter:
             is_safe = False
             
             # 1. Same-line context
-            if any(kw in line_lower for kw in negative_keywords):
+            if any(_has_keyword(line_lower, kw) for kw in safe_keywords):
                 is_safe = True
             
             # 2. Block context (for lists or code blocks)
             if not is_safe:
                 is_list_item = bool(re.match(r'^\s*[-*+]\s|^\s*\d+\.\s', line))
                 if is_list_item or in_code_block:
-                    context_line = ""
                     for prev_line in reversed(recent_lines[:-1]):
                         if prev_line.strip() == "" or prev_line.strip().startswith("```"):
                             continue
                         
                         # Check if intermediate list parent nodes contain the negative keyword
-                        if any(kw in prev_line.lower() for kw in negative_keywords):
+                        if any(_has_keyword(prev_line.lower(), kw) for kw in safe_keywords):
                             is_safe = True
                             break
 
-                        # Stop when we find a line that is NOT a list item
-                        if not re.match(r'^\s*[-*+]\s|^\s*\d+\.\s', prev_line):
-                            context_line = prev_line
+                        # Stop when we find a major structural element (header)
+                        if re.match(r'^#+\s', prev_line):
                             break
-                            
-                    if not is_safe and context_line and any(kw in context_line.lower() for kw in negative_keywords):
-                        is_safe = True
             
             if is_safe:
                 continue

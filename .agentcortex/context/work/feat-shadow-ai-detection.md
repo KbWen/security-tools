@@ -10,8 +10,8 @@
 - `Recommended Skills`: none
 
 ## Session Info
-- Agent: Antigravity (Gemini 3.5 Flash)
-- Session: 2026-05-20T17:45:00+08:00
+- Agent: Antigravity (Gemini 3.5 Sonnet / Flash)
+- Session: 2026-05-20T20:00:00+08:00
 - Platform: Antigravity
 
 ## Drift Log
@@ -33,10 +33,12 @@
 - [2026-05-20] Initialized bootstrap on branch `feat/shadow-ai-detection`.
 - [2026-05-20] Spec and plan drafted, and approved by the user.
 - [2026-05-20] Implemented `ShadowAIDetector` checker, integrated into `Scanner` and presets, wrote tests, and successfully ran pytest (all 90 tests passed). Committed changes.
+- [2026-05-20] Discovered and resolved false-negative collision with the English word "no" in context negation patterns. Extended test suites in `test_agent_rules.py` and `test_context_intelligence.py`, verifying all 97 tests pass successfully.
 
 ## Resume
 - State: SHIPPED
-- Completed: Shadow AI Detection feature successfully implemented, verified, and committed.
+- Completed: Shadow AI Detection feature and multilingual context protection successfully implemented, verified, and committed.
 - Next: Final user sign-off and merging the feature branch.
+
 
 
