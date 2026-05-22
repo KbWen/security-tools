@@ -3,7 +3,7 @@
 # 👻 GhostCheck
 **Blazing-fast, zero-dependency security scanner for the AI-assisted development era.**
 
-[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -23,6 +23,11 @@ AI agents are rewriting the world, but they also introduce new attack surfaces. 
 
 ## Why AgentCortex?
 **GhostCheck** is built with the AgentCortex philosophy, ensuring that AI-assisted security is built on a foundation of verifiable engineering directives.
+
+## ✨ v1.0.3 Extensible Plugins & Red Team Hardening
+*   🔌 **Plugin Architecture:** Fully decoupled scanners and reporters. Extensible support for custom logic.
+*   🛡️ **Red Team Hardened:** Built-in protection against chaos tests, bypass attempts, local RCE vectors, and directory traversal.
+*   📊 **Universal Reporters:** Native support for `console`, `json`, `html`, `owasp-llm`, and `sarif` outputs.
 
 ## ✨ v1.0.0 Universal Framework-Aware Scanner
 *   🚀 **Framework Presets:** Automated scan strategies for **Next.js, Flutter, Django, FastAPI,** and **Terraform**.
@@ -81,7 +86,7 @@ GhostCheck respects professional workflows:
 *   **Custom Exclusions:** Use `.ghostcheckignore` to silently bypass safe paths.
 *   **Severity Filters:** Run scans with targeted focus using `--severity [CRITICAL|HIGH|MEDIUM|LOW]`.
 *   **Multilingual Support:** Define custom safe keywords in `ghostcheck.toml` (`custom_safe_keywords = ["нельзя"]`) to prevent false positives in non-English documentation.
-*   **Automation Ready:** Export results natively using `--format json`, `--format sarif` or `--format owasp-llm` for seamless compliance reporting.
+*   **Automation Ready:** Export results natively using `--format json`, `--format html`, `--format sarif` or `--format owasp-llm` for seamless compliance reporting.
 
 ---
 **Developed with ❤️ for the AI community by [KbWen](https://github.com/KbWen).**

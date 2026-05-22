@@ -3,7 +3,7 @@
 # 👻 GhostCheck
 **為 AI 輔助開發時代量身打造的極速、零依賴安全性掃描工具。**
 
-[![版本](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
+[![版本](https://img.shields.io/badge/version-1.0.3-blue.svg?style=for-the-badge)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=for-the-badge)](https://www.python.org/)
 [![授權](https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge)](LICENSE)
 
@@ -20,6 +20,11 @@
 AI Agent 正在重塑程式開發，但也帶來了全新的攻擊面。**GhostCheck** 彌補了傳統 SAST 與 AI 原生安全性之間的鴻溝，確保您的代碼在享受 AI 速度的同時，依然保持企業級的穩固與安全。
 
 從「流程驅動」進化到「自我管理」的專業級 AI Agent 核心架構。
+
+## ✨ v1.0.3 擴展插件與紅隊防禦強化
+*   🔌 **插件架構 (Plugin Architecture)：** 完全解耦掃描器與報表輸出，支援自定義擴展邏輯。
+*   🛡️ **紅隊級防禦 (Red Team Hardened)：** 內建抵禦混沌測試、繞過嘗試、本地 RCE 漏洞與目錄穿越攻擊的安全機制。
+*   📊 **全方位報表 (Universal Reporters)：** 原生支援 `console`, `json`, `html`, `owasp-llm`, 以及 `sarif` 格式輸出。
 
 ## ✨ v1.0.0 全球首款框架感知安全性掃描器 (Universal Scanner)
 *   🚀 **框架預設策略 (Framework Presets)：** 自動針對 **Next.js, Flutter, Django, FastAPI, Terraform** 等熱門框架配置專屬偵測引擎。
@@ -73,7 +78,7 @@ GhostCheck 完美契合專業的開發工作流程：
 *   **精準排除：** 透過 `.ghostcheckignore` 隱式排除不需要掃描的安全路徑。
 *   **嚴重性過濾：** 支援 `--severity [CRITICAL|HIGH|MEDIUM|LOW]` 鎖定需要處理的漏洞等級。
 *   **多國語言支援：** 可在 `ghostcheck.toml` 內自訂文件專用的安全關鍵字 (`custom_safe_keywords = ["避免"]`)，大幅降低非英文文件的誤判率。
-*   **自動化就緒：** 原生支援 `--format json`、`sarif` 及 `owasp-llm`，提供標準化的合規報告輸出。
+*   **自動化就緒：** 原生支援 `--format json`、`html`、`sarif` 及 `owasp-llm`，提供標準化的合規報告輸出。
 
 ---
 
