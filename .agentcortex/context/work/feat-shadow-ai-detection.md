@@ -2,7 +2,7 @@
 
 ## Session Info
 - Model: Gemini (Antigravity)
-- Timestamp: 2026-05-22T13:46:21.145633
+- Timestamp: 2026-05-22T13:51:25.924083
 - Platform: Windows
 - Branch: feat/shadow-ai-detection
 
@@ -23,3 +23,4 @@
 - 103/103 tests pass (uv run pytest)
 - Code committed and pushed to eat/shadow-ai-detection
 - Walkthrough updated.
+- GhostCheck CLI outputs results successfully.

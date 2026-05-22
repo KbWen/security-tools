@@ -75,6 +75,13 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-feat/shadow-ai-detection-2026-05-22 (Phase 6, 7, 8)
+- Feature shipped: Red Team Hardening & Reporter Decoupling (v1.0.3).
+  - Phase 6: Decoupled all 24 scanners into `BaseScannerPlugin` and managed via `PluginManager`.
+  - Phase 7: Fixed 4 Red Team vulnerabilities: Chaos Protection Bypass (line truncation), Local Plugin RCE (trust environment variable), Inline Ignore Abuse (strict comment enforcement), and Directory Traversal in ignore rules. Added `TamperAuditor`.
+  - Phase 8: Extracted reporters (`console`, `json`, `html`, `owasp-llm`, `sarif`) into `BaseReporterPlugin`. Fixed SARIF rule_id mapping for dynamic schemas.
+- Tests: Pass (103/103 tests passing, including SARIF and Bypass regression tests).
+
 ### Ship-feat/shadow-ai-detection-2026-05-20
 - Feature shipped: Shadow AI Detection (v1.0.2). Added `ShadowAIDetector` checking unauthorized Python/JS AI SDKs, manifest file dependencies, local LLM endpoints, environment configurations, and recommended VS Code extensions (GSA-01 to GSA-06).
 - Tests: Pass (pytest 8/8 shadow-ai tests, 90/90 total tests passing)
