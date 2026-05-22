@@ -6,8 +6,36 @@ import urllib.error
 import time
 from datetime import datetime, timedelta
 import hashlib
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class HallucinationChecker:
+class HallucinationChecker(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "hallucinationchecker"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for HallucinationChecker"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                filename = file_path.replace('\\', '/').split('/')[-1]
+                if filename == 'requirements.txt':
+                    findings.extend(self.check_requirements(content))
+                elif filename == 'package.json':
+                    findings.extend(self.check_package_json(content))
+
+            except Exception:
+                pass
+        return findings
+
     def __init__(self, logger=None, offline=False, proxy=None, ssl_verify=True, timeout=10):
         self.logger = logger
         self.offline = offline

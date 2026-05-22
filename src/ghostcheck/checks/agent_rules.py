@@ -1,6 +1,8 @@
 import json
 import re
 import os
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
 def _has_keyword(text: str, keyword: str) -> bool:
     keyword_lower = keyword.lower()
@@ -13,9 +15,31 @@ def _has_keyword(text: str, keyword: str) -> bool:
     return bool(re.search(pattern, text_lower))
 
 
-class AgentRulesLinter:
-    def __init__(self, patterns_path):
-        with open(patterns_path, 'r', encoding='utf-8') as f:
+class AgentRulesLinter(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "agentruleslinter"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for AgentRulesLinter"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
+    def __init__(self, risky_rules_path):
+        with open(risky_rules_path, 'r', encoding='utf-8') as f:
             self.patterns = json.load(f)
             
         # Load multilingual keywords from data file
@@ -40,7 +64,7 @@ class AgentRulesLinter:
         self.advanced_patterns = [
             {
                 "name": "hidden_prompt_injection",
-                "pattern": r'[\u200B-\u200D\uFEFF\u202A-\u202E]', # Hidden chars/RTL
+                "pattern": r'[\u200B-\u200F\uFEFF\u202A-\u202E]', # Hidden chars/RTL + LTR/RTL marks
                 "severity": "CRITICAL",
                 "suggestion": "Hidden characters or bidirectional control characters detected. These are often used for prompt injection bypasses."
             },
@@ -52,7 +76,7 @@ class AgentRulesLinter:
             },
             {
                 "name": "dangerous_system_command",
-                "pattern": r'(?<!\.)\b(curl|wget|sh|bash|powershell|exec|rm\s+-rf|git\s+push\s+--force|drop\s+table)\b',
+                "pattern": r'(?<!\.)\b(curl|wget|sh|bash|powershell|exec|rm\s+-[a-zA-Z\s-]*r[a-zA-Z\s-]*f|git\s+push\s+(?:-f|--force)|drop\s+table)\b',
                 "severity": "HIGH",
                 "suggestion": "Instruction contains dangerous system commands. Attackers use these to pivot or exfiltrate data."
             },
@@ -119,28 +143,22 @@ class AgentRulesLinter:
                         if re.match(r'^#+\s', prev_line):
                             break
             
-            if is_safe:
-                continue
-
-            # If it's a code block, only scan if it's a known risky shell/script block
-            if in_code_block and not any(x in line_lower for x in ["bash", "sh", "ps1", "powershell"]):
-                if not stripped.startswith(("-", "*", ">")):
-                    continue
+            # If safe keyword found, skip base patterns (general rules), but ALWAYS scan advanced patterns (critical prompt injection/system commands)
+            if not is_safe:
+                # Base patterns from JSON
+                for p in self.patterns:
+                    match = re.search(p['pattern'], line)
+                    if match:
+                        findings.append({
+                            "file": file_path,
+                            "line": i + 1,
+                            "name": p.get('name', 'agent_rule_issue'),
+                            "severity": p['severity'],
+                            "suggestion": p.get('remediation') or p.get('suggestion'),
+                            "context": line.strip()
+                        })
             
-            # Base patterns from JSON
-            for p in self.patterns:
-                match = re.search(p['pattern'], line)
-                if match:
-                    findings.append({
-                        "file": file_path,
-                        "line": i + 1,
-                        "name": p.get('name', 'agent_rule_issue'),
-                        "severity": p['severity'],
-                        "suggestion": p.get('remediation') or p.get('suggestion'),
-                        "context": line.strip()
-                    })
-            
-            # v0.8.0 Advanced patterns
+            # v0.8.0 Advanced patterns (NEVER bypassed by safe_keywords or code blocks)
             for p in self.advanced_patterns:
                 match = re.search(p['pattern'], line, re.IGNORECASE if p['name'] != "hidden_prompt_injection" else 0)
                 if match:

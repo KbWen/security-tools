@@ -1,6 +1,30 @@
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class JavaASTScanner:
+class JavaASTScanner(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "javaastscanner"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for JavaASTScanner"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     """
     Java/Kotlin AST Scanner (v0.9.0 Foundation).
     Detects hardcoded secrets in Java/Kotlin files by matching assignments and validating values.

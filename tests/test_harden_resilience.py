@@ -39,10 +39,12 @@ def test_proxy_propagation():
     with patch('ghostcheck.scanner.open', create=True):
         with patch('ghostcheck.scanner.json.load', return_value={}):
             scanner = Scanner(".", config=config_dict, offline=True)
-            
-            assert scanner.hallucination_checker.proxy == "http://test-proxy:8080"
-            assert scanner.vuln_scanner.proxy == "http://test-proxy:8080"
-            assert scanner.vuln_scanner.proxies["http"] == "http://test-proxy:8080"
+    
+            plugin = next(p for p in scanner.scanners if 'hallucination' in getattr(p, 'name', '').lower())
+            assert plugin.proxy == "http://test-proxy:8080"
+            plugin2 = next(p for p in scanner.scanners if 'vuln' in getattr(p, 'name', '').lower())
+            assert plugin2.proxy == "http://test-proxy:8080"
+            assert plugin2.proxies["http"] == "http://test-proxy:8080"
 
 @patch('urllib.request.install_opener')
 @patch('urllib.request.build_opener')

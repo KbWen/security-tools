@@ -1,30 +1,53 @@
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class APILinter:
+class APILinter(BaseScannerPlugin):
     def __init__(self):
         self.rules = [
             {
                 "name": "api_cors_wildcard",
-                "pattern": r'Access-Control-Allow-Origin.*[\'"]\*[\'"]',
+                "pattern": r'Access-Control-Allow-Origin.*[`\'"]\*[`\'"]',
                 "severity": "HIGH",
                 "message": "CORS wildcard (*) detected. This allows any domain to access your API.",
                 "remediation": "Restrict CORS to specific trusted origins."
             },
             {
                 "name": "api_csrf_disabled",
-                "pattern": r'(csrf_enabled|enable_csrf).*=.*(false|False|0)',
+                "pattern": r'(csrf_enabled|enable_csrf).*[:=].*(false|False|0)',
                 "severity": "HIGH",
                 "message": "CSRF protection appears to be disabled.",
                 "remediation": "Enable CSRF protection for session-based APIs."
             },
             {
                 "name": "api_graphql_introspection_enabled",
-                "pattern": r'(introspection).*=.*(true|True|1)',
+                "pattern": r'(introspection).*[:=].*(true|True|1)',
                 "severity": "MEDIUM",
                 "message": "GraphQL introspection is enabled in what might be a production config.",
                 "remediation": "Disable introspection in production to prevent schema leakage."
             }
         ]
+
+    @property
+    def name(self) -> str:
+        return "api_linter"
+
+    @property
+    def description(self) -> str:
+        return "Scans API code for common security misconfigurations (CORS, CSRF, GraphQL introspection)."
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            # Assume it scans all relevant files, or we filter based on extensions like JS, TS, PY, GO, JAVA
+            # In scanner.py `scan_api`, it passes all files without filtering. We'll replicate that.
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+                findings.extend(self.scan_content(file_path, content))
+            except Exception:
+                pass
+        return findings
 
     def scan_content(self, file_path, content):
         findings = []

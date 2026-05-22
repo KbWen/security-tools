@@ -150,5 +150,5 @@ def test_html_dashboard(tmp_path, scanner):
     grade, score = scanner.scoring_engine.calculate_score(findings)
     from ghostcheck.reporters.html_reporter import HTMLReporter
     reporter = HTMLReporter(str(tmp_path / "report.html"))
-    path = reporter.report(findings, grade, score)
+    path = reporter.report(findings, grade=grade, score_val=score)
     assert os.path.exists(path)

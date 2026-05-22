@@ -1,6 +1,11 @@
 import shutil
+from ..interfaces import BaseReporterPlugin
 
-class OWASPLLMReporter:
+class OWASPLLMReporter(BaseReporterPlugin):
+    @property
+    def name(self) -> str:
+        return "owasp-llm"
+
     def __init__(self, use_color=True, use_unicode=True):
         self.use_color = use_color
         self.use_unicode = use_unicode

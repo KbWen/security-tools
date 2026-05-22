@@ -9,7 +9,8 @@ class IgnoreMatcher:
             '__pycache__/', '*.pyc', '*.pyo', '*.pyd',
             '.git/', '.svn/', '.hg/',
             'node_modules/', 'vendor/',
-            '.DS_Store', 'Thumbs.db'
+            '.DS_Store', 'Thumbs.db',
+            '.ghostcheckbaseline', '.ghostcheckignore'
         ]
         for p in default_ignores:
             if p not in self.patterns:
@@ -38,14 +39,25 @@ class IgnoreMatcher:
             negate = pattern.startswith('!')
             p = pattern[1:] if negate else pattern
             
-            # AC-H4: 增強比對邏輯，支援父目錄比對
-            if fnmatch.fnmatch(path, p) or \
-               fnmatch.fnmatch(os.path.basename(path), p) or \
-               any(fnmatch.fnmatch(part, p) for part in path.split('/')):
-                return not negate
+            p_stripped = p.rstrip('/')
+            
+            # Absolute matching from root if starts with /
+            if p.startswith('/'):
+                match_p = p[1:]
+                if fnmatch.fnmatch(path, match_p) or path.startswith(match_p.rstrip('/') + '/'):
+                    return not negate
+            else:
+                # Basic filename or full path match
+                if fnmatch.fnmatch(path, p) or fnmatch.fnmatch(os.path.basename(path), p):
+                    return not negate
                 
-            # Directory match
-            if p.endswith('/') and path.startswith(p):
-                return not negate
+                # Match directories anywhere ONLY if pattern has no intermediate slashes
+                if '/' not in p_stripped:
+                    if any(fnmatch.fnmatch(part, p_stripped) for part in path.split('/')):
+                        return not negate
                 
+                # Prefix matching
+                if p.endswith('/') and path.startswith(p):
+                    return not negate
+                    
         return False

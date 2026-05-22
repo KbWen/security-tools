@@ -16,6 +16,7 @@ friction_test_workspace/
 report*.txt
 report.json
 ghostcheck.toml
+scratch/
 
 # Cache
 .ghostcheck/cache/

@@ -1,6 +1,8 @@
 import re
 import os
 import json
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
 DEFAULT_AI_SDKS_PYTHON = {
     'openai', 'anthropic', 'langchain', 'llamaindex', 'google.generativeai',
@@ -19,7 +21,29 @@ DEFAULT_IDE_EXTENSIONS = {
     'codeium.codeium', 'supermaven.supermaven', 'cursor.cursor'
 }
 
-class ShadowAIDetector:
+class ShadowAIDetector(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "shadowaidetector"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for ShadowAIDetector"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     def __init__(self, config=None):
         self.config = config or {}
         shadow_config = self.config.get("shadow_ai", {})
@@ -31,12 +55,14 @@ class ShadowAIDetector:
         self.blocked_extensions = {x.lower() for x in shadow_config.get("blocked_extensions", [])}
 
         # Regexes
-        self.python_import_pattern = re.compile(r'^\s*(?:import|from)\s+([a-zA-Z0-9_-]+)')
+        self.python_import_pattern = re.compile(
+            r'(?:^\s*import\s+([a-zA-Z0-9_,\s.-]+))|(?:^\s*from\s+([a-zA-Z0-9_.-]+)\s+import)|(?:__import__|import_module)\s*\(\s*[\'"]([a-zA-Z0-9_-]+)[\'"]'
+        )
         self.js_import_pattern = re.compile(
-            r'(?:require\s*\(\s*["\']([^"\']+)["\']\s*\)|from\s+["\']([^"\']+)["\'])'
+            r'(?:require\s*\(\s*[`"\']([^`"\']+)[`"\']\s*\)|from\s+[`"\']([^`"\']+)[`"\']|import\s*\(\s*[`"\']([^`"\']+)[`"\']\s*\))'
         )
         self.local_url_pattern = re.compile(
-            r'(https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0):(?:11434|8080|8000|5000)(?:/[a-zA-Z0-9_.-]+)*)',
+            r'(https?://(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]):(?:\d+)(?:/[a-zA-Z0-9_.-]+)*)',
             re.IGNORECASE
         )
         self.local_env_vars = ['OLLAMA_HOST', 'OLLAMA_BASE_URL', 'LOCAL_LLM_URL', 'LLAMA_API_BASE', 'VLLM_API_KEY', 'OLLAMA_API_BASE']
@@ -97,36 +123,36 @@ class ShadowAIDetector:
         if filename.endswith('.py'):
             for i, line in enumerate(lines):
                 # Python imports (GSA-01)
-                match = self.python_import_pattern.match(line)
-                if match:
-                    pkg = match.group(1)
-                    if self.is_sdk_python_unauthorized(pkg):
-                        findings.append({
-                            "name": "unauthorized_ai_sdk_python",
-                            "rule_id": "GSA-01",
-                            "severity": "MEDIUM",
-                            "file": filepath,
-                            "line": i + 1,
-                            "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
-                            "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
-                        })
+                for match in self.python_import_pattern.finditer(line):
+                    pkgs_str = match.group(1) or match.group(2) or match.group(3)
+                    for pkg_raw in pkgs_str.split(','):
+                        pkg = pkg_raw.strip().split('.')[0]
+                        if pkg and self.is_sdk_python_unauthorized(pkg):
+                            findings.append({
+                                "name": "unauthorized_ai_sdk_python",
+                                "rule_id": "GSA-01",
+                                "severity": "MEDIUM",
+                                "file": filepath,
+                                "line": i + 1,
+                                "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
+                                "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
+                            })
 
         # 3. Source Code Checks (JavaScript/TypeScript)
         elif any(filename.endswith(ext) for ext in ['.js', '.ts', '.jsx', '.tsx']):
-            for i, line in enumerate(lines):
-                # JS imports (GSA-02)
-                for match in self.js_import_pattern.finditer(line):
-                    pkg = match.group(1) or match.group(2)
-                    if pkg and self.is_sdk_js_unauthorized(pkg):
-                        findings.append({
-                            "name": "unauthorized_ai_sdk_js",
-                            "rule_id": "GSA-02",
-                            "severity": "MEDIUM",
-                            "file": filepath,
-                            "line": i + 1,
-                            "message": f"Unauthorized JavaScript/TypeScript AI SDK imported: '{pkg}'.",
-                            "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
-                        })
+            for match in self.js_import_pattern.finditer(content):
+                pkg = match.group(1) or match.group(2) or match.group(3)
+                if pkg and self.is_sdk_js_unauthorized(pkg):
+                    line_no = content.count('\n', 0, match.start()) + 1
+                    findings.append({
+                        "name": "unauthorized_ai_sdk_js",
+                        "rule_id": "GSA-02",
+                        "severity": "MEDIUM",
+                        "file": filepath,
+                        "line": line_no,
+                        "message": f"Unauthorized JavaScript/TypeScript AI SDK imported: '{pkg}'.",
+                        "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
+                    })
 
         # 4. Source Code Endpoint & Env Scans (GSA-04, GSA-05) - Run on all source files
         allowed_src_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.sh', '.bat', '.env']
@@ -225,7 +251,7 @@ class ShadowAIDetector:
         findings = []
         # Simple line scanning for toml dependencies
         dep_pattern = re.compile(r'^\s*([a-zA-Z0-9_-]+)\s*=\s*["\']')
-        array_dep_pattern = re.compile(r'["\']([a-zA-Z0-9_-]+)(?:>=|<=|==|>|<|~=|!=|\[)')
+        array_dep_pattern = re.compile(r'["\']([a-zA-Z0-9_-]+)(?:>=|<=|==|>|<|~=|!=|\[|["\'])')
         
         for i, line in enumerate(lines):
             # Check for direct key definition: pkg = "^1.0.0"

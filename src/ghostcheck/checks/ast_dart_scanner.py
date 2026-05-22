@@ -1,6 +1,30 @@
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class DartASTScanner:
+class DartASTScanner(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "dartastscanner"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for DartASTScanner"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     """
     Dart/Flutter AST Scanner (v0.9.0 Foundation).
     Detects hardcoded secrets in Dart files by matching assignments and validating values.

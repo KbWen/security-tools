@@ -1,7 +1,31 @@
 import ast
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class AstSecretChecker:
+class AstSecretChecker(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "astsecretchecker"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for AstSecretChecker"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     """
     Advanced secret scanner that uses AST to detect obfuscated secrets.
     Focuses on detecting secrets formed via string concatenation.
@@ -44,33 +68,53 @@ class AstSecretChecker:
             # 2. Simple constants
             elif isinstance(node, (ast.Constant, getattr(ast, 'Str', type(None)))):
                 value = None
-                if isinstance(node, ast.Constant) and isinstance(node.value, str):
-                    value = node.value
-                elif hasattr(ast, 'Str') and isinstance(node, ast.Str):
+                if isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes)):
+                    value = node.value.decode('utf-8', errors='ignore') if isinstance(node.value, bytes) else node.value
+                elif hasattr(ast, 'Str') and isinstance(node, getattr(ast, 'Str', type(None))):
                     value = node.s
                 
                 if value is not None:
                     self._check_string(value, line_no, file_path, findings)
+
+            # 3. f-strings
+            elif isinstance(node, ast.JoinedStr):
+                full_val = ""
+                for v in node.values:
+                    if isinstance(v, ast.Constant) and isinstance(v.value, (str, bytes)):
+                        full_val += v.value.decode('utf-8', errors='ignore') if isinstance(v.value, bytes) else v.value
+                if full_val:
+                    self._check_string(full_val, line_no, file_path, findings, is_concat=True)
+
+            # 4. .join() calls
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == 'join':
+                if isinstance(node.func.value, ast.Constant) and isinstance(node.func.value.value, str):
+                    if node.args and isinstance(node.args[0], (ast.List, ast.Tuple)):
+                        joined = ""
+                        for elt in node.args[0].elts:
+                            val, _ = self._resolve_concat_with_members(elt)
+                            if val: joined += val
+                        if joined:
+                            self._check_string(joined, line_no, file_path, findings, is_concat=True)
 
         return findings
 
     def _resolve_concat_with_members(self, node, depth=0):
         """Recursively resolves concatenation with depth limit."""
         if depth > self.MAX_RECURSION_DEPTH:
-            raise RecursionError("Maximum AST concatenation depth exceeded")
+            return "", []
 
-        if isinstance(node, ast.Constant) and isinstance(node.value, str):
-            return node.value, [node]
-        if hasattr(ast, 'Str') and isinstance(node, ast.Str):
+        if isinstance(node, ast.Constant) and isinstance(node.value, (str, bytes)):
+            val = node.value.decode('utf-8', errors='ignore') if isinstance(node.value, bytes) else node.value
+            return val, [node]
+        if hasattr(ast, 'Str') and isinstance(node, getattr(ast, 'Str', type(None))):
             return node.s, [node]
         
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
             left_val, left_nodes = self._resolve_concat_with_members(node.left, depth + 1)
             right_val, right_nodes = self._resolve_concat_with_members(node.right, depth + 1)
-            if left_val is not None and right_val is not None:
-                return left_val + right_val, left_nodes + right_nodes + [node]
+            return (left_val or "") + (right_val or ""), left_nodes + right_nodes + [node]
         
-        return None, []
+        return "", []
 
     def _check_string(self, value, line_no, file_path, findings, is_concat=False):
         for p in self.patterns:

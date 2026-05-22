@@ -1,7 +1,31 @@
 import json
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class MCPAuditor:
+class MCPAuditor(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "mcpauditor"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for MCPAuditor"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     def __init__(self):
         self.patterns = [
             {

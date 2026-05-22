@@ -3,8 +3,32 @@ try:
 except ImportError:
     esprima = None
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class JsAstSecretChecker:
+class JsAstSecretChecker(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "jsastsecretchecker"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for JsAstSecretChecker"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     """
     AST-based secret scanner for JavaScript/TypeScript using esprima.
     Detects secrets in template literals and string concatenations.
@@ -20,11 +44,11 @@ class JsAstSecretChecker:
             return findings
         
         try:
-            # esprima.parseScript處理標準 JS。
-            # 標準 esprima 可處理現代 JS 模板字串。
-            tree = esprima.parseScript(content, loc=True)
+            try:
+                tree = esprima.parseModule(content, loc=True)
+            except Exception:
+                tree = esprima.parseScript(content, loc=True)
         except Exception:
-            # 優雅處理非標準 JS/TS 的語法錯誤
             return findings
 
         self._walk_and_check(tree, file_path, findings)
@@ -39,9 +63,15 @@ class JsAstSecretChecker:
             # 1. Template Literals: `sk-` + ${part}
             if node.type == 'TemplateLiteral':
                 full_text = ""
+                checked_parts = set()
                 for quasis in node.quasis:
-                    full_text += quasis.value.cooked or ""
-                if full_text:
+                    part = quasis.value.cooked or ""
+                    full_text += part
+                    # Also check individual parts in case they are large enough secrets
+                    if part and part not in checked_parts:
+                        self._check_string(part, node.loc.start.line, file_path, findings, is_ast=True)
+                        checked_parts.add(part)
+                if full_text and full_text not in checked_parts:
                     self._check_string(full_text, node.loc.start.line, file_path, findings, is_ast=True)
 
             # 2. Binary Expressions (Concatenation): 'sk-' + 'part'
@@ -76,21 +106,21 @@ class JsAstSecretChecker:
 
     def _resolve_binop(self, node, depth=0):
         if depth > self.MAX_RECURSION_DEPTH:
-            return None
+            return ""
         
         left_val = self._get_literal_val(node.left, depth + 1)
         right_val = self._get_literal_val(node.right, depth + 1)
         
-        if left_val is not None and right_val is not None:
-            return left_val + right_val
-        return None
+        return (left_val or "") + (right_val or "")
 
     def _get_literal_val(self, node, depth):
-        if node.type == 'Literal' and isinstance(node.value, str):
-            return node.value
+        if not hasattr(node, 'type'):
+            return ""
+        if node.type == 'Literal':
+            return str(node.value) if node.value is not None else ""
         if node.type == 'BinaryExpression' and node.operator == '+':
             return self._resolve_binop(node, depth)
-        return None
+        return ""
 
     def _check_string(self, value, line_no, file_path, findings, is_ast=False):
         for p in self.patterns:

@@ -9,8 +9,10 @@ class PluginLoader:
             self.plugin_dirs = plugin_dirs
         else:
             self.plugin_dirs = [os.path.expanduser("~/.ghostcheck/plugins")]
-            if load_local:
+            if load_local and os.environ.get("GHOSTCHECK_TRUST_WORKSPACE") == "1":
                 self.plugin_dirs.append(os.path.join(os.getcwd(), ".ghostcheck", "plugins"))
+            elif load_local:
+                print("WARNING: Local plugins are disabled by default to prevent RCE. Set GHOSTCHECK_TRUST_WORKSPACE=1 to enable.", file=sys.stderr)
         self.plugins = []
 
     def load_plugins(self):

@@ -1,6 +1,8 @@
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class DockerRiskChecker:
+class DockerRiskChecker(BaseScannerPlugin):
     def __init__(self):
         self.risks = [
             {
@@ -11,13 +13,13 @@ class DockerRiskChecker:
             },
             {
                 "name": "Root User Execution",
-                "pattern": r"(?i)user:\s*['\"]?root['\"]?",
+                "pattern": r"(?im)^USER\s+['\"]?(root|0)['\"]?",
                 "severity": "MEDIUM",
                 "message": "Running containers as root is a security risk."
             },
             {
                 "name": "Insecure Port Mapping",
-                "pattern": r"9000:9000|2375:2375", # Portainer/Docker API
+                "pattern": r"(?im)(?:0\.0\.0\.0:)?(?:9000:9000|2375:2375)", # Portainer/Docker API
                 "severity": "HIGH",
                 "message": "Exposing sensitive management ports is risky."
             },
@@ -29,13 +31,36 @@ class DockerRiskChecker:
             }
         ]
 
+    @property
+    def name(self) -> str:
+        return "docker_scanner"
+
+    @property
+    def description(self) -> str:
+        return "Scans Dockerfiles and Docker Compose files for risks"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            filename = file_path.replace('\\', '/').split('/')[-1]
+            if "Dockerfile" in filename or "docker-compose" in filename:
+                try:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    if "Dockerfile" in filename:
+                        findings.extend(self.check_dockerfile(content, file_path))
+                    elif "docker-compose" in filename:
+                        findings.extend(self.scan_file(file_path, content))
+                except Exception:
+                    pass
+        return findings
+
     def check_dockerfile(self, content, file_path="Dockerfile"):
         """Specifically scan Dockerfile content for best practices."""
         findings = []
-        lines = content.splitlines()
         
-        # Check for missing USER instruction
-        if not any(re.match(r"(?i)^USER\s+", line) for line in lines):
+        # Check for missing USER instruction anywhere
+        if not re.search(r"(?im)^\s*USER\s+", content):
             findings.append({
                 "file": file_path,
                 "line": 1,
@@ -46,39 +71,48 @@ class DockerRiskChecker:
             })
         
         # Check for USER root
-        for i, line in enumerate(lines):
-            if re.match(r"(?i)^USER\s+root\s*$", line.strip()):
-                findings.append({
-                    "file": file_path,
-                    "line": i + 1,
-                    "rule_name": "Root User Execution",
-                    "severity": "HIGH",
-                    "message": "Specify a non-root user for better security.",
-                    "suggestion": "Create a dedicated user and use 'USER <name>' instead of root."
-                })
+        for match in re.finditer(r"(?im)^\s*USER\s+['\"]?(root|0)['\"]?\s*$", content):
+            start_offset = match.start()
+            line_idx = content.count('\n', 0, start_offset)
+            findings.append({
+                "file": file_path,
+                "line": line_idx + 1,
+                "rule_name": "Root User Execution",
+                "severity": "HIGH",
+                "message": "Specify a non-root user for better security.",
+                "suggestion": "Create a dedicated user and use 'USER <name>' instead of root."
+            })
 
-        for i, line in enumerate(lines):
-            # Check for latest tag in FROM
-            if re.match(r"(?i)^FROM\s+.*:latest", line):
-                findings.append({
-                    "file": file_path,
-                    "line": i + 1,
-                    "rule_name": "Latest Tag Usage",
-                    "severity": "MEDIUM",
-                    "message": "Using 'latest' tag in FROM is risky.",
-                    "suggestion": "Pin your base image to a specific version or digest (e.g., node:20-alpine)."
-                })
+        # Check for latest tag in FROM
+        for match in re.finditer(r"(?im)^\s*FROM\s+.*:latest", content):
+            start_offset = match.start()
+            line_idx = content.count('\n', 0, start_offset)
+            findings.append({
+                "file": file_path,
+                "line": line_idx + 1,
+                "rule_name": "Latest Tag Usage",
+                "severity": "MEDIUM",
+                "message": "Using 'latest' tag in FROM is risky.",
+                "suggestion": "Pin your base image to a specific version or digest (e.g., node:20-alpine)."
+            })
             
-            # Check for secrets in ENV
-            if re.match(r"(?i)^ENV\s+.*(PASSWORD|SECRET|KEY|TOKEN)=", line):
-                findings.append({
-                    "file": file_path,
-                    "line": i + 1,
-                    "rule_name": "Hardcoded Secret",
-                    "severity": "CRITICAL",
-                    "message": "Do not hardcode secrets in ENV instructions.",
-                    "suggestion": "Use runtime environment variables, Docker Secrets, or a secret manager."
-                })
+        # Check for secrets in ENV, DOTALL across multiple lines
+        for match in re.finditer(r"(?im)^\s*ENV\s+(.*?)(PASSWORD|SECRET|KEY|TOKEN)\s*=", content, re.DOTALL):
+            env_block = match.group(0)
+            # If there's another Docker instruction in the matched block, it's not a multiline ENV
+            if re.search(r'\n[A-Z]+\s+', env_block[1:]): 
+                # Re-do search line by line just in case if it spans commands
+                pass 
+            start_offset = match.start()
+            line_idx = content.count('\n', 0, start_offset)
+            findings.append({
+                "file": file_path,
+                "line": line_idx + 1,
+                "rule_name": "Hardcoded Secret",
+                "severity": "CRITICAL",
+                "message": "Do not hardcode secrets in ENV instructions.",
+                "suggestion": "Use runtime environment variables, Docker Secrets, or a secret manager."
+            })
 
         return findings
 

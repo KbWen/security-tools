@@ -1,19 +1,21 @@
 import re
 import os
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class CIAuditor:
+class CIAuditor(BaseScannerPlugin):
     def __init__(self):
         # GitHub Actions patterns
         self.gha_patterns = [
             {
                 "name": "gha_write_all_permission",
-                "pattern": r'permissions:\s*write-all',
+                "pattern": r'permissions:\s*(?:["\']?write-all["\']?|\n\s+.*write-all)',
                 "severity": "HIGH",
                 "suggestion": "Use least-privilege permissions (read-only or specific resource scopes) instead of write-all."
             },
             {
                 "name": "gha_pull_request_target_risk",
-                "pattern": r'on:\s*pull_request_target',
+                "pattern": r'(?:on:\s*(?:\[\s*|.*?\n\s+(?:-\s+)?)?|on:\s+)pull_request_target',
                 "severity": "MEDIUM",
                 "suggestion": "Be very careful with pull_request_target. Ensure you are not checking out untrusted code from fork with secrets."
             },
@@ -25,7 +27,7 @@ class CIAuditor:
             },
             {
                 "name": "gha_secret_exposure_in_run",
-                "pattern": r'echo\s+["\']\$[^"\']+["\']', # Potential secret echo
+                "pattern": r'echo\s+(?:["\']?\$[^"\'\s]+["\']?|\$\{\{\s*secrets\.[^\}]+\s*\}\})', # Potential secret echo, quoted or unquoted or GHA expression
                 "severity": "MEDIUM",
                 "suggestion": "Avoid echoing secrets or using them directly in shell scripts. Use them as env vars if needed."
             }
@@ -63,6 +65,31 @@ class CIAuditor:
             }
         ]
 
+    @property
+    def name(self) -> str:
+        return "ci_auditor"
+
+    @property
+    def description(self) -> str:
+        return "Scans CI/CD pipelines (GitHub Actions, GitLab CI, Fastlane) for security risks."
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            path_lower = file_path.replace('\\', '/').lower()
+            filename = path_lower.split('/')[-1]
+            is_ci = any(x in path_lower for x in ['.github/workflows', '.gitlab-ci', 'fastfile', 'matchfile', 'appfile'])
+            is_mobile_cfg = any(k in filename for k in ['key.properties', 'googleservice-info.plist', 'google-services.json'])
+            
+            if is_ci or is_mobile_cfg:
+                try:
+                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                        content = f.read()
+                    findings.extend(self.scan_file(file_path, content))
+                except Exception:
+                    pass
+        return findings
+
     def scan_file(self, file_path, content):
         findings = []
         lines = content.splitlines()
@@ -79,17 +106,22 @@ class CIAuditor:
         elif is_fastlane:
             patterns = self.mobile_ci_patterns
             
-        for i, line in enumerate(lines):
-            for p in patterns:
-                if re.search(p['pattern'], line):
-                    findings.append({
-                        "file": file_path,
-                        "line": i + 1,
-                        "name": p['name'],
-                        "severity": p['severity'],
-                        "suggestion": p['suggestion'],
-                        "context": line.strip()
-                    })
+        for p in patterns:
+            # Use dotall to handle multiline YAML constructs for specific patterns
+            flags = re.IGNORECASE | re.DOTALL if p['name'] in ["gha_write_all_permission", "gha_pull_request_target_risk"] else re.IGNORECASE
+            for match in re.finditer(p['pattern'], content, flags):
+                start_offset = match.start()
+                line_idx = content.count('\n', 0, start_offset)
+                context_preview = content[max(0, start_offset - 10):min(len(content), match.end() + 10)].replace('\n', ' ')
+                
+                findings.append({
+                    "file": file_path,
+                    "line": line_idx + 1,
+                    "name": p['name'],
+                    "severity": p['severity'],
+                    "suggestion": p['suggestion'],
+                    "context": context_preview.strip()
+                })
                     
         # Critical: check if signing keys are committed
         mobile_keys = ['key.properties', 'GoogleService-Info.plist', 'google-services.json']

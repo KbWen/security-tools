@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+from .plugin_manager import PluginManager
 from .checks.hallucination import HallucinationChecker
 from .checks.secrets import SecretScanner
 from .checks.ast_scanner import AstSecretChecker
@@ -27,6 +28,7 @@ from .checks.logic_auditor import LogicAuditor
 from .checks.context_auditor import ContextAuditor
 from .checks.privilege_auditor import PrivilegeAuditor
 from .checks.shadow_ai import ShadowAIDetector
+from .checks.tamper_auditor import TamperAuditor
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -101,48 +103,34 @@ class Scanner:
         except (IOError, json.JSONDecodeError):
             self.raw_secret_patterns = []
             
-        # 初始化模組
+        self.scoring_engine = ScoringEngine()
+
         proxy = self.config.get('proxy') if self.config else None
         ssl_verify = self.config.get('ssl_verify', True) if self.config else True
         timeout = self.config.get('timeout', 10) if self.config else 10
-        
-        self.hallucination_checker = HallucinationChecker(
-            offline=offline, 
-            proxy=proxy, 
-            ssl_verify=ssl_verify, 
-            timeout=timeout
-        )
-        self.secret_scanner = SecretScanner(self.secret_patterns_path)
-        self.ast_secret_checker = AstSecretChecker(self.raw_secret_patterns)
-        self.js_ast_checker = JsAstSecretChecker(self.raw_secret_patterns)
-        self.rules_linter = AgentRulesLinter(self.risky_rules_path)
-        self.docker_checker = DockerRiskChecker()
-        self.iac_scanner = IaCScanner()
-        self.ci_auditor = CIAuditor()
-        self.firebase_rules_auditor = FirebaseRulesAuditor()
-        self.mcp_auditor = MCPAuditor()
-        self.ai_supply_chain = AISupplyChainScanner()
-        self.agency_auditor = AgencyAuditor()
-        self.entropy_scanner = EntropyScanner()
-        self.vuln_scanner = VulnScanner(
-            offline=offline, 
-            proxy=proxy, 
-            ssl_verify=ssl_verify, 
-            timeout=timeout
-        )
-        self.mobile_auditor = MobileConfigAuditor()
-        self.api_linter = APILinter()
-        self.secret_validator = SecretValidator(
-            enabled=not offline, 
-            proxy=proxy, 
-            ssl_verify=ssl_verify, 
-            timeout=timeout
-        )
-        self.go_ast_scanner = GoASTScanner(self.raw_secret_patterns)
-        self.java_ast_scanner = JavaASTScanner(self.raw_secret_patterns)
-        self.dart_ast_scanner = DartASTScanner(self.raw_secret_patterns)
-        self.logic_auditor = LogicAuditor()
-        self.scoring_engine = ScoringEngine()
+
+        self.plugin_manager = PluginManager()
+        self.plugin_manager.load_builtins()
+
+        self.scanners = []
+        import inspect
+        for name, cls in self.plugin_manager.get_all_scanners().items():
+            try:
+                sig = inspect.signature(cls.__init__)
+                kwargs = {}
+                if 'offline' in sig.parameters: kwargs['offline'] = offline
+                if 'proxy' in sig.parameters: kwargs['proxy'] = proxy
+                if 'ssl_verify' in sig.parameters: kwargs['ssl_verify'] = ssl_verify
+                if 'timeout' in sig.parameters: kwargs['timeout'] = timeout
+                if 'secret_patterns_path' in sig.parameters: kwargs['secret_patterns_path'] = self.secret_patterns_path
+                if 'raw_secret_patterns' in sig.parameters: kwargs['raw_secret_patterns'] = self.raw_secret_patterns
+                if 'risky_rules_path' in sig.parameters: kwargs['risky_rules_path'] = self.risky_rules_path
+                if 'enabled' in sig.parameters: kwargs['enabled'] = not offline
+                
+                self.scanners.append(cls(**kwargs))
+            except Exception as e:
+                if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                    print(f"[DEBUG] Error instantiating plugin {name}: {e}")
         
         load_local = self.config.get('load_local_plugins', False) if self.config else False
         self.plugin_loader = PluginLoader(load_local=load_local)
@@ -153,6 +141,13 @@ class Scanner:
         self.ignore_matcher = IgnoreMatcher(
             ignore_file if ignore_enabled else None,
             base_path=self.root_path
+        )
+        self.context_auditor = ContextAuditor(config=self.config)
+        self.secret_validator = SecretValidator(
+            enabled=not offline, 
+            proxy=proxy, 
+            ssl_verify=ssl_verify, 
+            timeout=timeout
         )
 
         # v0.5.0 features
@@ -216,147 +211,83 @@ class Scanner:
 
     def scan_dependencies(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "hallucination" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
-                file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                if file == 'requirements.txt':
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.hallucination_checker.check_requirements(content))
-                elif file == 'package.json':
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.hallucination_checker.check_package_json(content))
+                if file in ['requirements.txt', 'package.json']:
+                    file_path = os.path.join(root, file)
+                    findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_secrets(self, limit_files=None):
         findings = []
+        plugins = [p for p in self.scanners if any(x in getattr(p, 'name', '').lower() for x in ['secret', 'env', 'ast'])]
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                # v0.5.0: .env scanning
-                if '.env' in file:
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.env_scanner.scan_file(file_path, content))
-
-                allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart', '.env']
-                if any(file.endswith(ext) for ext in allowed_exts) or '.env' in file:
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.secret_scanner.scan_file(file_path, content))
-                        if file.endswith('.py'):
-                            findings.extend(self.ast_secret_checker.scan_file(file_path, content))
-                        elif file.endswith('.js') or file.endswith('.ts'):
-                            findings.extend(self.js_ast_checker.scan_file(file_path, content))
-                        elif file.endswith('.go'):
-                            findings.extend(self.go_ast_scanner.scan_file(file_path, content))
-                        elif file.endswith('.java') or file.endswith('.kt'):
-                            findings.extend(self.java_ast_scanner.scan_file(file_path, content))
-                        elif file.endswith('.dart'):
-                            findings.extend(self.dart_ast_scanner.scan_file(file_path, content))
-                        
-                        # Run plugins
-                        findings.extend(self.plugin_loader.run_all(file_path, content))
+                for plugin in plugins:
+                    findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_rules(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "rules" in getattr(p, 'name', '').lower() and "firebase" not in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
-            # For rule scanning, we only care about agent-related directories
-            # UNLESS a specific file was targeted
-            is_file_target = os.path.isfile(self.root_path)
-            if not is_file_target and not limit_files and not any(x in root for x in ['.agent', '.agents', '.cursor', '.github/copilot']):
-                continue
             for file in files:
                 file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                # For directories, we check all markdown files in rule folders. 
-                # For single files, we check if it looks like a rule file or was explicitly hit.
-                rule_files = ['.cursorrules', 'AGENTS.md', 'CLAUDE.md', 'GEMINI.md']
-                is_rule_file = file.endswith('.md') or file.endswith('.mdc') or file in rule_files
-                if is_rule_file or is_file_target:
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.rules_linter.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_docker(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "docker" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
-                if any(x in file for x in ['Dockerfile', 'docker-compose']) or os.path.isfile(self.root_path):
-                    file_path = os.path.join(root, file)
-                    if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                        continue
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.docker_checker.scan_file(file_path, content))
+                file_path = os.path.join(root, file)
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_iac(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "iac" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                # .tf, .yaml, .yml
-                if any(file.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.iac_scanner.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_ci(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "ci" in getattr(p, 'name', '').lower() and "supply" not in getattr(p, 'name', '').lower() and "logic" not in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                # .github/workflows, .gitlab-ci, Fastfile, Matchfile
-                is_ci = any(x in file_path.replace('\\', '/') for x in ['.github/workflows', '.gitlab-ci', 'Fastfile', 'Matchfile', 'Appfile'])
-                # Also check for sensitive mobile config files mentioned in ci_auditor
-                is_mobile_cfg = any(k in file for k in ['key.properties', 'GoogleService-Info.plist', 'google-services.json'])
-                
-                if is_ci or is_mobile_cfg:
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.ci_auditor.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_firebase(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "firebase" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                if file.endswith('.rules') or 'database.rules.json' in file:
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.firebase_rules_auditor.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_mcp(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "mcp" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                # mcp.json, mcp_config.json, .cursor/mcp.json
-                is_mcp = any(x in file_path.replace('\\', '/') for x in ['mcp.json', 'mcp_config.json'])
-                if is_mcp or file_path.endswith('.py') or file_path.endswith('.ts'):
-                    content = self._read_file_safe(file_path)
-                    if content:
-                        findings.extend(self.mcp_auditor.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_ai_supply_chain(self, limit_files=None):
@@ -373,53 +304,65 @@ class Scanner:
 
     def scan_agency(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "agency" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
-                content = self._read_file_safe(file_path)
-                if content:
-                    findings.extend(self.agency_auditor.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_vulnerabilities(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "vuln" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
                 if file in ['requirements.txt', 'package.json']:
-                    findings.extend(self.vuln_scanner.scan_file(file_path))
+                    findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_mobile(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "mobile" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                content = self._read_file_safe(file_path)
-                if content:
-                    findings.extend(self.mobile_auditor.scan_file(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_api(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "api" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                content = self._read_file_safe(file_path)
-                if content:
-                    findings.extend(self.api_linter.scan_content(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def scan_entropy(self, limit_files=None):
         findings = []
+        plugin = next((p for p in self.scanners if "entropy" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
-                content = self._read_file_safe(file_path)
-                if content:
-                    findings.extend(self.entropy_scanner.scan_content(file_path, content))
+                findings.extend(plugin.scan([file_path], self.config))
+        return findings
+
+    def scan_ai_supply_chain(self, limit_files=None):
+        findings = []
+        plugin = next((p for p in self.scanners if "supplychain" in getattr(p, 'name', '').lower() or "ai_supply" in getattr(p, 'name', '').lower()), None)
+        if not plugin: return []
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                findings.extend(plugin.scan([file_path], self.config))
         return findings
 
     def _get_fnd_id(self, fnd):
@@ -532,123 +475,56 @@ class Scanner:
             # All modules enabled by default
             enabled_modules = [
                 "hallucination", "secrets", "env", "rules", "docker", 
-                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", "logic", "privilege", "shadow_ai"
+                "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", 
+                "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
             # Extra logs if needed later
             pass
 
-
         content = self._read_file_safe(file_path)
         if not content:
-            # For vulnerability scanner, it doesn't need content to check manifest files
-            if filename in ['requirements.txt', 'package.json']:
-                findings.extend(self.vuln_scanner.scan_file(file_path))
             return findings
 
-        # AC-S8: Chaos Protection - Skip generated/minified files with huge unbroken lines
-        # that could hang Regex or AST parsers.
+        # AC-S8: Chaos Protection - Truncate long lines to prevent regex/parser DoS 
+        # instead of abandoning the entire file.
         lines = content.split('\n')
-        if len(lines) > 0 and (len(content) / len(lines) > 500 or any(len(line) > 10000 for line in lines[:10])):
+        truncated = False
+        for i in range(len(lines)):
+            if len(lines[i]) > 10000:
+                lines[i] = lines[i][:10000]
+                truncated = True
+        
+        if truncated:
+            content = '\n'.join(lines)
             if os.getenv("GHOSTCHECK_DEBUG") == "1":
-                print(f"[DEBUG] Skipping {filename} as it appears minified or has extremely long lines.")
-            return findings
+                print(f"[DEBUG] Truncated extremely long lines in {filename} to prevent DoS.")
 
-        # 1. Hallucination checks
-        if "hallucination" in enabled_modules:
-            if filename == 'requirements.txt':
-                findings.extend(self.hallucination_checker.check_requirements(content))
-            elif filename == 'package.json':
-                findings.extend(self.hallucination_checker.check_package_json(content))
-
-        # 2. Secret Scan (General + AST)
-        if "secrets" in enabled_modules:
-            allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart', '.env']
-            if any(filename.endswith(ext) for ext in allowed_exts) or '.env' in filename:
-                findings.extend(self.secret_scanner.scan_file(file_path, content))
-            if filename.endswith('.py'):
-                findings.extend(self.ast_secret_checker.scan_file(file_path, content))
-            elif filename.endswith('.js') or filename.endswith('.ts'):
-                findings.extend(self.js_ast_checker.scan_file(file_path, content))
-            elif filename.endswith('.go'):
-                findings.extend(self.go_ast_scanner.scan_file(file_path, content))
-            elif filename.endswith('.java') or filename.endswith('.kt'):
-                findings.extend(self.java_ast_scanner.scan_file(file_path, content))
-            elif filename.endswith('.dart'):
-                findings.extend(self.dart_ast_scanner.scan_file(file_path, content))
+        # Run dynamic plugins
+        for plugin in self.scanners:
+            # Module filtering
+            if enabled_modules:
+                # Basic matching: if any enabled module string is in the plugin name
+                def _matches(plugin, modules):
+                    pname = getattr(plugin, 'name', '').lower()
+                    for m in modules:
+                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci")
+                        if m_clean in pname:
+                            return True
+                    return False
+                    
+                if not _matches(plugin, enabled_modules):
+                    continue
             
-            if '.env' in filename and "env" in enabled_modules:
-                findings.extend(self.env_scanner.scan_file(file_path, content))
-
-        # 3. Agent Rules
-        rule_files = ['.cursorrules', 'AGENTS.md', 'CLAUDE.md', 'GEMINI.md']
-        is_rule_target = (
-            filename.endswith('.md') or 
-            filename.endswith('.mdc') or 
-            filename in rule_files or 
-            (any(x in path_lower for x in ['.agent', '.agents', '.cursor', '.github/copilot']) and not any(filename.endswith(ext) for ext in ['.sh', '.bash', '.ps1', '.cmd', '.py', '.js', '.ts', '.go', '.java']))
-        )
-        if is_rule_target and "rules" in enabled_modules:
-            findings.extend(self.rules_linter.scan_file(file_path, content))
-
-        # 4. Docker / Infrastructure
-        if "docker" in enabled_modules:
-            if "Dockerfile" in filename:
-                findings.extend(self.docker_checker.check_dockerfile(content, file_path))
-            elif "docker-compose" in filename:
-                findings.extend(self.docker_checker.scan_file(file_path, content))
-        if "iac" in enabled_modules and any(filename.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
-            findings.extend(self.iac_scanner.scan_file(file_path, content))
-        if "iac" in enabled_modules and (filename.endswith('.rules') or 'database.rules.json' in filename):
-            findings.extend(self.firebase_rules_auditor.scan_file(file_path, content))
-
-        # 5. MCP / AI Chain
-        if "mcp" in enabled_modules:
-            if any(x in path_lower for x in ['mcp.json', 'mcp_config.json']) or filename.endswith('.py') or filename.endswith('.ts'):
-                findings.extend(self.mcp_auditor.scan_file(file_path, content))
-        
-        if "supply_chain" in enabled_modules:
-            findings.extend(self.ai_supply_chain.scan_file(file_path, content))
-            findings.extend(self.agency_auditor.scan_file(file_path, content))
-
-        # 6. CI/CD & Mobile Config
-        is_ci = any(x in path_lower for x in ['.github/workflows', '.gitlab-ci', 'fastfile', 'matchfile', 'appfile'])
-        is_mobile_cfg = any(k in filename.lower() for k in ['key.properties', 'googleservice-info.plist', 'google-services.json'])
-        if "ci_cd" in enabled_modules and (is_ci or is_mobile_cfg):
-            findings.extend(self.ci_auditor.scan_file(file_path, content))
-        
-        if "mobile" in enabled_modules:
-            findings.extend(self.mobile_auditor.scan_file(file_path, content))
-
-        if "privilege" in enabled_modules:
-            is_workflow = '.github/workflows' in path_lower
-            is_mcp = any(x in path_lower for x in ['mcp.json', 'mcp_config.json'])
-            allowed_exts = ['.sh', '.bat', '.py', '.js', '.ts', '.html', '.vue', '.jsx', '.tsx', '.svelte']
-            is_code = any(filename.endswith(ext) for ext in allowed_exts)
-            if is_workflow or is_mcp or is_code:
-                findings.extend(self.privilege_auditor.scan_file(file_path, content))
-
-        if "shadow_ai" in enabled_modules:
-            is_manifest = filename in ['package.json', 'requirements.txt', 'pyproject.toml']
-            is_vscode = filename == 'extensions.json' and '.vscode' in path_lower
-            is_src = any(filename.endswith(ext) for ext in ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.sh', '.bat', '.env']) or filename == '.env'
-            if is_manifest or is_vscode or is_src:
-                findings.extend(self.shadow_ai_detector.scan_file(file_path, content))
-
-        # 7. Entropy & API
-        if "secrets" in enabled_modules:
-            findings.extend(self.entropy_scanner.scan_content(file_path, content))
-        if "api" in enabled_modules:
-            findings.extend(self.api_linter.scan_content(file_path, content))
-        
-        if "logic" in enabled_modules:
-            findings.extend(self.logic_auditor.scan_file(file_path, content))
-
-        # 8. Plugins & Vulnerabilities
-        findings.extend(self.plugin_loader.run_all(file_path, content))
-        if filename in ['requirements.txt', 'package.json']:
-            findings.extend(self.vuln_scanner.scan_file(file_path))
+            try:
+                # Plugins read the file themselves now.
+                plugin_findings = plugin.scan([file_path], self.config)
+                if plugin_findings:
+                    findings.extend(plugin_findings)
+            except Exception as e:
+                if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                    print(f"[DEBUG] Error running plugin {getattr(plugin, 'name', 'unknown')} on {file_path}: {e}")
 
         return findings
 
@@ -739,9 +615,15 @@ class Scanner:
             if self._is_self_scan_exempt(fnd):
                 continue
             
-            # Inline suppression
-            if "ghostcheck-ignore" in str(fnd.get('context', '')):
-                continue
+            # Inline suppression (Strict Mode)
+            ctx_str = str(fnd.get('context', ''))
+            if "ghostcheck-ignore" in ctx_str:
+                import re
+                if re.search(r'(#|//|/\*|<!--)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
+                    if fnd.get('severity') == 'CRITICAL':
+                        fnd['message'] = (fnd.get('message', '') + " [TAMPER_ATTEMPT: CRITICAL finding cannot be ignored]").strip()
+                    else:
+                        continue
 
             # Context Intelligence: Filter examples and negative constraints in docs
             if fnd_id != "high_entropy_secret": # Entropy has its own logic

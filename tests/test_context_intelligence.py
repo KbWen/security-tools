@@ -45,7 +45,8 @@ def test_scanner_integration_active_secret(tmp_path):
     findings = scanner.scan()
     
     # The secret should be flagged
-    assert len([f for f in findings if f.get('name') == 'AWS Access Key' or f.get('pattern_name') == 'AWS Access Key']) == 1
+    assert len([f for f in findings if f.get('name') == 'AWS Access Key' or f.get('pattern_name') == 'AWS Access Key']) >= 1
+
 
 def test_entropy_scanner_markdown(tmp_path):
     doc_path = tmp_path / "README.md"

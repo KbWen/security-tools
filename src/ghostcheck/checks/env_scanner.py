@@ -1,7 +1,31 @@
 import os
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class EnvScanner:
+class EnvScanner(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "envscanner"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for EnvScanner"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     """
     Specialized scanner for .env files that checks if they are ignored by git.
     Also parses .env variables for potential security misconfigurations.
@@ -27,38 +51,44 @@ class EnvScanner:
             })
 
         # 2. Check for suspicious env values
-        lines = content.splitlines()
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
+        # Simple multiline .env parser
+        env_pattern = re.compile(r'^[ \t]*([a-zA-Z0-9_]+)\s*=\s*(?:(["\'])(.*?)\2|([^\n]*))', re.MULTILINE | re.DOTALL)
+        for match in env_pattern.finditer(content):
+            key = match.group(1).strip()
             
-            if '=' in line:
-                key, val = line.split('=', 1)
-                key = key.strip()
-                val = val.strip().strip('"').strip("'")
-                
-                # Check for debug enabled in production
-                if 'DEBUG' in key.upper() and val.upper() in ['TRUE', '1', 'ON']:
+            if match.group(2): # Quoted value
+                val = match.group(3).strip()
+            else: # Unquoted value
+                val = match.group(4)
+                if val:
+                    val = val.split('#')[0].strip() # Remove inline comments
+                else:
+                    val = ""
+            
+            line_idx = content.count('\n', 0, match.start()) + 1
+            
+            # Check for debug enabled in production
+            if 'DEBUG' in key.upper() and val.upper() in ['TRUE', '1', 'ON']:
+                findings.append({
+                    "file": file_path,
+                    "line": line_idx,
+                    "pattern_name": "Debug Enabled",
+                    "severity": "MEDIUM",
+                    "value_preview": f"{key}={val}",
+                    "suggestion": "Disable DEBUG mode in production environments."
+                })
+            
+            # Check for wildcard CORS/origins
+            if 'CORS' in key.upper() or 'ALLOW_ORIGIN' in key.upper():
+                origins = [o.strip() for o in val.split(',')]
+                if '*' in origins:
                     findings.append({
                         "file": file_path,
-                        "line": i + 1,
-                        "pattern_name": "Debug Enabled",
-                        "severity": "MEDIUM",
-                        "value_preview": f"{key}={val}",
-                        "suggestion": "Disable DEBUG mode in production environments."
+                        "line": line_idx,
+                        "pattern_name": "Wildcard Origin",
+                        "severity": "HIGH",
+                        "value_preview": "*",
+                        "suggestion": "Specify trusted origins instead of using wildcards (*) for CORS."
                     })
-                
-                # Check for wildcard CORS/origins
-                if 'CORS' in key.upper() or 'ALLOW_ORIGIN' in key.upper():
-                    if val == '*':
-                        findings.append({
-                            "file": file_path,
-                            "line": i + 1,
-                            "pattern_name": "Wildcard Origin",
-                            "severity": "HIGH",
-                            "value_preview": "*",
-                            "suggestion": "Specify trusted origins instead of using wildcards (*) for CORS."
-                        })
 
         return findings

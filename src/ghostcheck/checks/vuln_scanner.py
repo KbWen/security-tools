@@ -5,10 +5,34 @@ except ImportError:
     requests = None
 import os
 import logging
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
 logger = logging.getLogger(__name__)
 
-class VulnScanner:
+class VulnScanner(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "vulnscanner"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for VulnScanner"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path))
+
+            except Exception:
+                pass
+        return findings
+
     OSV_API_URL = "https://api.osv.dev/v1/query"
 
     def __init__(self, offline=False, proxy=None, ssl_verify=True, timeout=10):
@@ -91,9 +115,12 @@ class VulnScanner:
             with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
                 data = json.load(f)
                 deps = data.get('dependencies', {})
+                if not isinstance(deps, dict): deps = {}
                 dev_deps = data.get('devDependencies', {})
-                
+                if not isinstance(dev_deps, dict): dev_deps = {}
                 for name, version in {**deps, **dev_deps}.items():
+                    if not isinstance(version, str):
+                        continue
                     # Clean version (strip ^, ~)
                     clean_version = version.lstrip('^~<>=').split(' ')[0]
                     res = self._query_osv(name, clean_version, "npm")

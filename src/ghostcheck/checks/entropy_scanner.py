@@ -1,7 +1,31 @@
 import math
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class EntropyScanner:
+class EntropyScanner(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "entropyscanner"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for EntropyScanner"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_content(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     def __init__(self, threshold=4.5, min_length=16):
         self.threshold = threshold
         self.min_length = min_length
@@ -44,8 +68,8 @@ class EntropyScanner:
                 continue
             
             # Filter if it's likely just a long path or URL
-            if '/' in token or '\\' in token:
-                continue
+            # Note: Do not discard tokens just because they contain a slash, as this is a bypass.
+            # Base64 strings can contain slashes. If we need to filter URLs, we should use a stronger regex.
                 
             entropy = self.calculate_entropy(token)
             

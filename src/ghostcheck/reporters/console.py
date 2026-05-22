@@ -1,7 +1,13 @@
 import json
 import shutil
+import sys
+from ..interfaces import BaseReporterPlugin
 
-class ConsoleReporter:
+class ConsoleReporter(BaseReporterPlugin):
+    @property
+    def name(self) -> str:
+        return "console"
+
     def __init__(self, use_color=True, use_unicode=True):
         self.use_color = use_color
         self.use_unicode = use_unicode
@@ -27,12 +33,12 @@ class ConsoleReporter:
             return text
         return f"{self._colors['DIM']}{text}{self._colors['RESET']}"
 
-    def report(self, findings, stream=None):
-        def _print(*args, **kwargs):
+    def report(self, findings, stream=None, **kwargs):
+        def _print(*args, **kwargs_print):
             if stream:
-                print(*args, **kwargs, file=stream)
+                print(*args, **kwargs_print, file=stream)
             else:
-                print(*args, **kwargs)
+                print(*args, **kwargs_print)
 
         if not findings:
             _print(f"\n{self._color(' [OK] ', 'INFO')} {self._color('No security issues found. Project is clean.', 'INFO')}\n")

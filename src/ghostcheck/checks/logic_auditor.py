@@ -1,6 +1,30 @@
 import re
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class LogicAuditor:
+class LogicAuditor(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "logicauditor"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for LogicAuditor"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     """
     Scans for potential business logic vulnerabilities, specifically 
     around subscription-bypass, inadequate authorization checks, and 
@@ -10,13 +34,13 @@ class LogicAuditor:
         self.logic_patterns = [
             {
                 "name": "potential_logic_bypass",
-                "pattern": r'if\s*\(.*(is_?premium|is_?pro|is_?subscribed|has_?subscription|vip_?level|is_?admin|debug|is_?dev|is_?test).*(==?|===|!=|!==)',
+                "pattern": r'if\s*\(?.*(is_?premium|is_?pro|is_?subscribed|has_?subscription|vip_?level|is_?admin|debug|is_?dev|is_?test)',
                 "severity": "MEDIUM",
                 "suggestion": "Detected sensitive logic check (subscription, admin, or debug mode). Ensure this is reinforced by server-side authorization and NOT easily bypassable via client-side state manipulation."
             },
             {
                 "name": "hardcoded_identity_bypass",
-                "pattern": r'if\s*\(.*(user_?id|email|username|\.id\b).*(==?|===|!=|!==)\s*["\'][^"\']+["\']',
+                "pattern": r'if\s*\(?.*(user_?id|email|username|\.id\b).*(==?|===|!=|!==|in|\.includes|\.startsWith|\.endsWith)\s*[\(\[]?\s*["\'][^"\']+["\']',
                 "severity": "HIGH",
                 "suggestion": "Detected hardcoded identity comparison. This is a common pattern for 'backdoor' admin access. Use role-based access control (RBAC) instead."
             },

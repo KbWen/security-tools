@@ -162,13 +162,12 @@ def main():
             print(f"  - {name:<15}: {desc}")
         sys.exit(0)
 
-    # Lazy import core scanner to speed up init
     from .scanner import Scanner
-    from .reporters.console import ConsoleReporter
-    from .reporters.json_reporter import JsonReporter
-    from .reporters.sarif_reporter import SarifReporter
-    from .reporters.html_reporter import HTMLReporter
-    from .reporters.owasp_llm_reporter import OWASPLLMReporter
+    from .plugin_manager import PluginManager
+    
+    # Initialize plugin manager
+    pm = PluginManager()
+    pm.load_builtins()
 
     # Initialize scanner
     scanner = Scanner(
@@ -209,88 +208,57 @@ def main():
         output_file = None
 
         if args.command == "list-plugins":
-            plugins = scanner.plugin_loader.plugins
-            if not plugins:
-                print("No plugins loaded.")
-            else:
-                print(f"{get_icon('info', use_unicode)} Loaded Plugins ({len(plugins)}):")
-                for p in plugins:
-                    print(f"  - {getattr(p, 'name', 'Unnamed Plugin')}")
+            # For now, list loaded scanners and reporters
+            print(f"{get_icon('info', use_unicode)} Loaded Scanners ({len(pm.get_all_scanners())}):")
+            for name in pm.get_all_scanners():
+                print(f"  - {name}")
+            print(f"{get_icon('info', use_unicode)} Loaded Reporters ({len(pm.get_all_reporters())}):")
+            for name in pm.get_all_reporters():
+                print(f"  - {name}")
             sys.exit(0)
 
-        if args.format == "json":
-            reporter = JsonReporter()
-            reporter.report(findings, output_path=args.output)
-            if args.output:
-                print(f"{get_icon('ok', use_unicode)} JSON results saved to: {args.output}")
-            if findings and not args.soft_fail:
-                sys.exit(1)
-            sys.exit(0)
-            
-        elif args.format == "sarif":
-            reporter = SarifReporter()
-            reporter.report(findings, output_path=args.output)
-            if args.output:
-                print(f"{get_icon('ok', use_unicode)} SARIF results saved to: {args.output}")
-            if findings and not args.soft_fail:
-                sys.exit(1)
-            sys.exit(0)
-            
-        elif args.format == "html":
-            out_path = args.output or "ghostcheck-report.html"
-            reporter = HTMLReporter(output_path=out_path)
-            path = reporter.report(findings, grade, score_val)
-            print(f"{get_icon('ok', use_unicode)} HTML Report generated at: {path}")
-            print(f"{get_icon('stats', use_unicode)} Security Grade: {grade} ({score_val}/100)")
-            if findings and not args.soft_fail:
-                sys.exit(1)
-            sys.exit(0)
-            
-        elif args.format == "owasp-llm":
-            if args.output:
-                try:
-                    output_file = open(args.output, 'w', encoding='utf-8')
-                except IOError as e:
-                    print(f"Error: Could not open output file {args.output}: {str(e)}")
-                    sys.exit(2)
+        reporter_cls = pm.get_reporter(args.format)
+        if not reporter_cls:
+            # Fallback to console if not found
+            reporter_cls = pm.get_reporter('console')
+            if not reporter_cls:
+                print(f"Fatal Error: No reporter found for format '{args.format}' and fallback 'console' is missing.")
+                sys.exit(2)
+        
+        # Instantiate reporter (pass common kwargs, some might ignore them)
+        try:
+            reporter = reporter_cls(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+        except TypeError:
+            # If reporter doesn't take those kwargs
+            reporter = reporter_cls()
+
+        if args.output:
             try:
-                reporter = OWASPLLMReporter(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
-                reporter.report(findings, stream=output_file)
-                if findings and not args.soft_fail:
-                    sys.exit(1)
-                sys.exit(0)
-            finally:
-                if output_file:
-                    output_file.close()
+                output_file = open(args.output, 'w', encoding='utf-8')
+            except IOError as e:
+                print(f"Error: Could not open output file {args.output}: {str(e)}")
+                sys.exit(2)
+        
+        try:
+            reporter.report(findings, stream=output_file, grade=grade, score_val=score_val, output_path=args.output)
             
-        else:
-            # Console Reporter
-            if args.output:
-                try:
-                    output_file = open(args.output, 'w', encoding='utf-8')
-                except IOError as e:
-                    print(f"Error: Could not open output file {args.output}: {str(e)}")
-                    sys.exit(2)
-            try:
-                reporter = ConsoleReporter(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
-                reporter.report(findings, stream=output_file)
-                
-                if hasattr(scanner, 'cache_hits') and scanner.cache_hits > 0:
-                    print(f"  ({scanner.cache_hits} files loaded from cache)")
-                
-                # Report summary to console even if stream was file
-                summary_reporter = ConsoleReporter(use_color=not args.no_color, use_unicode=use_unicode)
-                print(f"\n{get_icon('stats', use_unicode)} {summary_reporter._color('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
+            # If console and we have cache hits
+            if args.format == "console" and hasattr(scanner, 'cache_hits') and scanner.cache_hits > 0:
+                print(f"  ({scanner.cache_hits} files loaded from cache)")
+            
+            # Summary footer for console
+            if args.format == "console":
+                # Assuming ConsoleReporter has _color, otherwise just print
+                color_func = getattr(reporter, '_color', lambda text, sev: text)
+                print(f"\n{get_icon('stats', use_unicode)} {color_func('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
                 print(f"{get_icon('info', use_unicode)} Total findings: {len(findings)}")
-                if args.output:
-                     print(f"{get_icon('ok', use_unicode)} Console format results saved to: {args.output}")
 
-                if findings and not args.soft_fail:
-                    sys.exit(1)
-                sys.exit(0)
-            finally:
-                if output_file:
-                    output_file.close()
+            if findings and not args.soft_fail:
+                sys.exit(1)
+            sys.exit(0)
+        finally:
+            if output_file:
+                output_file.close()
 
     except Exception as e:
         print(f"Fatal Error: {str(e)}")

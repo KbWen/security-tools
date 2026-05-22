@@ -1,8 +1,32 @@
 import re
 import os
 import json
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class PrivilegeAuditor:
+class PrivilegeAuditor(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "privilegeauditor"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for PrivilegeAuditor"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     def __init__(self):
         # API key regexes
         self.openai_pat = re.compile(r'sk-[a-zA-Z0-9]{48}|sk-proj-[a-zA-Z0-9-_]{40,}')
@@ -16,7 +40,7 @@ class PrivilegeAuditor:
 
         # Command-line API key pattern
         self.cmd_arg_regex = re.compile(
-            r'--(api-key|api_key|token|secret|pass|password)\s*[= ]\s*["\']?(sk-|AIzaSy)[a-zA-Z0-9_-]+',
+            r'(?:(?:--|-)(?:api-key|api_key|token|secret|pass|password|k)|(?:API_KEY|TOKEN|SECRET|PASSWORD))\s*[= ]\s*["\']?(sk-|AIzaSy)[a-zA-Z0-9_-]+',
             re.IGNORECASE
         )
 
@@ -26,7 +50,9 @@ class PrivilegeAuditor:
         if val in ["/", "~", "C:\\", "C:/", "C:\\Users", "C:/Users"]:
             return True
         norm_val = val.replace('\\', '/')
-        if norm_val in ["/Users", "/home", "/root"]:
+        if norm_val in ["/Users", "/home", "/root", "/etc", "/var"]:
+            return True
+        if ".." in norm_val:
             return True
         parts = [p for p in norm_val.split('/') if p]
         if len(parts) == 2 and parts[0] in ['Users', 'home']:
@@ -37,9 +63,10 @@ class PrivilegeAuditor:
         if not isinstance(val, str):
             return False
         val_lower = val.lower()
-        if val_lower in ["sudo", "runas"]:
+        if val_lower in ["sudo", "runas", "su"]:
             return True
-        if val_lower in ["bash", "sh", "cmd", "cmd.exe", "powershell", "powershell.exe"]:
+        basename = val_lower.split('/')[-1].split('\\')[-1]
+        if basename in ["bash", "sh", "cmd", "cmd.exe", "powershell", "powershell.exe", "pwsh", "pwsh.exe"]:
             return True
         return False
 
@@ -196,16 +223,25 @@ class PrivilegeAuditor:
                         "context": line.strip()
                     })
 
-                # GPA-07: api_key_client_side
-                if is_client_side:
-                    match = self.api_key_regex.search(line)
-                    if match:
+                # GPA-07: api_key_hardcoded
+                match = self.api_key_regex.search(line)
+                if match:
+                    if is_client_side:
                         findings.append({
                             "file": file_path,
                             "line": i + 1,
                             "name": "api_key_client_side",
                             "severity": "CRITICAL",
                             "suggestion": "API key hardcoded in client-side code. This key will be exposed to anyone visiting the application. Use backend proxies or serverless functions.",
+                            "context": line.strip()
+                        })
+                    else:
+                        findings.append({
+                            "file": file_path,
+                            "line": i + 1,
+                            "name": "api_key_hardcoded",
+                            "severity": "HIGH",
+                            "suggestion": "API key hardcoded in source code. Use environment variables or a secrets manager instead.",
                             "context": line.strip()
                         })
 

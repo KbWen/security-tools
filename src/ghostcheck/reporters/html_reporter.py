@@ -1,12 +1,19 @@
 import json
 import os
 from datetime import datetime
+from ..interfaces import BaseReporterPlugin
 
-class HTMLReporter:
+class HTMLReporter(BaseReporterPlugin):
+    @property
+    def name(self) -> str:
+        return "html"
+
     def __init__(self, output_path="ghostcheck-report.html"):
         self.output_path = output_path
 
-    def report(self, findings, grade, score_val):
+    def report(self, findings, stream=None, **kwargs):
+        grade = kwargs.get('grade', 'F')
+        score_val = kwargs.get('score_val', 0)
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         severity_colors = {
@@ -89,6 +96,10 @@ class HTMLReporter:
 </html>
         """
         
-        with open(self.output_path, 'w', encoding='utf-8') as f:
-            f.write(html_content)
+        if stream:
+            stream.write(html_content)
+        else:
+            with open(self.output_path, "w", encoding="utf-8") as f:
+                f.write(html_content)
+            print(f"HTML Report generated at {self.output_path}")
         return os.path.abspath(self.output_path)

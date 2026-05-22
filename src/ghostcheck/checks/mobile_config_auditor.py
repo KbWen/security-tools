@@ -1,13 +1,37 @@
 import re
 import os
+from typing import List, Dict, Any
+from ..interfaces import BaseScannerPlugin
 
-class MobileConfigAuditor:
+class MobileConfigAuditor(BaseScannerPlugin):
+
+    @property
+    def name(self) -> str:
+        return "mobileconfigauditor"
+
+    @property
+    def description(self) -> str:
+        return "Scanner plugin for MobileConfigAuditor"
+
+    def scan(self, files: List[str], config: Any) -> List[Dict]:
+        findings = []
+        for file_path in files:
+            try:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
+
+                findings.extend(self.scan_file(file_path, content))
+
+            except Exception:
+                pass
+        return findings
+
     def __init__(self):
         self.rules = [
             {
                 "name": "android_debuggable_enabled",
                 "file_pattern": r'AndroidManifest\.xml',
-                "pattern": r'android:debuggable="true"',
+                "pattern": r'android:debuggable\s*=\s*["\']true["\']',
                 "severity": "CRITICAL",
                 "message": "Android application is marked as debuggable.",
                 "remediation": "Set android:debuggable to 'false' in production manifests."
@@ -15,7 +39,7 @@ class MobileConfigAuditor:
             {
                 "name": "android_allow_backup_enabled",
                 "file_pattern": r'AndroidManifest\.xml',
-                "pattern": r'android:allowBackup="true"',
+                "pattern": r'android:allowBackup\s*=\s*["\']true["\']',
                 "severity": "MEDIUM",
                 "message": "Android backup is enabled, which may leak app data via adb backup.",
                 "remediation": "Set android:allowBackup to 'false' if app handles sensitive data."
@@ -23,7 +47,7 @@ class MobileConfigAuditor:
             {
                 "name": "ios_app_transport_security_insecure",
                 "file_pattern": r'Info\.plist',
-                "pattern": r'<key>NSAllowsArbitraryLoads<\/key>\s*<true\/>',
+                "pattern": r'<key>NSAllowsArbitraryLoads<\/key>\s*(?:<!--.*?-->\s*)*<true\s*\/>',
                 "severity": "HIGH",
                 "message": "iOS App Transport Security (ATS) is disabled (NSAllowsArbitraryLoads=true).",
                 "remediation": "Enable ATS and whitelist specific domains if needed."

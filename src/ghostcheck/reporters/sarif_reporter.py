@@ -1,12 +1,17 @@
 import json
 import os
 from datetime import datetime
+from ..interfaces import BaseReporterPlugin
 
-class SarifReporter:
+class SarifReporter(BaseReporterPlugin):
+    @property
+    def name(self) -> str:
+        return "sarif"
+
     def __init__(self, version="1.0.0"):
         self.version = version
 
-    def report(self, findings, output_path=None):
+    def report(self, findings, stream=None, **kwargs):
         sarif_log = {
             "$schema": "https://schemastore.azurewebsites.net/schemas/json/sarif-2.1.0-rtm.5.json",
             "version": "2.1.0",
@@ -24,22 +29,27 @@ class SarifReporter:
                 }
             ]
         }
-        data = json.dumps(sarif_log, indent=2)
-        if output_path:
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(data)
+        output_path = kwargs.get('output_path', 'ghostcheck-report.sarif')
+        
+        if stream:
+            json.dump(sarif_log, stream, indent=2)
         else:
-            print(data)
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(sarif_log, f, indent=2)
+            print(f"SARIF report generated at {output_path}")
+
+    def _get_rule_id(self, f):
+        return f.get('name', f.get('pattern_name', f.get('rule_id', 'generic-security-finding')))
 
     def _get_rules(self, findings):
         rules = {}
         for f in findings:
-            rule_id = f.get('type', 'generic-security-finding')
+            rule_id = self._get_rule_id(f)
             if rule_id not in rules:
                 rules[rule_id] = {
                     "id": rule_id,
                     "shortDescription": {
-                        "text": f.get('message', 'Security finding detected by GhostCheck')
+                        "text": f.get('message', f.get('suggestion', 'Security finding detected by GhostCheck'))
                     },
                     "defaultConfiguration": {
                         "level": self._map_severity(f.get('severity', 'MEDIUM'))
@@ -50,10 +60,11 @@ class SarifReporter:
     def _get_results(self, findings):
         results = []
         for f in findings:
+            rule_id = self._get_rule_id(f)
             results.append({
-                "ruleId": f.get('type', 'generic-security-finding'),
+                "ruleId": rule_id,
                 "message": {
-                    "text": f.get('message', '')
+                    "text": f.get('message', f.get('suggestion', ''))
                 },
                 "locations": [
                     {
