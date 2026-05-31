@@ -1,6 +1,7 @@
 import json
 import re
 import os
+import math
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
@@ -51,6 +52,44 @@ def _is_placeholder_value(val: str) -> bool:
         if cleaned in ["12345678", "123456789", "1234567890", "abcdefgh", "abcdefghijklmnopqrstuvwxyz"]:
             return True
 
+    return False
+
+def _calculate_entropy(text: str) -> float:
+    if not text:
+        return 0.0
+    probabilities = [float(text.count(c)) / len(text) for c in set(text)]
+    return - sum([p * math.log(p) / math.log(2.0) for p in probabilities])
+
+def _is_likely_generic_false_positive(val: str) -> bool:
+    val_lower = val.lower().strip()
+    
+    # 1. Skip filenames and paths
+    if any(ext in val_lower for ext in ['.json', '.txt', '.py', '.env', '.yml', '.yaml', '.ini', '.conf', '.cfg', '.md', '.properties', '.html', '.css', '.js', '.ts']):
+        return True
+    if '/' in val_lower or '\\' in val_lower or val_lower.startswith('http://') or val_lower.startswith('https://'):
+        return True
+        
+    # 2. Skip common config/header/algorithm names
+    common_words = {
+        'authorization', 'bearer', 'token', 'apikey', 'secret', 'password', 'none', 'null',
+        'undefined', 'true', 'false', 'default', 'test', 'mock', 'dummy', 'symmetric',
+        'asymmetric', 'hs256', 'rs256', 'sha256', 'md5', 'bcrypt', 'pbkdf2', 'scrypt',
+        'env', 'environment', 'production', 'development', 'staging', 'local', 'localhost',
+        'signature', 'algorithm', 'payload', 'header', 'claims', 'subject', 'issuer'
+    }
+    if val_lower in common_words:
+        return True
+        
+    # 3. Check character variety
+    # If the value is purely alphabetic (only letters, no numbers, no symbols) and less than 16 characters
+    if val_lower.isalpha() and len(val_lower) < 16:
+        return True
+        
+    # 4. Check Shannon entropy
+    entropy = _calculate_entropy(val_lower)
+    if entropy < 3.2:
+        return True
+        
     return False
 
 
@@ -116,6 +155,10 @@ class SecretScanner(BaseScannerPlugin):
                     secret_val = _get_secret_value_part(val)
                     if _is_placeholder_value(secret_val):
                         continue
+                        
+                    if p['name'] == "Generic Secret Key":
+                        if _is_likely_generic_false_positive(secret_val):
+                            continue
                     
                     # Heuristic: if the match is the KEY of a JSON/JS object, skip
                     # e.g. "aws_key": "..." -> the "aws_key" string itself might trigger regex 

@@ -16,7 +16,14 @@ class PrivilegeAuditor(BaseScannerPlugin):
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
+        allowed_exts = ['.sh', '.bat', '.py', '.js', '.ts', '.html', '.vue', '.jsx', '.tsx', '.svelte', '.yml', '.yaml', '.json']
         for file_path in files:
+            filename = os.path.basename(file_path).lower()
+            is_workflow = '.github/workflows' in file_path.replace('\\', '/').lower()
+            is_mcp = filename in ['mcp.json', 'mcp_config.json']
+            is_code = any(filename.endswith(ext) for ext in allowed_exts)
+            if not (is_workflow or is_mcp or is_code):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
@@ -47,15 +54,18 @@ class PrivilegeAuditor(BaseScannerPlugin):
     def is_overly_broad_path(self, val):
         if not isinstance(val, str):
             return False
-        if val in ["/", "~", "C:\\", "C:/", "C:\\Users", "C:/Users"]:
+        val_lower = val.lower().strip()
+        if val_lower in ["/", "~", "c:\\", "c:/", "c:\\users", "c:/users"]:
             return True
-        norm_val = val.replace('\\', '/')
-        if norm_val in ["/Users", "/home", "/root", "/etc", "/var"]:
+        norm_val = val_lower.replace('\\', '/')
+        if norm_val in ["/users", "/home", "/root", "/etc", "/var"]:
             return True
         if ".." in norm_val:
             return True
         parts = [p for p in norm_val.split('/') if p]
-        if len(parts) == 2 and parts[0] in ['Users', 'home']:
+        if len(parts) == 2 and parts[0] in ['users', 'home']:
+            return True
+        if len(parts) == 3 and parts[0].endswith(':') and parts[1] in ['users', 'home']:
             return True
         return False
 

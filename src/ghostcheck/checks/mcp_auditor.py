@@ -1,5 +1,6 @@
 import json
 import re
+import os
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
@@ -68,20 +69,28 @@ class MCPAuditor(BaseScannerPlugin):
 
     def scan_file(self, file_path, content):
         findings = []
-        lines = content.splitlines()
         
+        # Only check MCP config files or MCP server code files
         is_config = any(x in file_path.replace('\\', '/') for x in ['mcp_config.json', 'mcp.json', '.cursor/mcp.json'])
-        is_server_code = file_path.endswith('.py') or file_path.endswith('.ts')
-        
+        is_server_code = False
+        if file_path.endswith('.py') or file_path.endswith('.ts'):
+            filename = os.path.basename(file_path).lower()
+            if 'mcp' in filename or 'mcp' in content:
+                is_server_code = True
+                
+        if not (is_config or is_server_code):
+            return findings
+
+        lines = content.splitlines()
         for i, line in enumerate(lines):
             for p in self.patterns:
                 match = re.search(p['pattern'], line, re.IGNORECASE)
                 if match:
-                    # For tool poisoning, only check if it looks like a config or server code
-                    if p['name'] == "mcp_tool_poisoning_injection":
-                        if not (is_config or is_server_code):
+                    # Config-only patterns
+                    if p['name'] in ["mcp_insecure_binding", "mcp_hardcoded_api_key"]:
+                        if not is_config:
                             continue
-                    
+                            
                     context_str = line.strip()
                     if p['name'] == "mcp_hardcoded_api_key":
                         # Redact the value part in JSON-like configuration lines

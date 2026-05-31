@@ -1,5 +1,6 @@
 import math
 import re
+import os
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
@@ -16,6 +17,12 @@ class EntropyScanner(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            filename = os.path.basename(file_path).lower()
+            # AC-S7: Skip binary files, lock-files, and massive build data for entropy
+            if any(ext in filename for ext in [".lock", ".map", ".min.js", ".bin", ".exe", ".iso"]):
+                continue
+            if filename in ["package-lock.json", "pnpm-lock.yaml", "yarn.lock"]:
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
@@ -31,10 +38,9 @@ class EntropyScanner(BaseScannerPlugin):
         self.min_length = min_length
         # Ignore common base64 or hex characters if they are too regular, 
         # but here we focus on high randomness.
-        # We exclude common code patterns like 'import', 'return' to avoid noise
+        # Pure hex (often just hashes) is ignored case-insensitively.
         self.ignore_patterns = [
-            re.compile(r'\b(import|export|from|return|class|def|function)\b'),
-            re.compile(r'^[a-f0-9]+$'), # Pure hex (often just hashes)
+            re.compile(r'^[a-fA-F0-9]+$'),
         ]
 
     def calculate_entropy(self, text):

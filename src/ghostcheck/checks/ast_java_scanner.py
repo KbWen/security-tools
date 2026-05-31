@@ -6,7 +6,7 @@ class JavaASTScanner(BaseScannerPlugin):
 
     @property
     def name(self) -> str:
-        return "javaastscanner"
+        return "javaastsecretscanner"
 
     @property
     def description(self) -> str:

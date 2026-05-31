@@ -16,6 +16,10 @@ class FirebaseRulesAuditor(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            path_lower = file_path.replace('\\', '/').lower()
+            is_rules = path_lower.endswith('.rules') or 'database.rules.json' in path_lower
+            if not is_rules:
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()

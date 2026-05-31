@@ -6,7 +6,7 @@ class DartASTScanner(BaseScannerPlugin):
 
     @property
     def name(self) -> str:
-        return "dartastscanner"
+        return "dartastsecretscanner"
 
     @property
     def description(self) -> str:

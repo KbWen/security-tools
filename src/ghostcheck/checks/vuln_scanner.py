@@ -23,12 +23,11 @@ class VulnScanner(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            filename = os.path.basename(file_path).lower()
+            if filename not in ["requirements.txt", "package.json"]:
+                continue
             try:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
-
                 findings.extend(self.scan_file(file_path))
-
             except Exception:
                 pass
         return findings

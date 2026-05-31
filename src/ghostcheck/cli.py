@@ -10,6 +10,7 @@ import json
 from .config import GhostCheckConfig
 from .init import GhostCheckInitializer
 from .checks.git_diff_scanner import GitDiffScanner
+from . import __version__
 
 def get_icon(icon_type, use_unicode=True):
     icons = {
@@ -90,7 +91,7 @@ def main():
     subparsers.add_parser("list-plugins", parents=[parent_parser], help="List all loaded plugins")
     
     # Version flag
-    parser.add_argument("--version", action="version", version="GhostCheck 1.0.0")
+    parser.add_argument("--version", action="version", version=f"GhostCheck {__version__}")
     
     args = parser.parse_args()
     
@@ -142,7 +143,7 @@ def main():
         os.environ["GHOSTCHECK_DEBUG"] = "1"
 
     if args.command == "list-checks":
-        print(f"{get_icon('info', use_unicode)} Available Checks (v1.0.0):")
+        print(f"{get_icon('info', use_unicode)} Available Checks (v{__version__}):")
         checks = [
             ("hallucination", "Scan for hallucinated packages in requirements.txt/package.json"),
             ("secrets",       "Scan for hardcoded secrets using regex, AST & entropy analysis"),

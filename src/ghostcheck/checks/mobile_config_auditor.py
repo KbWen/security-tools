@@ -15,7 +15,11 @@ class MobileConfigAuditor(BaseScannerPlugin):
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
+        target_patterns = [r'AndroidManifest\.xml', r'Info\.plist', r'(GoogleService-Info\.plist|google-services\.json)']
         for file_path in files:
+            filename = os.path.basename(file_path)
+            if not any(re.search(pat, filename, re.IGNORECASE) for pat in target_patterns):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()

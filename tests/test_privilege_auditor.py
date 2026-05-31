@@ -114,6 +114,20 @@ def test_mcp_root_mount():
     findings_win = auditor.scan_file(".cursor/mcp.json", content_win)
     assert any(f['name'] == "mcp_root_mount" for f in findings_win)
 
+    # Windows user home and case-insensitivity checks
+    content_users = """
+    {
+      "mcpServers": {
+        "user-home": {
+          "command": "node",
+          "args": ["C:\\\\Users\\\\wen", "/users/wen"]
+        }
+      }
+    }
+    """
+    findings_users = auditor.scan_file(".cursor/mcp.json", content_users)
+    assert len([f for f in findings_users if f['name'] == "mcp_root_mount"]) == 2
+
 def test_mcp_elevated_execution():
     """Verify that MCP config using sudo or shell wrappers is flagged (GPA-05)."""
     auditor = PrivilegeAuditor()

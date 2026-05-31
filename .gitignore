@@ -81,3 +81,15 @@ coverage.xml
 
 # End AgentCortex Template - Downstream Ignore Defaults
 
+# GhostCheck local reports and temporary test fixtures
+report.json
+report*.txt
+friction_tests/
+friction_test_workspace/
+tmp_chaos_test/
+摩擦測試/
+chaos_test.py
+patch_scanners.py
+test_results.txt
+.ghostcheck-baseline.json
+.ghostcheckbaseline

@@ -28,6 +28,20 @@ class AgentRulesLinter(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            filename = os.path.basename(file_path).lower()
+            filepath_normalized = file_path.replace('\\', '/').lower()
+            is_rule_file = (
+                filename == '.cursorrules' or
+                file_path.endswith('.mdc') or
+                (file_path.endswith('.md') and (
+                    any(x in filename for x in ['rule', 'agent', 'instruction', 'copilot', 'claude', 'gemini', 'test']) or
+                    '.cursor/rules/' in filepath_normalized or
+                    '.windsurf/rules/' in filepath_normalized or
+                    '.agents/' in filepath_normalized
+                ))
+            )
+            if not is_rule_file:
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
@@ -96,6 +110,23 @@ class AgentRulesLinter(BaseScannerPlugin):
 
     def scan_file(self, file_path, content):
         findings = []
+        
+        # Only scan AI agent rules files
+        filename = os.path.basename(file_path).lower()
+        filepath_normalized = file_path.replace('\\', '/').lower()
+        is_rule_file = (
+            filename == '.cursorrules' or
+            file_path.endswith('.mdc') or
+            (file_path.endswith('.md') and (
+                any(x in filename for x in ['rule', 'agent', 'instruction', 'copilot', 'claude', 'gemini', 'test']) or
+                '.cursor/rules/' in filepath_normalized or
+                '.windsurf/rules/' in filepath_normalized or
+                '.agents/' in filepath_normalized
+            ))
+        )
+        if not is_rule_file:
+            return findings
+
         lines = content.splitlines()
         
         # State mapping

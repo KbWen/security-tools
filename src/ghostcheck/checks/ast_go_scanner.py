@@ -6,7 +6,7 @@ class GoASTScanner(BaseScannerPlugin):
 
     @property
     def name(self) -> str:
-        return "goastscanner"
+        return "goastsecretscanner"
 
     @property
     def description(self) -> str:

@@ -16,6 +16,15 @@ class EnvScanner(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            filename = os.path.basename(file_path).lower()
+            # Ensure it is an actual environment configuration file
+            if ".env" not in filename:
+                continue
+            if filename.endswith(".example") or filename.endswith(".sample") or filename.endswith(".template") or filename.endswith(".py") or filename.endswith(".md") or filename.endswith(".json"):
+                continue
+            if filename != ".env" and not filename.startswith(".env."):
+                continue
+                
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()

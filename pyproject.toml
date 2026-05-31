@@ -50,7 +50,8 @@ ghostcheck = "ghostcheck.cli:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-"ghostcheck.data" = ["*.json"]
+"ghostcheck" = ["data/*.json", "data/**/*.json", "data/demo_fixtures/*"]
+
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

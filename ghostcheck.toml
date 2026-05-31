@@ -1,0 +1,19 @@
+# GhostCheck Configuration File
+# For more info: https://github.com/KbWen/security-tools
+
+severity_threshold = "INFO"
+exclude_patterns = [".git", "__pycache__", "venv", "node_modules", ".ghostcheck", "ghostcheck-report*", ".env*", "*.lock", "package-lock.json", ".next", ".firebase", ".antigravity*", "dist", "build"]
+enabled_checks = ["hallucination", "secrets", "rules", "docker"]
+offline = false
+preset = "generic"
+# proxy = "http://127.0.0.1:8080"
+
+# [Custom Language Support]
+# Add custom negative keywords for documentation (e.g., "don't do this")
+custom_safe_keywords = ["нел?з?", "зап?е?ено"]
+# Add custom example keywords for documentation (e.g., "for example")
+# custom_example_keywords = ["нап?име?", "об?азе?"]
+
+[tool.ghostcheck]
+project_name = "security-tools"
+project_type = "generic"

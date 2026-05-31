@@ -77,3 +77,16 @@ def test_preset_scan_filtering(tmp_path):
     
     assert not any("docker" in n.lower() or "user" in n.lower() or "latest" in n.lower() for n in finding_names_tf)
     assert not any("hal" in n.lower() or "package" in n.lower() for n in finding_names_tf)
+
+def test_ast_scanners_loaded_in_production():
+    from ghostcheck.config import GhostCheckConfig
+    from ghostcheck.scanner import Scanner
+    config = GhostCheckConfig(".")
+    scanner = Scanner(".", config=config)
+    scanner_names = [type(s).__name__ for s in scanner.scanners]
+    assert "GoASTScanner" in scanner_names
+    assert "DartASTScanner" in scanner_names
+    assert "JavaASTScanner" in scanner_names
+    assert "JsAstSecretChecker" in scanner_names
+    assert "AstSecretChecker" in scanner_names
+

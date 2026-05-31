@@ -65,3 +65,20 @@ def test_secrets_bypass_and_placeholders(tmp_path):
     res5 = scanner.scan_file("test.py", 'my_password = "xxxxxxxxxxxx"')
     assert len(res5) == 0
 
+    # 6. Generic key with common word (should be ignored)
+    res6 = scanner.scan_file("test.py", 'key = "Authorization"')
+    assert len(res6) == 0
+
+    # 7. Generic key with path / file name (should be ignored)
+    res7 = scanner.scan_file("test.py", 'secret_path = "config/secrets.json"')
+    assert len(res7) == 0
+
+    # 8. Generic key with low entropy word (should be ignored)
+    res8 = scanner.scan_file("test.py", 'symmetric_key = "symmetric"')
+    assert len(res8) == 0
+
+    # 9. Generic key with algorithm name (should be ignored)
+    res9 = scanner.scan_file("test.py", 'algorithm = "HS256"')
+    assert len(res9) == 0
+
+

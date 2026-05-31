@@ -33,7 +33,13 @@ class ShadowAIDetector(BaseScannerPlugin):
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
+        allowed_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.sh', '.bat', '.env']
+        allowed_files = ['package.json', 'requirements.txt', 'pyproject.toml', 'extensions.json']
         for file_path in files:
+            filename = os.path.basename(file_path).lower()
+            is_allowed = filename in allowed_files or any(filename.endswith(ext) for ext in allowed_exts)
+            if not is_allowed:
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
@@ -122,8 +128,10 @@ class ShadowAIDetector(BaseScannerPlugin):
         # 2. Source Code Checks (Python)
         if filename.endswith('.py'):
             for i, line in enumerate(lines):
+                # Strip comments for python checks to prevent imports matching inside comments
+                scan_line = line.split('#')[0]
                 # Python imports (GSA-01)
-                for match in self.python_import_pattern.finditer(line):
+                for match in self.python_import_pattern.finditer(scan_line):
                     pkgs_str = match.group(1) or match.group(2) or match.group(3)
                     for pkg_raw in pkgs_str.split(','):
                         pkg = pkg_raw.strip().split('.')[0]
@@ -140,10 +148,16 @@ class ShadowAIDetector(BaseScannerPlugin):
 
         # 3. Source Code Checks (JavaScript/TypeScript)
         elif any(filename.endswith(ext) for ext in ['.js', '.ts', '.jsx', '.tsx']):
-            for match in self.js_import_pattern.finditer(content):
+            # Strip single-line and multi-line comments from JS content, keeping lines intact
+            content_no_single = re.sub(r'//.*', '', content)
+            def replace_multiline(match):
+                return '\n' * match.group(0).count('\n')
+            clean_content = re.sub(r'/\*.*?\*/', replace_multiline, content_no_single, flags=re.DOTALL)
+            
+            for match in self.js_import_pattern.finditer(clean_content):
                 pkg = match.group(1) or match.group(2) or match.group(3)
                 if pkg and self.is_sdk_js_unauthorized(pkg):
-                    line_no = content.count('\n', 0, match.start()) + 1
+                    line_no = clean_content.count('\n', 0, match.start()) + 1
                     findings.append({
                         "name": "unauthorized_ai_sdk_js",
                         "rule_id": "GSA-02",

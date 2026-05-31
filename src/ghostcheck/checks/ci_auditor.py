@@ -94,9 +94,10 @@ class CIAuditor(BaseScannerPlugin):
         findings = []
         lines = content.splitlines()
         
-        is_gha = ".github/workflows" in file_path.replace('\\', '/')
-        is_gitlab = ".gitlab-ci" in file_path
-        is_fastlane = "Fastfile" in file_path or "Matchfile" in file_path or "Appfile" in file_path
+        path_lower = file_path.replace('\\', '/').lower()
+        is_gha = ".github/workflows" in path_lower
+        is_gitlab = ".gitlab-ci" in path_lower
+        is_fastlane = "fastfile" in path_lower or "matchfile" in path_lower or "appfile" in path_lower
         
         patterns = []
         if is_gha:
@@ -124,8 +125,8 @@ class CIAuditor(BaseScannerPlugin):
                 })
                     
         # Critical: check if signing keys are committed
-        mobile_keys = ['key.properties', 'GoogleService-Info.plist', 'google-services.json']
-        if any(k in file_path for k in mobile_keys) and not file_path.endswith('.gitignore'):
+        mobile_keys = ['key.properties', 'googleservice-info.plist', 'google-services.json']
+        if any(k in path_lower for k in mobile_keys) and not path_lower.endswith('.gitignore'):
              findings.append({
                 "file": file_path,
                 "line": 1,

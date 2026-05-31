@@ -122,6 +122,20 @@ def test_entropy_scanner(tmp_path, scanner):
     findings = scanner.scan_entropy(limit_files=[str(test_file)])
     assert any(f['name'] == "high_entropy_secret" for f in findings)
 
+    # Test pure uppercase hex (hash) is ignored
+    hex_content = "HASH = 'A1B2C3D4E5F67890A1B2C3D4E5F67890'"
+    hex_file = tmp_path / "hash.js"
+    hex_file.write_text(hex_content)
+    findings_hex = scanner.scan_entropy(limit_files=[str(hex_file)])
+    assert not any(f['name'] == "high_entropy_secret" for f in findings_hex)
+
+    # Test secret containing a keyword like 'def' is NOT bypassed
+    bypass_content = "SECRET = 'sk-ant-def-G6fW9zR4vL2k7Qp8N3mJ5h'"
+    bypass_file = tmp_path / "bypass.js"
+    bypass_file.write_text(bypass_content)
+    findings_bypass = scanner.scan_entropy(limit_files=[str(bypass_file)])
+    assert any(f['name'] == "high_entropy_secret" for f in findings_bypass)
+
 def test_vuln_scanner_mock(tmp_path, scanner, monkeypatch):
     # Mock OSV response for requests.post
     class MockResponse:

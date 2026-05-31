@@ -33,12 +33,13 @@ from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
 from .presets.manager import PresetManager
+from . import __version__
 
 class Scanner:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version="1.0.0"):
-        self.version = version
+    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version=None):
+        self.version = version or __version__
         # Normalize and store absolute path for boundary checks
         # AC-H3: 使用 realpath 以確保符號連結下的一致性
         self.root_path = os.path.realpath(root_path)
@@ -109,6 +110,13 @@ class Scanner:
         ssl_verify = self.config.get('ssl_verify', True) if self.config else True
         timeout = self.config.get('timeout', 10) if self.config else 10
 
+        # AC-14: Ignore Handling
+        ignore_file = os.path.join(self.root_path, '.ghostcheckignore')
+        self.ignore_matcher = IgnoreMatcher(
+            ignore_file if ignore_enabled else None,
+            base_path=self.root_path
+        )
+
         self.plugin_manager = PluginManager()
         self.plugin_manager.load_builtins()
 
@@ -126,6 +134,10 @@ class Scanner:
                 if 'raw_secret_patterns' in sig.parameters: kwargs['raw_secret_patterns'] = self.raw_secret_patterns
                 if 'risky_rules_path' in sig.parameters: kwargs['risky_rules_path'] = self.risky_rules_path
                 if 'enabled' in sig.parameters: kwargs['enabled'] = not offline
+                if 'secret_patterns' in sig.parameters: kwargs['secret_patterns'] = self.raw_secret_patterns
+                if 'patterns' in sig.parameters: kwargs['patterns'] = self.raw_secret_patterns
+                if 'root_path' in sig.parameters: kwargs['root_path'] = self.root_path
+                if 'ignore_matcher' in sig.parameters: kwargs['ignore_matcher'] = self.ignore_matcher
                 
                 self.scanners.append(cls(**kwargs))
             except Exception as e:
@@ -136,12 +148,6 @@ class Scanner:
         self.plugin_loader = PluginLoader(load_local=load_local)
         self.plugin_loader.load_plugins()
         
-        # AC-14: Ignore Handling
-        ignore_file = os.path.join(self.root_path, '.ghostcheckignore')
-        self.ignore_matcher = IgnoreMatcher(
-            ignore_file if ignore_enabled else None,
-            base_path=self.root_path
-        )
         self.context_auditor = ContextAuditor(config=self.config)
         self.secret_validator = SecretValidator(
             enabled=not offline, 
@@ -290,18 +296,6 @@ class Scanner:
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
-    def scan_ai_supply_chain(self, limit_files=None):
-        findings = []
-        for root, files in self._iter_files(limit_files):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                content = self._read_file_safe(file_path)
-                if content:
-                    findings.extend(self.ai_supply_chain.scan_file(file_path, content))
-        return findings
-
     def scan_agency(self, limit_files=None):
         findings = []
         plugin = next((p for p in self.scanners if "agency" in getattr(p, 'name', '').lower()), None)
@@ -375,7 +369,7 @@ class Scanner:
         fnd_id = self._get_fnd_id(fnd)
         
         # Narrow exemption: Only specific known data/config files
-        exempt_files = ['src/ghostcheck/data/secret_patterns.json', 'ghostcheck.toml']
+        exempt_files = ['src/ghostcheck/data/secret_patterns.json', 'ghostcheck.toml', 'src/ghostcheck/scanner.py']
         if any(file_path.endswith(x) for x in exempt_files):
             return True
             

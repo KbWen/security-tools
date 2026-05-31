@@ -2,14 +2,15 @@ import json
 import os
 from datetime import datetime
 from ..interfaces import BaseReporterPlugin
+from .. import __version__
 
 class SarifReporter(BaseReporterPlugin):
     @property
     def name(self) -> str:
         return "sarif"
 
-    def __init__(self, version="1.0.0"):
-        self.version = version
+    def __init__(self, version=None):
+        self.version = version or __version__
 
     def report(self, findings, stream=None, **kwargs):
         sarif_log = {

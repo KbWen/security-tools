@@ -189,3 +189,32 @@ def test_shadow_ai_empty_config():
     assert len(d1.scan_file("src/agent.py", content)) == 1
     assert len(d2.scan_file("src/agent.py", content)) == 1
 
+def test_shadow_ai_comment_ignoring():
+    detector = ShadowAIDetector()
+    
+    # Python code comments
+    py_content = """
+    # import openai
+    import os  # We do not use langchain here
+    import anthropic
+    """
+    py_findings = detector.scan_file("src/agent.py", py_content)
+    # import anthropic: flags (1 finding)
+    # import openai and langchain are inside comments, should be skipped
+    assert len(py_findings) == 1
+    assert py_findings[0]["name"] == "unauthorized_ai_sdk_python"
+    
+    # JS/TS code comments
+    js_content = """
+    // const openai = require('openai');
+    /* 
+      import { Anthropic } from '@anthropic-ai/sdk';
+    */
+    const langchain = require('langchain'); // Flagged
+    """
+    js_findings = detector.scan_file("web/app.js", js_content)
+    # langchain: flagged (1 finding)
+    # openai and Anthropic are inside comments, should be skipped
+    assert len(js_findings) == 1
+    assert js_findings[0]["name"] == "unauthorized_ai_sdk_js"
+

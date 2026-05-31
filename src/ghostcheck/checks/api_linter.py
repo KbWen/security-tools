@@ -38,9 +38,11 @@ class APILinter(BaseScannerPlugin):
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
+        allowed_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.rb', '.cs']
         for file_path in files:
-            # Assume it scans all relevant files, or we filter based on extensions like JS, TS, PY, GO, JAVA
-            # In scanner.py `scan_api`, it passes all files without filtering. We'll replicate that.
+            filename = file_path.replace('\\', '/').split('/')[-1].lower()
+            if not any(filename.endswith(ext) for ext in allowed_exts):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
