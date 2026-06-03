@@ -151,6 +151,29 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 ---
 
+### 🏷️ Epic 9: AI Execution Sandbox Guard (AI 執行沙箱與環境防護)
+
+> **為什麼重要**: 隨著 AI Agent 在自動化工作流中取得執行程式碼的權限，如果缺乏沙箱隔離，惡意 prompt injection 可能觸發靜默安裝惡意軟體或竊取環境變數。
+
+| # | Feature | 優先 | 版本 | 狀態 | 說明 |
+|---|---------|------|------|------|------|
+| E9-F1 | **Silent Package Installation Detector** | P0 | v1.2.0 | 🟡 | 偵測 AI Agent 是否在背景靜默執行套件安裝（如 `pip install` / `npm install` 且未鎖定版本），防範相依性劫持。 |
+| E9-F2 | **LLM Egress Firewall Auditor** | P1 | v1.2.0 | 🟡 | 審計專案是否設定了出站流量限制（Egress Firewall），防範 Agent 透過未授權的 HTTP 請求外洩資料。 |
+| E9-F3 | **Shadow AI Env Leakage Scanner** | P1 | v1.3.0 | 🟡 | 掃描環境變數，偵測是否有敏感的 LLM API Keys 在子程序中被意外匯出或暴露給非特權指令。 |
+
+---
+
+### 🏷️ Epic 10: RAG & Knowledge Base Trust (檢索增強生成與知識庫安全)
+
+> **為什麼重要**: RAG 系統會自動讀取外部文件作為上下文輸入。若文件遭到惡意毒化，將直接劫持模型行為。
+
+| # | Feature | 優先 | 版本 | 狀態 | 說明 |
+|---|---------|------|------|------|------|
+| E10-F1 | **Vector DB Metadata Poisoning Auditor** | P1 | v1.2.0 | 🟡 | 偵測匯入向量資料庫（如 Chroma, Pinecone）的 metadata 中是否夾帶 Prompt Injection 指令。 |
+| E10-F2 | **Context Inflation / Prompt Flooding Detector** | P0 | v1.2.0 | 🟡 | 偵測利用重複大量垃圾字元意圖撐滿上下文視窗（Context Window），以使模型遺忘 System Prompt 的攻擊。 |
+
+---
+
 ## 版本規劃 (AI-Era Features 歸屬)
 
 ### v0.8.0 — AI Agent Security Foundation ⭐
@@ -214,6 +237,11 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | E8-F2 | Swarm Cascading Risk Analysis |
 | E8-F5 | Agentic Kill-Switch Compliance |
 | E8-F6 | MCP Registry & Provenance Guard |
+| E9-F1 | Silent Package Installation Detector |
+| E9-F2 | LLM Egress Firewall Auditor |
+| E9-F3 | Shadow AI Env Leakage Scanner |
+| E10-F1 | Vector DB Metadata Poisoning Auditor |
+| E10-F2 | Context Inflation / Prompt Flooding Detector |
 
 ---
 
@@ -241,3 +269,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 |------|------|
 | 2026-04-09 | 初版建立，新增 Epic 1-5 (AI-Era Security Features) |
 | 2026-04-13 | 擴展 Epic 7 (Agentic Security) 與 Epic 8 (Advanced Resilience), 新增 v1.1.0-v1.2.0 規劃 |
+| 2026-06-03 | 擴展 Epic 9 (AI Execution Sandbox Guard) 與 Epic 10 (RAG & Knowledge Base Trust)，新增相關規劃。 |
