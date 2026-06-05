@@ -28,7 +28,7 @@ jobs:
       uses: astral-sh/setup-uv@81414bcda50b077a9cc5ef52467d307cf0f47e33 # v5.1.0
 
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@f971361d407d896ed4d0b685898ab9d1a3c85842 # v5.1.0
+      uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
         
