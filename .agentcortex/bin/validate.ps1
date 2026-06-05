@@ -147,8 +147,8 @@ if (Test-Path -Path $activeCodexRules -PathType Leaf) {
     Assert-FileContains -Path $activeCodexRules -Pattern 'chown -R' -Message 'codex rules missing dangerous command: chown -R'
 }
 Assert-FileContains -Path $rootDeploySh -Pattern ([regex]::Escape('.agentcortex/bin/deploy.sh')) -Message "deploy wrapper missing canonical reference: $rootDeploySh"
-Assert-FileContains -Path $rootDeployPs1 -Pattern ([regex]::Escape("'.agentcortex', 'bin', 'deploy.ps1'")) -Message "deploy wrapper missing canonical reference: $rootDeployPs1"
-Assert-FileContains -Path $rootDeployCmd -Pattern ([regex]::Escape('.agentcortex\bin\deploy.ps1')) -Message "deploy wrapper missing canonical reference: $rootDeployCmd"
+Assert-FileContains -Path $rootDeployPs1 -Pattern ([regex]::Escape("'.agentcortex' 'bin' 'deploy.ps1'")) -Message "deploy wrapper missing canonical reference: $rootDeployPs1"
+Assert-FileContains -Path $rootDeployCmd -Pattern ([regex]::Escape('.agentcortex\bin\deploy')) -Message "deploy wrapper missing canonical reference: $rootDeployCmd"
 $worklogContractFiles = @(
     (Join-NormalPath $root 'AGENTS.md'),
     (Join-NormalPath $root '.agent/rules/engineering_guardrails.md'),

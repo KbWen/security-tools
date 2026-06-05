@@ -50,14 +50,27 @@ capability, and without weakening any safety gate.
 - `autopilot.md` "Auto-Approval Protocol" is replaced by a one-line reference to the
   AGENTS.md contract (no per-prompt string list).
 
-### AC2 — Independent subagent review in auto-mode
-- `review.md` gains an `## Auto-Mode Independence Rule`: when `Mode: autopilot`, `/review`
-  MUST be performed by an **independent reviewer in a fresh context** (subagent),
-  distinct from the implementing agent — citing `subagent-driven-development` and
-  `dispatching-parallel-agents`. Full Red Team (per feature class) is mandatory.
-- The "Ready to commit?" verdict in auto-mode requires the **independent reviewer's PASS**;
-  the implementing agent MAY NOT self-approve.
-- `autopilot.md` review step is updated to dispatch the independent review (not self-approve).
+### AC2 — Capability-aware independent review in auto-mode *(amended 2026-06-05 — see note)*
+- `review.md` gains an `## Auto-Mode Independence Rule`. **Honest default**: no current runtime
+  (Claude Code / Codex / Antigravity 2.0) reliably auto-dispatches an isolated reviewer
+  *unattended by default*, so a **marked clean-slate self-review**
+  (`independence: degraded (self-review)`) is the DEFAULT path. True isolated-subagent review
+  is an explicit per-platform **opt-in** (Antigravity `start_subagent`/`/teamwork-preview`;
+  Claude Code explicit Agent/Task or hook; Codex `codex exec`; `/ask-openrouter`). Full Red
+  Team (per feature class) is mandatory.
+- The "Ready to commit?" verdict requires PASS; **independence counts only with proof**
+  (configured mechanism + distinct executor identity), never because a runtime "supports"
+  subagents or a skill "might" have auto-activated. The ship output carries the
+  `⚠️ shipped without independent review` flag **BY DEFAULT**, suppressed only on that proof.
+- `autopilot.md` review step reflects the default-degraded + flag behavior.
+
+> **Amendment note (2026-06-05, owner-approved unfreeze→amend→refreeze)**: the original AC2
+> mandated "independent subagent review … requires the independent reviewer's PASS"
+> unconditionally. Per-platform capability research (3 research + 3 expert agents; commit
+> `950e4e8`) found NO runtime reliably auto-dispatches an isolated reviewer unattended by
+> default, making that mandate a false-assurance. AC2 now reflects the honest default
+> (degraded self-review default + opt-in isolation + default-on ship flag). Implementation
+> in `AGENTS.md` §Auto-Mode Contract, `review.md`, `autopilot.md`.
 
 ### AC3 — production-readiness skill
 - `production-readiness` skill ported from agentic-os: canonical `.agents/skills/production-readiness/SKILL.md`

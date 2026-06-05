@@ -149,7 +149,7 @@ if [[ -f "$ACTIVE_CODEX_RULES" ]]; then
 fi
 
 grep -F -q -- '.agentcortex/bin/deploy.sh' "$ROOT_DEPLOY_SH" || { echo "deploy wrapper missing canonical reference: $ROOT_DEPLOY_SH"; exit 1; }
-grep -F -q -- "'.agentcortex', 'bin', 'deploy.ps1'" "$ROOT_DEPLOY_PS1" || { echo "deploy wrapper missing canonical reference: $ROOT_DEPLOY_PS1"; exit 1; }
+grep -F -q -- "'.agentcortex' 'bin' 'deploy.ps1'" "$ROOT_DEPLOY_PS1" || { echo "deploy wrapper missing canonical reference: $ROOT_DEPLOY_PS1"; exit 1; }
 grep -F -q -- '.agentcortex\bin\deploy' "$ROOT_DEPLOY_CMD" || { echo "deploy wrapper missing canonical reference: $ROOT_DEPLOY_CMD"; exit 1; }
 worklog_contract_files=(
   "$ROOT/AGENTS.md"
