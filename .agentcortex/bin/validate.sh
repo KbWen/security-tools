@@ -111,6 +111,18 @@ for skill_file in "$ROOT"/.agent/skills/*; do
   [[ -f "$codex_skill_path/SKILL.md" ]] || { echo "missing skill definition: $codex_skill_path/SKILL.md"; exit 1; }
 done
 
+# Directory-form skills MUST be byte-for-byte 1:1 between Antigravity (.agent) and Codex (.agents).
+# (File-form stubs like api-design are an intentional thin pointer, so this only walks */ dirs.)
+for skill_dir in "$ROOT"/.agent/skills/*/; do
+  [[ -d "$skill_dir" ]] || continue
+  skill_name="$(basename "$skill_dir")"
+  ag_body="${skill_dir}SKILL.md"
+  codex_body="$ROOT/.agents/skills/$skill_name/SKILL.md"
+  [[ -f "$ag_body" ]] || { echo "missing antigravity skill body: $ag_body"; exit 1; }
+  [[ -f "$codex_body" ]] || { echo "missing codex skill body: $codex_body"; exit 1; }
+  cmp -s "$ag_body" "$codex_body" || { echo "skill body out of 1:1 sync (.agent vs .agents): $skill_name"; exit 1; }
+done
+
 [[ -f "$ROOT/.antigravity/rules.md" ]] || { echo "missing antigravity rules: $ROOT/.antigravity/rules.md"; exit 1; }
 [[ -f "$ROOT/.agent/rules/rules.md" ]] || { echo "missing legacy rules copy: $ROOT/.agent/rules/rules.md"; exit 1; }
 [[ -f "$CODEX_INSTALL" ]] || { echo "missing codex install doc: $CODEX_INSTALL"; exit 1; }

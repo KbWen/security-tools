@@ -28,10 +28,15 @@ does NOT relax any gate. `verdict=fail`, missing Evidence, a CRITICAL/HIGH Secur
 finding, a CRITICAL Red Team finding, or a Confidence Gate `<80%` STILL STOP the run —
 fix and re-run the phase; never auto-approve past a real failure.
 
-**Review is independent (per the contract §4 + `review.md` §Auto-Mode Independence Rule)**:
-The implementing agent MUST NOT self-grade its own `/review`. Dispatch the review to an
-**independent reviewer in a fresh context** (subagent). "Ready to commit?" passes ONLY on
-that independent reviewer's PASS. If it fails: fix the issues, then re-dispatch review.
+**Review independence (per the contract §4 + `review.md` §Auto-Mode Independence Rule)**:
+The implementing agent MUST NOT *silently* self-grade. **Default** (no isolated-subagent
+runtime configured — the common case on Antigravity 2.0 / Claude Code / Codex): the review is
+a **marked clean-slate self-review** (re-derive from diff + spec alone, mark
+`independence: degraded (self-review)`), and the ship output carries the
+`⚠️ shipped without independent review` flag. **Only if** the operator configured a true
+isolated reviewer (Antigravity `start_subagent` / Claude Code Agent-or-hook / Codex
+`codex exec` / `/ask-openrouter`) is the review dispatched there and the flag suppressed.
+"Ready to commit?" passes ONLY on the reviewer's explicit PASS; if it fails, fix and re-review.
 
 ## Task Brief
 
@@ -54,9 +59,9 @@ Execute IN ORDER, completing each phase fully before moving to the next:
 1. **`/bootstrap`** — Classify as `feature`. Create work log. Reference spec: `docs/specs/ghostcheck-mvp.md`.
 2. **`/plan`** — Produce implementation plan referencing the spec's Acceptance Criteria.
 3. **`/implement`** — Create all source files, tests, fixtures, docs, CI config. Follow the architecture in the spec.
-4. **`/review`** — Dispatch to an **independent reviewer (fresh-context subagent)** per
-   `review.md` §Auto-Mode Independence Rule; the implementing agent does NOT self-grade.
-   The independent reviewer conducts multi-role review from FOUR perspectives:
+4. **`/review`** — per `review.md` §Auto-Mode Independence Rule (default: **marked clean-slate
+   self-review** with the `⚠️` ship flag; a true isolated-subagent reviewer only if the
+   operator configured one). Either way the review conducts multi-role review from FOUR perspectives:
    - 🔒 **Security Researcher**: Pattern accuracy, evasion coverage, API safety
    - 👨‍💻 **Python Developer**: Code quality, edge cases, error handling, CLI UX
    - 🌍 **Open Source Maintainer**: README clarity, install ease, test quality, Chinese docs

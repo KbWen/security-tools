@@ -78,6 +78,14 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-fix/auto-mode-honest-default-2026-06-05
+- Quick-win shipped: make Auto-Mode independence **honest by default** (SUPERSEDES the framing in the capability-aware entry below, after per-platform capability research).
+  - Research (3 agents) + expert panel (3 agents) confirmed: **NONE** of Claude Code / Codex / Antigravity 2.0 reliably auto-dispatches an isolated-context reviewer unattended BY DEFAULT (Claude=model-discretion/hooks; Codex="only when explicitly asked"/`codex exec`; Antigravity 2.0=`start_subagent` needs CapabilitiesConfig + teamwork=Ultra-only research preview). Skill auto-activation is probabilistic on all three. → The prior "PRIMARY=subagent, FALLBACK=legacy 1.x" framing was dishonest.
+  - Fix: degraded clean-slate self-review is now the **honest DEFAULT**; true isolated review is an explicit per-platform OPT-IN; independence counts only with proof (mechanism + executor). Ship `⚠️ shipped without independent review` flag flipped to **default-ON, suppressed only on affirmative proof** (closes the silent-clean-ship gap). Files: AGENTS.md §Auto-Mode Contract, review.md, autopilot.md.
+  - Also: fixed `production-readiness` 1:1 sync (Antigravity `.agent/` path was a 14-line stub vs 82-line body); hardened validate.sh/.ps1 to enforce directory-form skill 1:1 sync (was unchecked — the gap that let the stub ship).
+- **Known follow-ups**: (a) frozen spec `auto-mode-integration.md` AC2 still mandates independent-subagent review — needs unfreeze+amend or superseded-by note. (b) pre-existing `test_results.txt: utf8-bom` makes `validate.sh` exit 1 on `main` (unrelated; needs cleanup).
+- Verified by independent acx-reviewer (PASS).
+
 ### Ship-fix/independence-capability-aware-2026-06-05
 - Quick-win shipped: make Auto-Mode independent review **capability-aware** (fixes a false-assurance破口 flagged by user).
   - Root cause: "independent subagent review" assumed a spawn primitive Antigravity might lack → silent self-review masquerading as independent.

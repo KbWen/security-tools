@@ -1,5 +1,5 @@
 ---
-description: Strict pre-commit review of the current changes — logic correctness, scope/regression, OWASP security scan, classification-based Red Team, spec-AC compliance, and error observability. Triggers on "review", "幫我看", "check before commit", "上線前檢查", or entry to the review phase. Under Auto-Mode it MUST run as an independent fresh-context reviewer.
+description: Strict pre-commit review of the current changes — logic correctness, scope/regression, OWASP security scan, classification-based Red Team, spec-AC compliance, and error observability. Triggers on "review", "幫我看", "check before commit", "上線前檢查", or entry to the review phase. Under Auto-Mode it defaults to a marked degraded self-review; true isolated-context review is an explicit per-platform opt-in.
 ---
 # /review
 
@@ -8,28 +8,30 @@ Conduct strict review of current changes.
 ## Auto-Mode Independence Rule (MANDATORY under Auto-Mode)
 
 When Auto-Mode is active (`Mode: autopilot` in the Work Log header OR `autopilot.md` loaded; see `AGENTS.md` §Auto-Mode
-(Autopilot) Contract), the implementing agent MUST NOT review and self-approve its own
-work — that is a player-and-referee gate hole, and in unattended runs it is the ONLY gate
-between generated code and a commit.
+(Autopilot) Contract), the implementing agent MUST NOT *silently* self-approve its own work.
+In unattended runs the review is the only thing between generated code and a commit — but on
+current runtimes true player/referee separation is NOT available by default (see `AGENTS.md`
+§Auto-Mode (Autopilot) Contract item 4). So this rule has a default path and an opt-in path:
 
-1. **Dispatch the review to an isolated-context reviewer** — an executor OTHER than the
-   implementing agent. Modern runtimes provide this and you MUST use whichever is present:
-   **Antigravity 2.0+** dynamic/asynchronous subagents (auto-spawned, isolated context
-   window), **Claude Code** Task tool, **Codex CLI** (`/codex-cli`), or an external model
-   (`/ask-openrouter`). The methodology skills `subagent-driven-development` and
-   `dispatching-parallel-agents` describe how to scope the dispatch.
-2. The reviewer receives ONLY the diff + spec ACs + this workflow — no implementation
-   rationale — so it judges the code, not the author's intent.
-3. **Capability fallback (no isolated-subagent dispatch — e.g. legacy Antigravity 1.x with
-   only manual workspace agents)**: true isolation is unavailable. Do NOT pretend. Perform a
-   **clean-slate pass** — re-derive findings from the diff + spec + this workflow ALONE,
-   explicitly setting aside the implementation rationale — and mark the verdict
-   `independence: degraded (self-review)` in the Work Log and ship output. Recommend
-   upgrading to Antigravity 2.0 or wiring `/codex-cli` / `/ask-openrouter` for true
-   independence. (Ship behavior for a degraded verdict: see `AGENTS.md` §Auto-Mode (Autopilot) Contract.)
-4. Full Red Team is mandatory for `feature` / `architecture-change` (per the matrix below).
-5. The **"Ready to commit?"** verdict passes ONLY on the reviewer's explicit PASS. The
-   implementing agent records the verdict but does not author it.
+1. **Default — marked clean-slate self-review.** No isolated reviewer is auto-dispatched
+   unattended by default on Antigravity 2.0 / Claude Code / Codex. Do NOT pretend one ran.
+   Perform a clean-slate pass: re-derive findings from the diff + spec ACs + this workflow
+   ALONE, explicitly setting aside the implementation rationale. Mark the verdict
+   `independence: degraded (self-review)` in the Work Log and ship output. This is the
+   EXPECTED path, not a failure — but player/referee separation does NOT hold, so the ship
+   flag stays on (contract item 4 + ship bullet).
+2. **Opt-in — true isolated-context review.** If, and ONLY if, the operator has configured an
+   isolated-reviewer mechanism — Antigravity `start_subagent` (CapabilitiesConfig) or
+   `/teamwork-preview`; Claude Code an explicit Agent/Task call or hook; Codex a `codex exec`
+   shell-out; or `/ask-openrouter` — dispatch the review to that distinct executor, which
+   receives ONLY the diff + spec ACs + this workflow (no implementation rationale). Record
+   `independence: isolated-subagent <mechanism>` with the executor identity. Do NOT claim this
+   path because a runtime "supports" subagents or because a review skill may have
+   auto-activated — only an actually-executed distinct reviewer counts. (Methodology skills
+   `subagent-driven-development` / `dispatching-parallel-agents` describe how to scope it.)
+3. Full Red Team is mandatory for `feature` / `architecture-change` (per the matrix below).
+4. The **"Ready to commit?"** verdict passes ONLY on the reviewer's explicit PASS (degraded or
+   isolated). The implementing agent records the verdict but does not author it.
 
 For interactive (non-Auto-Mode) sessions this rule is advisory — the human reviewer is the
 independent check.

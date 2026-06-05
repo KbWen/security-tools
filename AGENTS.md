@@ -106,9 +106,12 @@ string-matching to self-respond.
    - §8 Implementation confirmation — proceed to implement once the Work Log has the plan reference.
    - Ship-phase confirmation (`ship.md` §Gate Engine "Awaiting your confirmation to proceed
      with shipping") — auto-approved ONLY AFTER the ship Gate passes AND the review (item 4)
-     returned PASS. If that review is `independence: degraded (self-review)` (no isolated-subagent runtime),
-     the run MAY still auto-ship, but the ship output AND Work Log MUST carry a loud
-     `⚠️ shipped without independent review (degraded auto-mode — verify or re-run)` flag.
+     returned PASS. The ship output AND Work Log carry the loud
+     `⚠️ shipped without independent review (degraded auto-mode — verify or re-run)` flag
+     **BY DEFAULT**. It is suppressed ONLY when the Work Log records affirmative proof of
+     configured independence — the dispatch mechanism AND the distinct reviewer executor
+     identity (`independence: isolated-subagent <mechanism>`). Absent that proof — including
+     any case where independence is merely assumed or unverifiable — the flag MUST appear.
      The Red-line gates below still apply at ship regardless.
 3. **Red line (NEVER relaxed by Auto-Mode)**: Auto-Mode relaxes ONLY the human-confirmation
    handshake. It does NOT relax any safety gate. ALL of the following remain hard-enforced
@@ -122,12 +125,21 @@ string-matching to self-respond.
      surfaces the question for human pickup — it MUST NOT be auto-answered to keep the
      run moving.
 4. **Independent review requirement**: Under Auto-Mode the implementing agent MUST NOT
-   self-approve its own `/review`. Review is dispatched to an isolated-context reviewer per
-   `review.md` §Auto-Mode Independence Rule — supported by **Antigravity 2.0+** subagents,
-   **Claude Code** Task, **Codex CLI**, or `/ask-openrouter`. If the runtime genuinely cannot
-   dispatch one (e.g. legacy Antigravity 1.x), the review degrades to a marked clean-slate
-   self-review (`independence: degraded (self-review)`) — never a silent self-approval. The "Ready to
-   commit?" verdict requires PASS either way.
+   *silently* self-approve its own `/review`. **Honest default**: on current runtimes NONE of
+   Antigravity 2.0, Claude Code, or Codex auto-dispatches an isolated-context reviewer
+   unattended *by default* — so a marked clean-slate self-review
+   (`independence: degraded (self-review)`) is the DEFAULT path, not a failure mode. In that
+   default the player/referee separation does NOT hold: the clean-slate pass (re-derive from
+   diff + spec, set aside implementation rationale) *reduces but does not eliminate* the
+   conflict — which is why the ship flag below is on by default. **True isolated-subagent
+   review is an explicit per-platform OPT-IN** the operator configures: Antigravity
+   `start_subagent` (CapabilitiesConfig) or `/teamwork-preview`; Claude Code an explicit
+   Agent/Task call or hook; Codex a `codex exec` shell-out; or `/ask-openrouter` (optional
+   module — explicit request only). Independence counts ONLY when such a mechanism is
+   configured AND a distinct reviewer executor actually ran — NEVER because a runtime merely
+   "supports" subagents, nor because a review skill *might* have auto-activated (skill
+   activation is probabilistic, not a gate). The "Ready to commit?" verdict requires PASS
+   either way.
 5. **Default**: This contract is inert for interactive sessions. It is purely additive —
    it makes unattended runs robust without changing human-in-the-loop behavior.
 

@@ -116,6 +116,19 @@ Get-ChildItem -Path (Join-NormalPath $root '.agent/skills') -File | ForEach-Obje
     Assert-PathExists -Path $codexSkillPath -Message "missing codex skill dir: $codexSkillPath" -Directory
     Assert-PathExists -Path (Join-NormalPath $codexSkillPath 'SKILL.md') -Message "missing skill definition: $(Join-NormalPath $codexSkillPath 'SKILL.md')"
 }
+# Directory-form skills MUST be byte-for-byte 1:1 between Antigravity (.agent) and Codex (.agents).
+# (File-form stubs like api-design are an intentional thin pointer, so this only walks directories.)
+Get-ChildItem -Path (Join-NormalPath $root '.agent/skills') -Directory | ForEach-Object {
+    $skillName = $_.Name
+    $agBody = Join-NormalPath $_.FullName 'SKILL.md'
+    $codexBody = Join-NormalPath (Join-NormalPath (Join-NormalPath $root '.agents/skills') $skillName) 'SKILL.md'
+    Assert-PathExists -Path $agBody -Message "missing antigravity skill body: $agBody"
+    Assert-PathExists -Path $codexBody -Message "missing codex skill body: $codexBody"
+    if ((Get-FileHash $agBody).Hash -ne (Get-FileHash $codexBody).Hash) {
+        Write-Error "skill body out of 1:1 sync (.agent vs .agents): $skillName"
+        exit 1
+    }
+}
 $antigravityRules = Join-NormalPath $root '.antigravity/rules.md'
 $legacyRules = Join-NormalPath $root '.agent/rules/rules.md'
 Assert-PathExists -Path $antigravityRules -Message "missing antigravity rules: $antigravityRules"
