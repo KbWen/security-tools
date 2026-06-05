@@ -78,6 +78,10 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-test/antigravity-test-2026-06-05
+- Feature shipped: Verified Antigravity 2.0 runtime behaviors (autopilot execution, isolated subagent review, and recommended skill loading) and resolved pre-existing local CI check failures in validate scripts.
+- Tests: Pass
+
 ### Ship-fix/auto-mode-honest-default-2026-06-05
 - Quick-win shipped: make Auto-Mode independence **honest by default** (SUPERSEDES the framing in the capability-aware entry below, after per-platform capability research).
   - Research (3 agents) + expert panel (3 agents) confirmed: **NONE** of Claude Code / Codex / Antigravity 2.0 reliably auto-dispatches an isolated-context reviewer unattended BY DEFAULT (Claude=model-discretion/hooks; Codex="only when explicitly asked"/`codex exec`; Antigravity 2.0=`start_subagent` needs CapabilitiesConfig + teamwork=Ultra-only research preview). Skill auto-activation is probabilistic on all three. → The prior "PRIMARY=subagent, FALLBACK=legacy 1.x" framing was dishonest.
