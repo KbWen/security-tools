@@ -59,7 +59,7 @@ jobs:
           done
           echo "All critical files present."
 
-#      - name: Run Repository Validation
-#        run: |
-#          chmod +x ./.agentcortex/bin/validate.sh
-#          ./.agentcortex/bin/validate.sh
+      - name: Run Repository Validation
+        run: |
+          chmod +x ./.agentcortex/bin/validate.sh
+          ./.agentcortex/bin/validate.sh
