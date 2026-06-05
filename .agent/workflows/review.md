@@ -12,13 +12,24 @@ When Auto-Mode is active (`Mode: autopilot` in the Work Log header OR `autopilot
 work — that is a player-and-referee gate hole, and in unattended runs it is the ONLY gate
 between generated code and a commit.
 
-1. **Dispatch to an independent reviewer in a FRESH context** (a subagent), not the agent
-   that wrote the code. Apply `subagent-driven-development` and `dispatching-parallel-agents`.
+1. **Dispatch the review to an isolated-context reviewer** — an executor OTHER than the
+   implementing agent. Modern runtimes provide this and you MUST use whichever is present:
+   **Antigravity 2.0+** dynamic/asynchronous subagents (auto-spawned, isolated context
+   window), **Claude Code** Task tool, **Codex CLI** (`/codex-cli`), or an external model
+   (`/ask-openrouter`). The methodology skills `subagent-driven-development` and
+   `dispatching-parallel-agents` describe how to scope the dispatch.
 2. The reviewer receives ONLY the diff + spec ACs + this workflow — no implementation
    rationale — so it judges the code, not the author's intent.
-3. Full Red Team is mandatory for `feature` / `architecture-change` (per the matrix below).
-4. The **"Ready to commit?"** verdict passes ONLY on the independent reviewer's explicit
-   PASS. The implementing agent records the verdict but does not author it.
+3. **Capability fallback (no isolated-subagent dispatch — e.g. legacy Antigravity 1.x with
+   only manual workspace agents)**: true isolation is unavailable. Do NOT pretend. Perform a
+   **clean-slate pass** — re-derive findings from the diff + spec + this workflow ALONE,
+   explicitly setting aside the implementation rationale — and mark the verdict
+   `independence: degraded (self-review)` in the Work Log and ship output. Recommend
+   upgrading to Antigravity 2.0 or wiring `/codex-cli` / `/ask-openrouter` for true
+   independence. (Ship behavior for a degraded verdict: see `AGENTS.md` §Auto-Mode (Autopilot) Contract.)
+4. Full Red Team is mandatory for `feature` / `architecture-change` (per the matrix below).
+5. The **"Ready to commit?"** verdict passes ONLY on the reviewer's explicit PASS. The
+   implementing agent records the verdict but does not author it.
 
 For interactive (non-Auto-Mode) sessions this rule is advisory — the human reviewer is the
 independent check.

@@ -78,6 +78,13 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-fix/independence-capability-aware-2026-06-05
+- Quick-win shipped: make Auto-Mode independent review **capability-aware** (fixes a false-assurance破口 flagged by user).
+  - Root cause: "independent subagent review" assumed a spawn primitive Antigravity might lack → silent self-review masquerading as independent.
+  - Research (web): Antigravity 2.0 (2026-05-19) DOES auto-spawn dynamic subagents with isolated context; 1.x has only manual workspace agents; Claude Code (Task) + Codex CLI also provide isolated dispatch.
+  - Fix: `review.md` §Auto-Mode Independence Rule + `AGENTS.md` §Auto-Mode Contract — PRIMARY dispatch to an isolated-context reviewer (Antigravity 2.0+/Claude Code/Codex/ask-openrouter); FALLBACK (legacy) = clean-slate self-review marked `independence: degraded (self-review)`, never silent; degraded MAY auto-ship but MUST carry a loud `⚠️ shipped without independent review` flag. No hard gate weakened.
+- Verified by independent acx-reviewer (PASS). 
+
 ### Ship-fix/skill-application-wiring-2026-06-05
 - Quick-win shipped: make skill application reliable in unattended Auto-Mode (follow-up to auto-mode-integration).
   - `AGENTS.md` §Skill Safety item 4 "Phase-Entry Skill Application": every non-tiny-fix phase applies Work Log Recommended Skills relevant to the phase. Hybrid relevance: use `phases:` when the skill declares it (the 5 domain skills do — authoritative, kept), fall back to `description` when absent (the 12 process skills). Fixes silently-skipped skills in unattended runs.
