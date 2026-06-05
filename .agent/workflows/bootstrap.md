@@ -132,7 +132,7 @@ Write `## Session Info` and `## Drift Log` blocks immediately after header:
 3. Paths
 4. Constraints & AC
 5. Non-goals
-6. Recommended Skills: Based on task type, select 0-2 skills from the available skill summaries already in context. Write chosen skills (with one-line reason) to Work Log. **Skip for `tiny-fix`.** No file reads required at this stage.
+6. Recommended Skills: Based on task type, select 0-2 skills from the available skill summaries already in context. Write chosen skills (with one-line reason) to Work Log. **Skip for `tiny-fix`.** No file reads required at this stage. For `feature` / `architecture-change`, include `production-readiness` (observability readiness) among the recommended skills when the change has an error-handling, logging, or crash-reporting surface.
 7. Context Read Receipt: MUST output:
    - `current_state.md` → [last modified date or key field you read]
    - Work Log → [status: existing|created|resumed]

@@ -15,28 +15,23 @@ You are acting as **Project Owner (KbWen)**. You have full authority to:
 - Classify tasks and freeze classifications
 - Approve all spec changes and plan modifications
 
-## Auto-Approval Protocol
+## Auto-Approval Protocol (native, not string-matching)
 
-When any workflow outputs "Awaiting your confirmation":
-→ Immediately self-respond: "Approved. Proceed." and continue to the next phase.
+This workflow activates **Auto-Mode** per `AGENTS.md` §Auto-Mode (Autopilot) Contract.
+On entry, set `Mode: autopilot` in the active Work Log header. Under that contract the
+Runtime v5 human-confirmation handshakes (§3 bootstrap, §6 plan, §8 implement) are
+auto-satisfied **natively** — do NOT pattern-match prompt wording to self-respond.
+Proceed through the phase sequence below without pausing for human confirmation.
 
-When any workflow outputs a warning with "(yes/no)":
-→ Immediately self-respond: "yes" and continue.
+**Red line (per the contract §3)**: Auto-Mode auto-approves ONLY human confirmations. It
+does NOT relax any gate. `verdict=fail`, missing Evidence, a CRITICAL/HIGH Security
+finding, a CRITICAL Red Team finding, or a Confidence Gate `<80%` STILL STOP the run —
+fix and re-run the phase; never auto-approve past a real failure.
 
-When any workflow outputs "(Proceed?)":
-→ Immediately self-respond: "Proceed." and continue.
-
-When bootstrap outputs "Bootstrap complete. What would you like to do next?":
-→ Immediately self-respond: "Proceed to plan." and continue.
-
-When plan phase completes:
-→ Immediately self-respond: "Plan approved. Proceed to implement." and continue.
-
-When implement phase completes:
-→ Immediately self-respond: "Implementation complete. Proceed to review." and continue.
-
-When review phase outputs "Ready to commit?":
-→ Self-respond based on review findings. If all roles pass: "Yes, commit." If any role fails: fix issues first, then re-review.
+**Review is independent (per the contract §4 + `review.md` §Auto-Mode Independence Rule)**:
+The implementing agent MUST NOT self-grade its own `/review`. Dispatch the review to an
+**independent reviewer in a fresh context** (subagent). "Ready to commit?" passes ONLY on
+that independent reviewer's PASS. If it fails: fix the issues, then re-dispatch review.
 
 ## Task Brief
 
@@ -59,7 +54,9 @@ Execute IN ORDER, completing each phase fully before moving to the next:
 1. **`/bootstrap`** — Classify as `feature`. Create work log. Reference spec: `docs/specs/ghostcheck-mvp.md`.
 2. **`/plan`** — Produce implementation plan referencing the spec's Acceptance Criteria.
 3. **`/implement`** — Create all source files, tests, fixtures, docs, CI config. Follow the architecture in the spec.
-4. **`/review`** — Conduct multi-role review from FOUR perspectives:
+4. **`/review`** — Dispatch to an **independent reviewer (fresh-context subagent)** per
+   `review.md` §Auto-Mode Independence Rule; the implementing agent does NOT self-grade.
+   The independent reviewer conducts multi-role review from FOUR perspectives:
    - 🔒 **Security Researcher**: Pattern accuracy, evasion coverage, API safety
    - 👨‍💻 **Python Developer**: Code quality, edge cases, error handling, CLI UX
    - 🌍 **Open Source Maintainer**: README clarity, install ease, test quality, Chinese docs

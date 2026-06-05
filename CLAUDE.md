@@ -38,6 +38,7 @@ Skills are defined in `.agents/skills/*/SKILL.md` (detailed instructions) and `.
 - **No Evidence = No Completion**: non-tiny-fix tasks require verifiable test logs or terminal output.
 - **SSoT protection**: only `/ship` may update `.agentcortex/context/current_state.md`. Work Logs are session-scoped.
 - **Classification freeze**: task classification set during bootstrap is immutable.
+- **Auto-Mode**: when running unattended (`Mode: autopilot` in the Work Log, or `autopilot.md` loaded), human-confirmation handshakes are auto-satisfied per `AGENTS.md` §Auto-Mode (Autopilot) Contract — but NO safety gate is relaxed, and `/review` MUST run as an independent fresh-context reviewer.
 - **Installation**: NEVER manually copy framework files. Use `deploy_brain.sh` or `deploy_brain.ps1`. NEVER overwrite the target repo's existing README.md or .gitignore outside the managed block.
 
 ## Validate

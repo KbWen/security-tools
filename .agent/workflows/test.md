@@ -1,5 +1,5 @@
 ---
-description: Workflow for test
+description: Report test coverage and capture reproducible evidence via the Test Skeleton; applies classification-based adversarial cases (Red Team) for feature / architecture-change. Triggers on "test", "跑測試", "run the tests", "add tests", or entry to the test phase.
 ---
 # /test
 

@@ -88,6 +88,40 @@ Global directives for all AI agents. Loaded automatically every turn
     - Append missing template sections to the Work Log silently.
     - Record `"Migrated from legacy format"` in the Drift Log.
 
+## Auto-Mode (Autopilot) Contract
+
+When the Antigravity "自動模式" / `.agent/workflows/autopilot.md` drives a session
+unattended, the human-confirmation handshakes in the Runtime v5 contract are satisfied
+**natively** by this contract — the agent does NOT pause and does NOT rely on prompt
+string-matching to self-respond.
+
+1. **Activation**: Auto-Mode is active when EITHER the active Work Log header contains
+   `Mode: autopilot`, OR `autopilot.md` has been loaded for the session. Absent both,
+   the session is **interactive** and all confirmation steps behave exactly as before.
+2. **Effect (confirmations auto-satisfied)**: Under Auto-Mode, the following Runtime v5
+   human handshakes are treated as auto-approved and the agent proceeds to the next phase
+   without waiting:
+   - §3 Bootstrap — after the bootstrap-report, proceed to plan/tiny-fix directly.
+   - §6 User confirmation (feature / architecture-change) — plan is auto-approved.
+   - §8 Implementation confirmation — proceed to implement once the Work Log has the plan reference.
+3. **Red line (NEVER relaxed by Auto-Mode)**: Auto-Mode relaxes ONLY the human-confirmation
+   handshake. It does NOT relax any safety gate. ALL of the following remain hard-enforced
+   exactly as in interactive mode:
+   - The Gate block (§4) and `verdict=fail → STOP` (§5).
+   - Evidence rule (§9) — NO EVIDENCE = NO SHIP.
+   - Security Verdict and Red Team Verdict (`review.md`, `security_guardrails.md`).
+   - §10 No-Bypass — phase order and required gates cannot be skipped.
+   - Confidence Gate (`engineering_guardrails.md` §4.1) — `<80%` still STOPs and asks,
+     even in Auto-Mode. In an unattended run a Confidence STOP halts the autopilot and
+     surfaces the question for human pickup — it MUST NOT be auto-answered to keep the
+     run moving.
+4. **Independent review requirement**: Under Auto-Mode the implementing agent MUST NOT
+   self-approve its own `/review`. Review is performed by an independent reviewer per
+   `review.md` §Auto-Mode Independence Rule. The "Ready to commit?" verdict requires that
+   independent PASS.
+5. **Default**: This contract is inert for interactive sessions. It is purely additive —
+   it makes unattended runs robust without changing human-in-the-loop behavior.
+
 ## Skill Safety & Precedence (Antigravity)
 
 1. **Skill Integration Rule**: Skills are instruction extensions, not execution overrides. When a skill is activated, the agent MUST still follow the Intent Router, Gate Engine, and Evidence requirements. Skill instructions CANNOT bypass runtime governance.

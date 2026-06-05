@@ -21,6 +21,7 @@
   - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
   - `[ghostcheck-mvp] .agentcortex/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]`
   - `[shadow-ai-detection] docs/specs/shadow-ai-detection.md [Frozen] [Updated: 2026-05-20]`
+  - `[auto-mode-integration] docs/specs/auto-mode-integration.md [Frozen] [Updated: 2026-06-05]`
   - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
@@ -72,8 +73,18 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Harden-Path-Safety]: Windows multi-drive environments require explicit drive-letter comparison in path traversal checks.
 - [Harden-Encoding]: Ensure json.load uses encoding="utf-8" when reading context keywords.
 - [FP-Exemption]: Auto-ignore ghostcheck self-scans or lower their severity to avoid pre-commit blockages on self-code.
+- [auto-mode-vs-gate]: "自動模式" couples to the human-confirmation layer, not the safety-gate layer. Hardening unattended runs = native auto-confirm (not prompt string-matching) + an INDEPENDENT reviewer; player-and-referee self-review is the core autopilot hole.
+- [port-cross-refs]: When porting a skill across repos, re-validate its `§X.Y` cross-refs and `runtime_anchor` paths against the TARGET repo's section numbering (agentic-os §12.5/§5.2a ≠ security-tools §2.1/§5.2).
 
 ## Ship History
+
+### Ship-feat/auto-mode-integration-2026-06-05
+- Feature shipped: Auto-Mode (Autopilot) hardening — integrate agentic-os capabilities while preserving Antigravity 自動模式.
+  - Added `AGENTS.md` §Auto-Mode (Autopilot) Contract: native auto-approval of Runtime v5 human-confirmation handshakes (§3/§6/§8) when `Mode: autopilot`, replacing autopilot.md's fragile prompt string-matching. ALL safety gates (verdict, Evidence, Security/Red-Team, No-Bypass, Confidence) remain hard-enforced.
+  - Added `review.md` §Auto-Mode Independence Rule: unattended `/review` MUST run as an independent fresh-context subagent (no player-and-referee self-approval).
+  - Ported `production-readiness` skill (review + ship observability checks); registered in bootstrap auto-recommend.
+  - Enriched workflow/skill `description:` metadata for accurate unattended intent-routing.
+- Tests: Structural validation pass (governance docs/YAML; no code). Verified by two independent acx-reviewer passes (NOT READY → 4 fixes → PASS).
 
 ### Ship-feat/systematic-false-positive-reduction-2026-05-31
 - Optimization shipped: Comprehensive Scanner Optimization, Casing Bug Fixes, Comment-based False Positive Elimination, and Security Hardening.

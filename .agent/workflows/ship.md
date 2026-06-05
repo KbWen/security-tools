@@ -55,6 +55,16 @@ If ANY condition fails, MUST reject `/ship` and output missing list.
 - Doc sync status (Did `current_state.md` update?)
 - Known risks and rollback strategy
 
+## Observability Readiness Check (feature / architecture-change)
+
+For `feature` / `architecture-change`, apply the `production-readiness` skill's ship checklist:
+
+- Document in the Work Log where production errors go (error sink, health check, rollback signal) — see the `## Observability` block format in `.agents/skills/production-readiness/SKILL.md`.
+- Confirm the rollback strategy names how operators detect a needed rollback and confirm its success.
+- If no production error reporting exists, record it as a Known Risk in the Work Log.
+
+Pre-ship readiness check, not an ops workflow. Skip for `tiny-fix` / `quick-win` / `hotfix`.
+
 ## State Update & Archival
 
 1. **Ship Guard (§11.3)**: Before writing, check if `current_state.md` has been modified since this task started. If modified by another session, warn user and request confirmation before merging. Use **additive merge**, never full overwrite.

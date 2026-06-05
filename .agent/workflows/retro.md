@@ -1,5 +1,5 @@
 ---
-description: Workflow for retro
+description: Capture repeatable process lessons after a work unit and append high-value patterns to the Global Lessons registry (SSoT). Triggers on "retro", "回顧", "what did we learn", "capture lessons", or the post-ship reflection step. One-off mistakes stay local; only repeatable patterns are recorded.
 ---
 # /retro
 

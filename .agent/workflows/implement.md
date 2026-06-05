@@ -1,5 +1,5 @@
 ---
-description: Workflow for implement
+description: Execute the approved plan into code — only when the task is IMPLEMENTABLE (plan reference exists in the Work Log). Applies recommended skills within this phase. Triggers on "implement", "做吧", "write the code", "execute plan", or entry to the implement phase after plan approval.
 ---
 # /implement
 

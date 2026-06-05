@@ -1,5 +1,5 @@
 ---
-description: Workflow for spec
+description: Author or update a single-feature spec in docs/specs/<feature>.md with Problem, Goal, Acceptance Criteria, Risks, and Rollback. Triggers on "write a spec", "寫規格", "define the feature", or the spec step of the feature lifecycle. For multi-feature external input, use /spec-intake first.
 ---
 # /spec
 

@@ -1,5 +1,5 @@
 ---
-description: Workflow for research
+description: Investigate a question or codebase area and produce a sourced, evidence-backed summary before committing to a plan. Triggers on "research", "調查", "look into", "find out how X works", or when a task needs grounding before design. Read-first, no code changes.
 ---
 # /research
 
