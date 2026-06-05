@@ -25,10 +25,10 @@ independent check.
 
 ## Skill-Aware Review (Pre-Check)
 
-IF the active Work Log contains a `Recommended Skills` entry AND those skills list `/review` in their `phases:` metadata:
-1. READ those SKILL.md files now (if not already loaded during /implement).
-2. Apply each skill's **"During /review:"** checklist items as additional review criteria.
-3. Explicitly state: "Reviewing with [skill-name] checklist applied."
+IF the active Work Log contains a `Recommended Skills` entry with skills relevant to review (per `AGENTS.md` §Skill Safety item 4 — a skill's `phases:` includes `review` when that field is present, otherwise relevance is judged from the skill `description`):
+1. READ those `.agents/skills/<name>/SKILL.md` files now (if not already loaded during /implement).
+2. Apply each skill's guidance as additional, domain-specific review criteria.
+3. Explicitly state: "Reviewing with [skill-name] applied."
 
 This ensures domain-specific review criteria (API conventions, frontend patterns, DB safety, auth compliance) are enforced — not just generic code review.
 

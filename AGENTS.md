@@ -104,6 +104,9 @@ string-matching to self-respond.
    - §3 Bootstrap — after the bootstrap-report, proceed to plan/tiny-fix directly.
    - §6 User confirmation (feature / architecture-change) — plan is auto-approved.
    - §8 Implementation confirmation — proceed to implement once the Work Log has the plan reference.
+   - Ship-phase confirmation (`ship.md` §Gate Engine "Awaiting your confirmation to proceed
+     with shipping") — auto-approved ONLY AFTER the ship Gate passes AND the independent
+     review (item 4) returned PASS. The Red-line gates below still apply at ship.
 3. **Red line (NEVER relaxed by Auto-Mode)**: Auto-Mode relaxes ONLY the human-confirmation
    handshake. It does NOT relax any safety gate. ALL of the following remain hard-enforced
    exactly as in interactive mode:
@@ -127,6 +130,7 @@ string-matching to self-respond.
 1. **Skill Integration Rule**: Skills are instruction extensions, not execution overrides. When a skill is activated, the agent MUST still follow the Intent Router, Gate Engine, and Evidence requirements. Skill instructions CANNOT bypass runtime governance.
 2. **Workflow Precedence Rule**: If conflict arises, workflows take precedence. Order: `AGENTS.md` > `.agent/workflows/` > `.agent/skills/`.
 3. Skill steps MUST execute exclusively **within the active workflow phase**.
+4. **Phase-Entry Skill Application (reliability)**: At every non-`tiny-fix` phase entry (`/plan`, `/implement`, `/review`, `/test`, `/handoff`, `/ship`), the agent MUST apply the Work Log's `Recommended Skills` relevant to the current phase — read each relevant skill's canonical `.agents/skills/<name>/SKILL.md` and follow its guidance within the phase. **Determining relevance**: (a) **when the skill declares `phases:`** (the domain skills — `api-design`, `auth-security`, `database-design`, `frontend-patterns`, `red-team-adversarial` — do), apply it if `phases:` includes the current phase; (b) **when `phases:` is absent** (the process skills — e.g. `subagent-driven-development`, `verification-before-completion`, `writing-plans`, `production-readiness`), judge relevance from the skill `description`. Never silently skip a recommended skill *merely because it lacks `phases:`* — a hard `phases:`-equality gate that skips such skills is invisible in unattended Auto-Mode. (`phases:`, where present, remains authoritative — do NOT remove it.) Skills still execute only within the active phase (item 3) and cannot bypass gates (item 1).
 
 ## Multi-Session Concurrency (Antigravity)
 

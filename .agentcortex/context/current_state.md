@@ -78,6 +78,13 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-fix/skill-application-wiring-2026-06-05
+- Quick-win shipped: make skill application reliable in unattended Auto-Mode (follow-up to auto-mode-integration).
+  - `AGENTS.md` §Skill Safety item 4 "Phase-Entry Skill Application": every non-tiny-fix phase applies Work Log Recommended Skills relevant to the phase. Hybrid relevance: use `phases:` when the skill declares it (the 5 domain skills do — authoritative, kept), fall back to `description` when absent (the 12 process skills). Fixes silently-skipped skills in unattended runs.
+  - `review.md` Skill-Aware condition fixed to the same hybrid (was gated on a `phases:`-equality that the recommended process skills never satisfied).
+  - `AGENTS.md` Auto-Mode Contract Effect: added ship-phase confirmation (auto-approved ONLY after ship Gate pass AND independent review PASS) — closes an autopilot /ship stall without weakening gates.
+- No skill files touched (17 skills have inconsistent file/dir structure; avoided amplifying it). Verified by independent acx-reviewer (caught a false `phases:` premise → corrected against self-verified ground truth).
+
 ### Ship-feat/auto-mode-integration-2026-06-05
 - Feature shipped: Auto-Mode (Autopilot) hardening — integrate agentic-os capabilities while preserving Antigravity 自動模式.
   - Added `AGENTS.md` §Auto-Mode (Autopilot) Contract: native auto-approval of Runtime v5 human-confirmation handshakes (§3/§6/§8) when `Mode: autopilot`, replacing autopilot.md's fragile prompt string-matching. ALL safety gates (verdict, Evidence, Security/Red-Team, No-Bypass, Confidence) remain hard-enforced.
