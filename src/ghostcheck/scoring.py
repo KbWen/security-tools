@@ -11,7 +11,15 @@ class ScoringEngine:
             "INFO": 0
         }
         for f in findings:
-            sev = f.get('severity', 'INFO').upper()
+            sev = (f.get('severity') or 'INFO').upper()
+            if sev not in counts:
+                # Map invalid/custom severities to a fallback
+                if sev in ("WARNING", "WARN"):
+                    sev = "MEDIUM"
+                elif sev in ("ERROR", "ERR", "FATAL"):
+                    sev = "HIGH"
+                else:
+                    sev = "LOW"
             counts[sev] = counts.get(sev, 0) + 1
             
         # Weighted penalty

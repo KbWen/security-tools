@@ -574,8 +574,18 @@ class Scanner:
         filtered = []
         file_content_cache = {}
         for fnd in raw_findings:
+            # Enforce and sanitize finding fields to prevent downstream crashes
+            file_path = fnd.get('file')
+            if file_path is None or not isinstance(file_path, str):
+                file_path = ""
+            fnd['file'] = file_path
+
+            sev = fnd.get('severity')
+            if not sev or not isinstance(sev, str):
+                sev = 'INFO'
+            fnd['severity'] = sev.upper()
+
             # Baseline check
-            file_path = fnd.get('file', '')
             if not file_path:
                 rel_path = ""
             else:

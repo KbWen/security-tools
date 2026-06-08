@@ -45,12 +45,16 @@ class SeverityEngine:
         return entropy
 
     def _is_test_or_fixture(self, path):
+        if not path or not isinstance(path, str):
+            return False
         normalized = os.path.normpath(path).lower()
         parts = normalized.split(os.sep)
         test_patterns = {'test', 'tests', 'fixture', 'fixtures', 'example', 'examples'}
         return any(p in test_patterns for p in parts)
 
     def _is_ai_output(self, path):
+        if not path or not isinstance(path, str):
+            return False
         normalized = os.path.normpath(path).lower()
         parts = normalized.split(os.sep)
         ai_patterns = {'.gemini', '.antigravity', '.cursor', 'chat_logs', 'agent_logs'}
@@ -58,12 +62,12 @@ class SeverityEngine:
 
     def _downgrade(self, finding, reason):
         mapping = {"CRITICAL": "HIGH", "HIGH": "MEDIUM", "MEDIUM": "LOW", "LOW": "INFO"}
-        current = finding.get("severity", "MEDIUM")
+        current = (finding.get("severity") or "MEDIUM").upper()
         finding["severity"] = mapping.get(current, current)
         finding["adjustment_reason"] = reason
 
     def _upgrade(self, finding, reason):
         mapping = {"INFO": "LOW", "LOW": "MEDIUM", "MEDIUM": "HIGH", "HIGH": "CRITICAL"}
-        current = finding.get("severity", "MEDIUM")
+        current = (finding.get("severity") or "MEDIUM").upper()
         finding["severity"] = mapping.get(current, current)
         finding["adjustment_reason"] = reason
