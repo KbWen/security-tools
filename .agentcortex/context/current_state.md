@@ -78,6 +78,10 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-fix/bug-bundle-2026-06-08
+- Feature shipped: Resolved five outstanding bugs in the repository issue tracker (Issues #10, #11, #15, #16, #17) to stabilize the CLI security scanner (GhostCheck), prevent crashes, and reduce false positives.
+- Tests: Pass
+
 ### Ship-test/antigravity-test-2026-06-05
 - Feature shipped: Verified Antigravity 2.0 runtime behaviors (autopilot execution, isolated subagent review, and recommended skill loading) and resolved pre-existing local CI check failures in validate scripts.
 - Tests: Pass

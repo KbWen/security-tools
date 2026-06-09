@@ -4,6 +4,29 @@ import os
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
+def _is_kebab_case_false_positive(token: str) -> bool:
+    if '-' not in token:
+        return False
+    if len(token) > 40:
+        return False
+    if not re.match(r'^[a-z0-9-]+$', token): # Enforce lowercase to prevent mixed-case secrets from matching
+        return False
+    parts = token.split('-')
+    if len(parts) > 5:
+        return False
+    for part in parts:
+        if not part:
+            continue
+        if part.isalpha():
+            if len(part) > 12: # Standard English words/names in CSS are rarely > 12 chars
+                return False
+        elif part.isdigit():
+            if len(part) > 3:
+                return False
+        else:
+            return False
+    return True
+
 class EntropyScanner(BaseScannerPlugin):
 
     @property
@@ -71,6 +94,9 @@ class EntropyScanner(BaseScannerPlugin):
             
             # Basic noise filtering
             if any(p.search(token) for p in self.ignore_patterns):
+                continue
+            
+            if _is_kebab_case_false_positive(token):
                 continue
             
             # Filter if it's likely just a long path or URL

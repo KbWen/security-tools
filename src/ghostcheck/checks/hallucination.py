@@ -3,6 +3,7 @@ import json
 import re
 import urllib.request
 import urllib.error
+import urllib.parse
 import time
 from datetime import datetime, timedelta
 import hashlib
@@ -171,6 +172,16 @@ class HallucinationChecker(BaseScannerPlugin):
         return packages
 
     def _check_package(self, registry, pkg_name):
+        # Filter out local files, git repository references, or direct URL dependencies
+        if (not pkg_name or
+            pkg_name.startswith('.') or
+            pkg_name.startswith('file:') or
+            pkg_name.startswith('git+') or
+            '://' in pkg_name or
+            pkg_name.startswith('http:') or
+            pkg_name.startswith('https:')):
+            return None, False
+
         # 1. Check Cache
         cached_data, is_stale = self._get_cached(registry, pkg_name)
         if cached_data is not None:
@@ -191,7 +202,8 @@ class HallucinationChecker(BaseScannerPlugin):
         return result, True
 
     def _check_pypi_online(self, pkg_name):
-        url = f"https://pypi.org/pypi/{pkg_name}/json"
+        safe_pkg = urllib.parse.quote(pkg_name)
+        url = f"https://pypi.org/pypi/{safe_pkg}/json"
         try:
             with urllib.request.urlopen(url, timeout=self.timeout) as response:
                 data = json.loads(response.read().decode())
@@ -241,7 +253,8 @@ class HallucinationChecker(BaseScannerPlugin):
         return None
 
     def _check_npm_online(self, pkg_name):
-        url = f"https://registry.npmjs.org/{pkg_name}"
+        safe_pkg = urllib.parse.quote(pkg_name, safe='@')
+        url = f"https://registry.npmjs.org/{safe_pkg}"
         try:
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=self.timeout) as response:

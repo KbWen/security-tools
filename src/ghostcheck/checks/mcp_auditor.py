@@ -31,9 +31,9 @@ class MCPAuditor(BaseScannerPlugin):
         self.patterns = [
             {
                 "name": "mcp_insecure_binding",
-                "pattern": r'"(host|address)"\s*:\s*"0\.0\.0\.0"',
+                "pattern": r'"(host|address|bind|listen)"\s*:\s*"\s*(0\.0\.0\.0|::|\[::\]|0:0:0:0:0:0:0:0|\[0:0:0:0:0:0:0:0\]|::ffff:0\.0\.0\.0|\[::ffff:0\.0\.0\.0\])(:\d+)?\s*"',
                 "severity": "CRITICAL",
-                "suggestion": "Bind MCP server to 127.0.0.1 instead of 0.0.0.0 to prevent unauthorized local network access."
+                "suggestion": "Bind MCP server to 127.0.0.1 instead of 0.0.0.0 or wildcard IPv6 addresses (::) to prevent unauthorized local network access."
             },
             {
                 "name": "mcp_hardcoded_api_key",

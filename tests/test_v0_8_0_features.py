@@ -136,6 +136,13 @@ def test_entropy_scanner(tmp_path, scanner):
     findings_bypass = scanner.scan_entropy(limit_files=[str(bypass_file)])
     assert any(f['name'] == "high_entropy_secret" for f in findings_bypass)
 
+    # Test kebab-case false positive string is ignored
+    kebab_content = "CLASS = 'bg-gradient-to-r-from-indigo-to-purple-ui-container-long-string'"
+    kebab_file = tmp_path / "kebab.js"
+    kebab_file.write_text(kebab_content)
+    findings_kebab = scanner.scan_entropy(limit_files=[str(kebab_file)])
+    assert not any(f['name'] == "high_entropy_secret" for f in findings_kebab)
+
 def test_vuln_scanner_mock(tmp_path, scanner, monkeypatch):
     # Mock OSV response for requests.post
     class MockResponse:
@@ -166,3 +173,140 @@ def test_html_dashboard(tmp_path, scanner):
     reporter = HTMLReporter(str(tmp_path / "report.html"))
     path = reporter.report(findings, grade=grade, score_val=score)
     assert os.path.exists(path)
+
+def test_mcp_auditor_ipv6(tmp_path, scanner):
+    mcp_config = {
+        "mcpServers": {
+            "bad-ipv6-server": {
+                "command": "npx bad-server",
+                "env": {
+                    "host": "::"
+                }
+            },
+            "bad-ipv6-bracket-server": {
+                "command": "npx bad-server",
+                "env": {
+                    "address": "[::]"
+                }
+            }
+        }
+    }
+    cfg_path = tmp_path / "mcp_config.json"
+    cfg_path.write_text(json.dumps(mcp_config, indent=4))
+    
+    findings = scanner.scan_mcp(limit_files=[str(cfg_path)])
+    names = [f['name'] for f in findings]
+    assert names.count("mcp_insecure_binding") == 2
+
+def test_hallucination_checker_scoped(tmp_path, scanner, monkeypatch):
+    monkeypatch.setattr("ghostcheck.checks.hallucination.HallucinationChecker._get_cached", lambda *args: (None, False))
+
+    class MockResponse:
+        def __init__(self, url):
+            self.url = url
+            self.code = 200
+        def read(self):
+            return b'{"time": {"created": "2020-01-01T00:00:00.000Z"}}'
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    requested_urls = []
+    def mock_urlopen(req, *args, **kwargs):
+        url = req.full_url if hasattr(req, 'full_url') else req
+        requested_urls.append(url)
+        return MockResponse(url)
+
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+
+    package_json = {
+        "dependencies": {
+            "@types/node": "^16.0.0"
+        }
+    }
+    pkg_path = tmp_path / "package.json"
+    pkg_path.write_text(json.dumps(package_json))
+
+    # Trigger scan
+    findings = scanner.scan_dependencies(limit_files=[str(pkg_path)])
+    print("FINDINGS:", findings)
+    print("URLS:", requested_urls)
+    assert any("@types%2Fnode" in url for url in requested_urls)
+
+def test_git_diff_scanner(monkeypatch, tmp_path):
+    from ghostcheck.checks.git_diff_scanner import GitDiffScanner
+    class MockCompletedProcess:
+        def __init__(self, stdout, returncode=0):
+            self.stdout = stdout
+            self.returncode = returncode
+    
+    # Mock subprocess.run
+    called_commands = []
+    def mock_run(args, **kwargs):
+        called_commands.append(args)
+        if "rev-parse" in args and "--show-toplevel" in args:
+            return MockCompletedProcess(str(tmp_path).encode('utf-8'))
+        elif "diff" in args:
+            # Return some mock files
+            return MockCompletedProcess(b"file1.py\nfile2.py\n\"quoted_file.py\"\n")
+        elif "rev-parse" in args and "--is-inside-work-tree" in args:
+            return MockCompletedProcess(b"true\n")
+        return MockCompletedProcess(b"")
+        
+    monkeypatch.setattr("subprocess.run", mock_run)
+    
+    # Create the files so that os.path.exists check passes
+    (tmp_path / "file1.py").write_text("print('hello')")
+    (tmp_path / "file2.py").write_text("print('world')")
+    (tmp_path / "quoted_file.py").write_text("print('quoted')")
+    
+    scanner = GitDiffScanner(str(tmp_path))
+    assert scanner.is_git_repo() is True
+    
+    staged = scanner.get_staged_files()
+    assert len(staged) == 3
+    assert any(f.endswith("file1.py") for f in staged)
+    assert any(f.endswith("quoted_file.py") for f in staged)
+    
+    diff_files = scanner.get_diff_files("HEAD~1")
+    assert len(diff_files) == 3
+
+def test_hallucination_checker_filters(tmp_path, scanner):
+    package_json = {
+        "dependencies": {
+            "file:./local-pkg": "*",
+            "git+https://github.com/user/repo.git": "*",
+            "https://example.com/pkg.tgz": "*",
+            ".relative-pkg": "*",
+            "": "*"
+        }
+    }
+    pkg_path = tmp_path / "package.json"
+    pkg_path.write_text(json.dumps(package_json))
+    
+    findings = scanner.scan_dependencies(limit_files=[str(pkg_path)])
+    # None of these should trigger network checks or findings, they should be filtered out
+    assert len(findings) == 0
+
+def test_hallucination_pypi_quoting(monkeypatch):
+    from ghostcheck.checks.hallucination import HallucinationChecker
+    checker = HallucinationChecker()
+    requested_urls = []
+    
+    class MockResponse:
+        def __init__(self): self.code = 200
+        def read(self): return b'{"info": {}, "releases": {}}'
+        def __enter__(self): return self
+        def __exit__(self, *args): pass
+
+    def mock_urlopen(req, *args, **kwargs):
+        url = req.full_url if hasattr(req, 'full_url') else req
+        requested_urls.append(url)
+        return MockResponse()
+        
+    monkeypatch.setattr("urllib.request.urlopen", mock_urlopen)
+    
+    checker._check_pypi_online("package space")
+    assert any("package%20space" in url for url in requested_urls)
+
+
+

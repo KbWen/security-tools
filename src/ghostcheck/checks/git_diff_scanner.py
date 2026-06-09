@@ -7,14 +7,18 @@ class GitDiffScanner:
 
     def _run_git(self, args):
         try:
+            cwd = os.path.abspath(self.project_root)
+            if os.path.isfile(cwd):
+                cwd = os.path.dirname(cwd)
+
             # AC-H1: 使用 Bytes 處理以避免 Windows 下的編碼崩潰
             # Get repo root to handle relative paths correctly
-            root_res = subprocess.run(["git", "rev-parse", "--show-toplevel"], cwd=self.project_root, capture_output=True, check=True)
+            root_res = subprocess.run(["git", "-c", "core.quotePath=false", "rev-parse", "--show-toplevel"], cwd=cwd, capture_output=True, check=True)
             repo_root = root_res.stdout.decode('utf-8').strip()
             
             result = subprocess.run(
-                ["git"] + args,
-                cwd=self.project_root,
+                ["git", "-c", "core.quotePath=false"] + args,
+                cwd=cwd,
                 capture_output=True,
                 check=True
             )
@@ -27,8 +31,15 @@ class GitDiffScanner:
                 output = result.stdout.decode(encoding, errors='replace')
             
             files = output.splitlines()
-            # Return absolute paths relative to repo root if needed, or join with repo_root
-            return [os.path.join(repo_root, f) for f in files]
+            resolved_files = []
+            for f in files:
+                f = f.strip().strip('"').strip("'")
+                if not f:
+                    continue
+                abs_path = os.path.join(repo_root, f)
+                if os.path.exists(abs_path) and os.path.isfile(abs_path):
+                    resolved_files.append(abs_path)
+            return resolved_files
         except (subprocess.CalledProcessError, FileNotFoundError):
             return []
 
