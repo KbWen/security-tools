@@ -40,7 +40,7 @@ class APILinter(BaseScannerPlugin):
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
-        allowed_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.rb', '.cs']
+        allowed_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.rb', '.cs', '.json', '.yaml', '.yml', '.toml']
         for file_path in files:
             filename = file_path.replace('\\', '/').split('/')[-1].lower()
             if not any(filename.endswith(ext) for ext in allowed_exts):

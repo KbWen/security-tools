@@ -46,6 +46,13 @@ class ContextAuditor:
         filename_lower = filename.lower()
         if any(filename_lower.endswith(ext) for ext in doc_exts):
             return True
+            
+        # Ensure we don't treat code files (e.g. rules.py) as documentation
+        source_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.rb', '.cs', '.swift', '.cpp', '.c', '.h', '.sh', '.bat', '.ps1', '.sql']
+        ext = os.path.splitext(filename_lower)[1]
+        if ext in source_exts:
+            return False
+            
         if "readme" in filename_lower or "rules" in filename_lower:
             return True
         return False
