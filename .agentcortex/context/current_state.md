@@ -81,7 +81,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Ship History
 
 ### Ship-feat/older-issues-bundle-2026-06-09
-- Feature shipped: Prompt Template Security & AI Code Tracking Scanners, hardened against bypass vectors and credential validation leaks. Added `PromptTemplateScanner` for template injection/ReDoS defense, and `AIMarker` with multiline comment scanning and end-of-body Git trailer auditing. Hardened 9 core security checkers and reporters against path traversal, logical/CORS bypasses, name collisions, and plaintext secret leakage.
+- Feature shipped: Prompt Template Security & AI Code Tracking Scanners, hardened against bypass vectors and credential validation leaks. Added `PromptTemplateScanner` for template injection/ReDoS defense, and `AIMarker` with multiline comment scanning and end-of-body Git trailer auditing. Hardened 11 core security checkers (including PrivilegeAuditor key masking and TamperAuditor SQL/Batch comments) and reporters against path traversal, logical/CORS bypasses, name collisions, evasion syntax, and plaintext secret leakage.
 - Tests: Pass (145/145)
 
 ### Ship-fix/bug-bundle-2026-06-08

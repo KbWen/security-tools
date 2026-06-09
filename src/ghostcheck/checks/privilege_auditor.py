@@ -236,6 +236,10 @@ class PrivilegeAuditor(BaseScannerPlugin):
                 # GPA-07: api_key_hardcoded
                 match = self.api_key_regex.search(line)
                 if match:
+                    raw_key = match.group(1)
+                    masked_key = raw_key[:4] + "*" * (len(raw_key) - 8) + raw_key[-4:] if len(raw_key) > 8 else "****"
+                    masked_context = line.replace(raw_key, masked_key).strip()
+                    
                     if is_client_side:
                         findings.append({
                             "file": file_path,
@@ -243,7 +247,8 @@ class PrivilegeAuditor(BaseScannerPlugin):
                             "name": "api_key_client_side",
                             "severity": "CRITICAL",
                             "suggestion": "API key hardcoded in client-side code. This key will be exposed to anyone visiting the application. Use backend proxies or serverless functions.",
-                            "context": line.strip()
+                            "context": masked_context,
+                            "_raw_value": raw_key
                         })
                     else:
                         findings.append({
@@ -252,7 +257,8 @@ class PrivilegeAuditor(BaseScannerPlugin):
                             "name": "api_key_hardcoded",
                             "severity": "HIGH",
                             "suggestion": "API key hardcoded in source code. Use environment variables or a secrets manager instead.",
-                            "context": line.strip()
+                            "context": masked_context,
+                            "_raw_value": raw_key
                         })
 
         return findings
