@@ -70,8 +70,12 @@ def test_scenario_5_binary_planting_protection_args(monkeypatch, tmp_path):
         return subprocess.CompletedProcess(cmd, 0, stdout=b"")
         
     monkeypatch.setattr(subprocess, "run", mock_run)
-    # Mock 'git' resolution to an absolute safe path (e.g. C:\Program Files\Git\bin\git.exe)
-    safe_git_path = "C:\\Program Files\\Git\\bin\\git.exe"
+    # Mock 'git' resolution to an absolute safe path (e.g. C:\Program Files\Git\bin\git.exe or /usr/local/bin/git)
+    import os
+    if os.name == "nt":
+        safe_git_path = "C:\\Program Files\\Git\\bin\\git.exe"
+    else:
+        safe_git_path = "/usr/local/bin/git"
     monkeypatch.setattr(shutil, "which", lambda name: safe_git_path)
     
     scanner = AIMarker(root_path=str(tmp_path))
