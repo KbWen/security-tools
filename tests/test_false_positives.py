@@ -83,10 +83,15 @@ def test_apilinter_ignores_comments():
 def test_privilege_auditor_ignores_placeholders():
     from ghostcheck.checks.privilege_auditor import PrivilegeAuditor
     scanner = PrivilegeAuditor()
-    content = """
-    openai_key = "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    anthropic_key = "sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-    google_key = "AIzaSy000000000000000000000000000000000"
+    # Dynamically construct keys to prevent GitHub Secret Scanning from triggering alerts
+    openai_placeholder = "sk-proj-" + "x" * 40
+    anthropic_placeholder = "sk-ant-" + "x" * 40
+    google_placeholder = "AIzaSy" + "0" * 33
+    
+    content = f"""
+    openai_key = "{openai_placeholder}"
+    anthropic_key = "{anthropic_placeholder}"
+    google_key = "{google_placeholder}"
     """
     findings = scanner.scan_file("utils.py", content)
     # None of these should be flagged because they are placeholders
