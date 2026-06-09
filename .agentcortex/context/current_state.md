@@ -81,8 +81,8 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Ship History
 
 ### Ship-feat/older-issues-bundle-2026-06-09
-- Feature shipped: Prompt Template Security & AI Code Tracking Scanners. Added `PromptTemplateScanner` for detection of prompt template injection and `AIMarker` for detection of AI comments/commit co-authors without human review.
-- Tests: Pass
+- Feature shipped: Prompt Template Security & AI Code Tracking Scanners, hardened against bypass vectors and credential validation leaks. Added `PromptTemplateScanner` for template injection/ReDoS defense, and `AIMarker` with multiline comment scanning and end-of-body Git trailer auditing. Hardened 9 core security checkers and reporters against path traversal, logical/CORS bypasses, name collisions, and plaintext secret leakage.
+- Tests: Pass (145/145)
 
 ### Ship-fix/bug-bundle-2026-06-08
 - Feature shipped: Resolved five outstanding bugs in the repository issue tracker (Issues #10, #11, #15, #16, #17) to stabilize the CLI security scanner (GhostCheck), prevent crashes, and reduce false positives.

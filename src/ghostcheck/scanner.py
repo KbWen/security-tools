@@ -225,6 +225,8 @@ class Scanner:
             for file in files:
                 if file in ['requirements.txt', 'package.json']:
                     file_path = os.path.join(root, file)
+                    if not self._is_safe_path(file_path):
+                        continue
                     findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -234,6 +236,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 for plugin in plugins:
                     findings.extend(plugin.scan([file_path], self.config))
         return findings
@@ -245,6 +249,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -255,6 +261,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -265,6 +273,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -275,6 +285,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -285,6 +297,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -295,6 +309,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -305,6 +321,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
@@ -316,8 +334,10 @@ class Scanner:
         if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
-                file_path = os.path.join(root, file)
                 if file in ['requirements.txt', 'package.json']:
+                    file_path = os.path.join(root, file)
+                    if not self._is_safe_path(file_path):
+                        continue
                     findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -328,6 +348,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -338,6 +360,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -348,6 +372,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -358,6 +384,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 

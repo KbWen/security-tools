@@ -69,12 +69,12 @@ class PromptTemplateScanner(BaseScannerPlugin):
         # Cache splitlines to prevent O(M*N) CPU resource exhaustion
         lines = content.splitlines()
 
-        # Rule 1: High-risk placeholder names
-        high_risk_names = {'system', 'instruction', 'instructions', 'prompt', 'rules', 'directive', 'directives', 'role', 'roles'}
+        # Rule 1: High-risk placeholder names (using word-boundary check for nested expressions)
+        high_risk_re = re.compile(r'\b(system|instruction|instructions|prompt|rules|directive|directives|role|roles)\b', re.IGNORECASE)
         
-        # Regexes supporting format specifiers, conversion flags, Jinja filters, and nested attributes/lookups
-        fstring_placeholder_re = re.compile(r'(?<!{){\s*([a-zA-Z_][a-zA-Z0-9_]*)[^}]*}')
-        jinja_placeholder_re = re.compile(r'{{\s*([a-zA-Z_][a-zA-Z0-9_]*)[^}]*}}')
+        # Regexes capturing the full expression inside brackets (preventing ReDoS by avoiding nested/overlapping spaces)
+        fstring_placeholder_re = re.compile(r'(?<!{){([^{}]+)}(?!})')
+        jinja_placeholder_re = re.compile(r'{{([^{}]+)}}')
 
         # Check line by line for context
         for idx, line in enumerate(lines):
@@ -89,27 +89,31 @@ class PromptTemplateScanner(BaseScannerPlugin):
                 if end < len(line) and line[end] == '}':
                     continue
                 
-                var_name = match.group(1).strip()
-                if var_name.lower() in high_risk_names:
+                expr = match.group(1).strip()
+                high_risk_match = high_risk_re.search(expr)
+                if high_risk_match:
+                    var_name = high_risk_match.group(1)
                     findings.append({
                         "file": file_path,
                         "line": line_num,
                         "name": "high_risk_placeholder_name",
                         "severity": "HIGH",
-                        "suggestion": f"Placeholder '{var_name}' uses a name reserved for LLM system directives. An attacker could exploit this to override instructions. Rename the variable (e.g. to 'user_role' or 'organization_rules') or add inline comment '# ghostcheck-ignore high_risk_placeholder_name' if this is a false positive.",
+                        "suggestion": f"Placeholder '{expr}' contains name '{var_name}' reserved for LLM system directives. An attacker could exploit this to override instructions. Rename the variable (e.g. to 'user_role' or 'organization_rules') or add inline comment '# ghostcheck-ignore high_risk_placeholder_name' if this is a false positive.",
                         "context": line.strip()
                     })
 
             # Find jinja style placeholders
             for match in jinja_placeholder_re.finditer(line):
-                var_name = match.group(1).strip()
-                if var_name.lower() in high_risk_names:
+                expr = match.group(1).strip()
+                high_risk_match = high_risk_re.search(expr)
+                if high_risk_match:
+                    var_name = high_risk_match.group(1)
                     findings.append({
                         "file": file_path,
                         "line": line_num,
                         "name": "high_risk_placeholder_name",
                         "severity": "HIGH",
-                        "suggestion": f"Jinja2 placeholder '{{{{ {var_name} }}}}' uses a name reserved for LLM system directives. An attacker could exploit this to override instructions. Rename the variable or add inline comment '# ghostcheck-ignore high_risk_placeholder_name' if this is a false positive.",
+                        "suggestion": f"Jinja2 placeholder '{{{{ {expr} }}}}' contains name '{var_name}' reserved for LLM system directives. An attacker could exploit this to override instructions. Rename the variable or add inline comment '# ghostcheck-ignore high_risk_placeholder_name' if this is a false positive.",
                         "context": line.strip()
                     })
 
@@ -123,13 +127,61 @@ class PromptTemplateScanner(BaseScannerPlugin):
                 continue
             if end < len(content) and content[end] == '}':
                 continue
-            all_placeholders.append((match.group(1), start, end))
+            all_placeholders.append((match.group(1).strip(), start, end))
 
         for match in jinja_placeholder_re.finditer(content):
-            all_placeholders.append((match.group(1), match.start(), match.end()))
+            all_placeholders.append((match.group(1).strip(), match.start(), match.end()))
+
+        # 1. Positional format placeholders like {} or {0} (preventing ReDoS by avoiding nested/overlapping spaces)
+        pos_placeholder_re = re.compile(r'(?<!{){(\d*)}(?!})')
+        for match in pos_placeholder_re.finditer(content):
+            start, end = match.span()
+            if start > 0 and content[start-1] == '{':
+                continue
+            if end < len(content) and content[end] == '}':
+                continue
+            all_placeholders.append((match.group(0), start, end))
+
+        # 2. printf-style %s or %(name)s
+        percent_placeholder_re = re.compile(r'(?<!%)%(\([a-zA-Z0-9_]+\))?[sSdD]')
+        for match in percent_placeholder_re.finditer(content):
+            var_name = match.group(1).strip("()").strip() if match.group(1) else match.group(0)
+            all_placeholders.append((var_name, match.start(), match.end()))
+
+            # Also check if it's a high-risk name
+            high_risk_match = high_risk_re.search(var_name)
+            if high_risk_match:
+                line_num = content.count('\n', 0, match.start()) + 1
+                findings.append({
+                    "file": file_path,
+                    "line": line_num,
+                    "name": "high_risk_placeholder_name",
+                    "severity": "HIGH",
+                    "suggestion": f"Printf placeholder '{match.group(0)}' contains name '{high_risk_match.group(1)}' reserved for LLM system directives. Rename it or use environment/safe variables.",
+                    "context": lines[line_num - 1].strip() if line_num <= len(lines) else ""
+                })
+
+        # 3. string.Template style $name or ${name}
+        dollar_placeholder_re = re.compile(r'\$(?:([a-zA-Z_][a-zA-Z0-9_]*)|{([a-zA-Z_][a-zA-Z0-9_]*)})')
+        for match in dollar_placeholder_re.finditer(content):
+            var_name = (match.group(1) or match.group(2) or match.group(0)).strip()
+            all_placeholders.append((var_name, match.start(), match.end()))
+
+            # Also check if it's a high-risk name
+            high_risk_match = high_risk_re.search(var_name)
+            if high_risk_match:
+                line_num = content.count('\n', 0, match.start()) + 1
+                findings.append({
+                    "file": file_path,
+                    "line": line_num,
+                    "name": "high_risk_placeholder_name",
+                    "severity": "HIGH",
+                    "suggestion": f"Template placeholder '{match.group(0)}' contains name '{high_risk_match.group(1)}' reserved for LLM system directives. Rename it or use safe configuration keys.",
+                    "context": lines[line_num - 1].strip() if line_num <= len(lines) else ""
+                })
 
         for var_name, start, end in all_placeholders:
-            if var_name.lower() in high_risk_names:
+            if high_risk_re.search(var_name):
                 continue
                 
             # Extract local window of context
@@ -152,7 +204,6 @@ class PromptTemplateScanner(BaseScannerPlugin):
             has_code_block = bool(re.search(r'```[a-zA-Z0-9_-]*$', before.strip())) and after.strip().startswith('```')
 
             # 4. Markdown horizontal rules/separators
-            # Split striped content to avoid empty lines with newlines
             lines_before = before.strip().splitlines()
             lines_after = after.strip().splitlines()
             has_separator = False
@@ -177,7 +228,6 @@ class PromptTemplateScanner(BaseScannerPlugin):
                 })
 
         # Rule 3: Insecure Jinja2 filters (e.g., safe) anywhere in a filter chain
-        # Excludes matching cross-braces boundaries via [^}]
         jinja_safe_re = re.compile(r'{{\s*([^}]+?)\|\s*safe\b[^}]*}}')
         for idx, line in enumerate(lines):
             line_num = idx + 1
@@ -191,6 +241,23 @@ class PromptTemplateScanner(BaseScannerPlugin):
                     "suggestion": f"Use of '| safe' filter with placeholder '{match.group(1).strip()}'. "
                                   f"This disables HTML escaping and can lead to cross-site scripting (XSS) or injection if rendered in a web/UI context. "
                                   f"If you intentionally want to bypass escaping for trusted input, add inline comment '# ghostcheck-ignore insecure_jinja_safe_filter'.",
+                    "context": line.strip()
+                })
+
+        # Rule 3a: Jinja2 block-level escape overrides (filter safe or autoescape false/off)
+        block_override_re = re.compile(r'{%\s*(filter\s+safe|autoescape\s+(false|off|False))\s*%}', re.IGNORECASE)
+        for idx, line in enumerate(lines):
+            line_num = idx + 1
+            match = block_override_re.search(line)
+            if match:
+                findings.append({
+                    "file": file_path,
+                    "line": line_num,
+                    "name": "insecure_jinja_autoescape_override",
+                    "severity": "HIGH",
+                    "suggestion": f"Insecure block-level autoescape override detected: '{match.group(1)}'. "
+                                  f"This disables autoescaping for all contents inside the block and can lead to injection or XSS. "
+                                  f"If you intentionally want to bypass escaping for trusted input, add inline comment '# ghostcheck-ignore insecure_jinja_autoescape_override'.",
                     "context": line.strip()
                 })
 

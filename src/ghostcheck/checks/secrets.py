@@ -163,9 +163,17 @@ class SecretScanner(BaseScannerPlugin):
                     # Heuristic: if the match is the KEY of a JSON/JS object, skip
                     # e.g. "aws_key": "..." -> the "aws_key" string itself might trigger regex 
                     # but we only care about the VALUE.
-                    # This is naive but effective for many FPs.
-                    if line.strip().startswith(f'"{val}"') or line.strip().startswith(f"'{val}'"):
-                        if ":" in line:
+                    is_json_key = False
+                    escaped_val = re.escape(val)
+                    if re.search(r'["\']?' + escaped_val + r'["\']?\s*:', line):
+                        is_json_key = True
+                        
+                    if is_json_key:
+                        val_lower = val.lower()
+                        # Skip if it is a common parameter/config name and not high entropy or starting with secret markers
+                        if val_lower in ["aws_key", "aws_secret", "secret", "api_key", "apikey", "token", "password", "pass"]:
+                            continue
+                        if re.match(r'^[a-zA-Z0-9_-]+$', val) and len(val) < 20 and _calculate_entropy(val) < 4.0:
                             continue
 
                     original_severity = p['severity']
@@ -174,12 +182,18 @@ class SecretScanner(BaseScannerPlugin):
                     # Mask the value for reporting
                     masked = val[:4] + "*" * (len(val) - 8) + val[-4:] if len(val) > 8 else "****"
                     
+                    # Safely mask the secret inside the line context to prevent leakage in reporters
+                    masked_secret_val = secret_val[:4] + "*" * (len(secret_val) - 8) + secret_val[-4:] if len(secret_val) > 8 else "****"
+                    masked_context = line.replace(secret_val, masked_secret_val).strip()
+                    
                     findings.append({
                         "file": file_path,
                         "line": i + 1,
                         "pattern_name": p['name'],
                         "severity": final_severity,
                         "value_preview": masked,
+                        "context": masked_context,
+                        "_raw_value": secret_val, # Private field for verification only, skipped by reporters
                         "suggestion": p.get('remediation', "Rotate or revoke this secret immediately.")
                     })
         return findings

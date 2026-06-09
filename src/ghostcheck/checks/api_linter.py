@@ -4,24 +4,26 @@ from ..interfaces import BaseScannerPlugin
 
 class APILinter(BaseScannerPlugin):
     def __init__(self):
+        # Prevent ReDoS using non-greedy limited-length matching [\s\S]{0,N}?
+        # This also supports matching configs split across lines.
         self.rules = [
             {
                 "name": "api_cors_wildcard",
-                "pattern": r'Access-Control-Allow-Origin.*[`\'"]\*[`\'"]',
+                "pattern": re.compile(r'\b(?:Access-Control-Allow-Origin|origins?|allow_origins?)[\s\S]{0,100}?[`\'"]\*[`\'"]', re.IGNORECASE),
                 "severity": "HIGH",
                 "message": "CORS wildcard (*) detected. This allows any domain to access your API.",
                 "remediation": "Restrict CORS to specific trusted origins."
             },
             {
                 "name": "api_csrf_disabled",
-                "pattern": r'(csrf_enabled|enable_csrf).*[:=].*(false|False|0)',
+                "pattern": re.compile(r'\b(?:csrf_enabled|enable_csrf)[\s\S]{0,50}?[:=]\s*(?:false|0)\b', re.IGNORECASE),
                 "severity": "HIGH",
                 "message": "CSRF protection appears to be disabled.",
                 "remediation": "Enable CSRF protection for session-based APIs."
             },
             {
                 "name": "api_graphql_introspection_enabled",
-                "pattern": r'(introspection).*[:=].*(true|True|1)',
+                "pattern": re.compile(r'\bintrospection\b[\s\S]{0,50}?[:=]\s*(?:true|1)\b', re.IGNORECASE),
                 "severity": "MEDIUM",
                 "message": "GraphQL introspection is enabled in what might be a production config.",
                 "remediation": "Disable introspection in production to prevent schema leakage."
@@ -54,16 +56,32 @@ class APILinter(BaseScannerPlugin):
     def scan_content(self, file_path, content):
         findings = []
         for rule in self.rules:
-            matches = re.finditer(rule['pattern'], content, re.IGNORECASE)
+            matches = rule['pattern'].finditer(content)
             for match in matches:
-                line_idx = content.count('\n', 0, match.start())
+                start_offset = match.start()
+                
+                # Filter out comments
+                line_start = content.rfind('\n', 0, start_offset) + 1
+                line_end = content.find('\n', start_offset)
+                if line_end == -1:
+                    line_end = len(content)
+                current_line = content[line_start:line_end].strip()
+                if current_line.startswith(('#', '//', '/*', '*')):
+                    continue
+                    
+                line_idx = content.count('\n', 0, start_offset) + 1
+                matched_text = match.group(0).strip()
+                context_snippet = matched_text.splitlines()[0] if matched_text else ""
+                if len(context_snippet) > 100:
+                    context_snippet = context_snippet[:97] + "..."
+                    
                 findings.append({
                     "file": file_path,
-                    "line": line_idx + 1,
+                    "line": line_idx,
                     "name": rule['name'],
                     "severity": rule['severity'],
                     "message": rule['message'],
                     "remediation": rule['remediation'],
-                    "context": match.group(0).strip()
+                    "context": context_snippet
                 })
         return findings

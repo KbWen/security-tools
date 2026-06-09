@@ -1,5 +1,6 @@
 import json
 import os
+import html
 from datetime import datetime
 from ..interfaces import BaseReporterPlugin
 
@@ -76,15 +77,33 @@ class HTMLReporter(BaseReporterPlugin):
             loc = f"{f.get('file')}:{f.get('line')}" if f.get('line') else f.get('file', 'N/A')
             owasp = f.get('owasp_llm', '')
             
+            # Escape fields to prevent XSS and HTML structure breakage
+            escaped_title = html.escape(str(title))
+            escaped_loc = html.escape(str(loc))
+            escaped_owasp = html.escape(str(owasp)) if owasp else ''
+            escaped_message = html.escape(str(f.get('message', '')))
+            escaped_remediation = html.escape(str(f.get('remediation') or f.get('suggestion', 'N/A')))
+            
+            # Defense-in-depth masking for plain credentials in HTML context
+            raw_val = f.get('_raw_value')
+            context_val = f.get('context') or f.get('value_preview', '')
+            escaped_context = ""
+            if context_val:
+                context_str = str(context_val)
+                if raw_val and str(raw_val) in context_str:
+                    masked_val = raw_val[:4] + "*" * (len(raw_val) - 8) + raw_val[-4:] if len(raw_val) > 8 else "****"
+                    context_str = context_str.replace(str(raw_val), masked_val)
+                escaped_context = html.escape(context_str)
+                
             html_content += f"""
                 <div class="finding" style="border-left-color: {color}">
                     <div class="severity" style="background: {color}">{sev}</div>
-                    {f'<span class="severity" style="background: #1f1f1f; margin-left: 8px;">{owasp}</span>' if owasp else ''}
-                    <div class="finding-title">{title}</div>
-                    <div class="finding-loc">Location: {loc}</div>
-                    <p>{f.get('message', '')}</p>
-                    {f'<code class="context">{f.get("context") or f.get("value_preview", "")}</code>' if (f.get("context") or f.get("value_preview")) else ''}
-                    <p><strong>Fix:</strong> {f.get('remediation') or f.get('suggestion', 'N/A')}</p>
+                    {f'<span class="severity" style="background: #1f1f1f; margin-left: 8px;">{escaped_owasp}</span>' if escaped_owasp else ''}
+                    <div class="finding-title">{escaped_title}</div>
+                    <div class="finding-loc">Location: {escaped_loc}</div>
+                    <p>{escaped_message}</p>
+                    {f'<code class="context">{escaped_context}</code>' if escaped_context else ''}
+                    <p><strong>Fix:</strong> {escaped_remediation}</p>
                 </div>
             """
             

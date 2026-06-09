@@ -65,23 +65,67 @@ class AIMarker(BaseScannerPlugin):
 
     def scan_file_comments(self, file_path: str, content: str) -> List[Dict[str, Any]]:
         findings = []
-        lines = content.splitlines()
         
-        # Regex patterns to detect AI tool signatures in various comment formats:
-        # Standard: //, #, /*, <!--
-        # SQL: --
-        # Batch: REM, ::
-        # PowerShell block comments: <# ... #> (basic check)
-        ai_comment_patterns = [
-            (re.compile(r'(?://|#|/\*|<!--|--|^\s*rem\b|^\s*::)\s*(?:Generated|Auto-generated)\s+by\s+(Copilot|Claude|Aider|Tabnine|Cursor|Windsurf|Gemini|ChatGPT|GPT-4|DeepSeek|Mistral|Qwen|Llama|AI)', re.IGNORECASE), "ai_comment_signature"),
-            (re.compile(r'(?://|#|/\*|<!--|--|^\s*rem\b|^\s*::)\s*AI-assisted\b', re.IGNORECASE), "ai_comment_signature"),
-            (re.compile(r'(?://|#|/\*|<!--|--|^\s*rem\b|^\s*::)\s*Created\s+by\s+(Tabnine|Copilot|Aider|Claude|Gemini|ChatGPT|DeepSeek)', re.IGNORECASE), "ai_comment_signature"),
-            (re.compile(r'<\#\s*(?:Generated|Auto-generated)\s+by\s+(Copilot|Claude|Aider|Tabnine|Cursor|Windsurf|Gemini|ChatGPT|GPT-4|DeepSeek|Mistral|Qwen|Llama|AI)', re.IGNORECASE), "ai_comment_signature")
+        # 1. Broad multi-line / block comment structures (C-style, HTML, python docstrings, PowerShell block comments)
+        # We search these first in the whole file to prevent bypass where comment delimiters and AI keywords are on separate lines.
+        multiline_patterns = [
+            # /* ... */
+            re.compile(r'/\*([\s\S]*?)\*/'),
+            # <!-- ... -->
+            re.compile(r'<!--([\s\S]*?)-->'),
+            # """ ... """
+            re.compile(r'"""([\s\S]*?)"""'),
+            # ''' ... '''
+            re.compile(r"'''([\s\S]*?)'''"),
+            # <# ... #>
+            re.compile(r'<\#([\s\S]*?)\#>')
+        ]
+        
+        ai_keywords_pattern = re.compile(
+            r'\b(?:Generated|Auto-generated|Created|Assisted)\s+by\s+(Copilot|Claude|Aider|Tabnine|Cursor|Windsurf|Gemini|ChatGPT|GPT-4|DeepSeek|Mistral|Qwen|Llama|AI)\b'
+            r'|\bAI-assisted\b', 
+            re.IGNORECASE
+        )
+        
+        detected_lines = set()
+        
+        for p in multiline_patterns:
+            for match in p.finditer(content):
+                block_content = match.group(1)
+                keyword_match = ai_keywords_pattern.search(block_content)
+                if keyword_match:
+                    start_offset = match.start()
+                    line_num = content.count('\n', 0, start_offset) + 1
+                    detected_lines.add(line_num)
+                    tool = keyword_match.group(1) if keyword_match.groups() and keyword_match.group(1) else "AI Tool"
+                    
+                    # Extract snippet context (first non-empty line of match or the keyword match line)
+                    snippet_lines = match.group(0).splitlines()
+                    snippet = next((l.strip() for l in snippet_lines if l.strip()), "")
+                    
+                    findings.append({
+                        "file": file_path,
+                        "line": line_num,
+                        "name": "ai_comment_signature",
+                        "severity": "INFO",
+                        "suggestion": f"This code block is marked as generated or assisted by {tool}. Verify that proper human review has been performed. If this is a discussion or false positive, rephrase the comment or add inline comment '# ghostcheck-ignore ai_comment_signature'.",
+                        "context": snippet
+                    })
+
+        # 2. Standard single-line checks (for //, #, --, rem, ::)
+        # Scan line by line, skipping lines that were already flagged by block comments
+        lines = content.splitlines()
+        single_line_patterns = [
+            (re.compile(r'(?://|#|--|^\s*rem\b|^\s*::)\s*(?:Generated|Auto-generated)\s+by\s+(Copilot|Claude|Aider|Tabnine|Cursor|Windsurf|Gemini|ChatGPT|GPT-4|DeepSeek|Mistral|Qwen|Llama|AI)', re.IGNORECASE), "ai_comment_signature"),
+            (re.compile(r'(?://|#|--|^\s*rem\b|^\s*::)\s*AI-assisted\b', re.IGNORECASE), "ai_comment_signature"),
+            (re.compile(r'(?://|#|--|^\s*rem\b|^\s*::)\s*Created\s+by\s+(Tabnine|Copilot|Aider|Claude|Gemini|ChatGPT|DeepSeek)', re.IGNORECASE), "ai_comment_signature")
         ]
 
         for idx, line in enumerate(lines):
             line_num = idx + 1
-            for pattern, name in ai_comment_patterns:
+            if line_num in detected_lines:
+                continue
+            for pattern, name in single_line_patterns:
                 match = pattern.search(line)
                 if match:
                     tool = match.group(1) if match.groups() and match.group(1) else "AI Tool"
@@ -98,24 +142,10 @@ class AIMarker(BaseScannerPlugin):
 
     def scan_git_history(self) -> List[Dict[str, Any]]:
         findings = []
-        # Find if we are inside a git tree without relying on a direct root .git directory
-        # (Since root_path could be a subdirectory under a git repo)
-        
-        # Security Hardening (CWE-427): Use absolute resolved path to git executable 
-        # to prevent binary planting on Windows, and do NOT set cwd to untrusted root_path.
-        # Instead, we run git relative to the safe system/workspace cwd and use -C to target the repo.
         git_executable = shutil.which("git")
         if not git_executable:
             return findings
 
-        # Format using standard ASCII control characters:
-        # %H: Commit Hash
-        # %x1f: Unit Separator (\x1f)
-        # %ae: Author Email
-        # %x1f: Unit Separator
-        # %B: Raw Body
-        # %x1e: Record Separator (\x1e)
-        # Disable hooks and pager overrides using core.hooksPath and core.pager configuration overrides
         cmd = [
             git_executable, "-C", self.root_path,
             "-c", "core.quotePath=false",
@@ -125,7 +155,6 @@ class AIMarker(BaseScannerPlugin):
         ]
         
         try:
-            # Enforce 10s timeout to prevent hanging, and process bytes directly to avoid CP950 decoding crashes
             result = subprocess.run(cmd, capture_output=True, timeout=10)
             if result.returncode != 0:
                 return findings
@@ -134,62 +163,80 @@ class AIMarker(BaseScannerPlugin):
             logger.debug("AIMarker failed to run git subprocess: %s", e)
             return findings
 
-        # Regex to detect AI email domains or usernames in co-author trailers
         coauthor_pattern = re.compile(
             r'Co-authored-by:\s*(?:GitHub\s+)?(Copilot|Claude|Aider|Tabnine|Cursor|Windsurf|Gemini|ChatGPT|GPT-4|DeepSeek|Mistral|Qwen|Llama|AI)\b', 
             re.IGNORECASE
         )
         
-        # Regex to detect AI tool names mentioned in commit subject/body
         msg_pattern = re.compile(
             r'\b(?:generated|created|assisted|written|refactored|prompted)\s+by\s+(Copilot|Claude|Aider|Tabnine|Cursor|Windsurf|Gemini|ChatGPT|GPT-4|DeepSeek|Mistral|Qwen|Llama|AI)\b',
             re.IGNORECASE
         )
 
-        # Split into records (commits)
         raw_commits = stdout.split('\x1e')
         for raw_c in raw_commits:
             raw_c = raw_c.strip()
             if not raw_c:
                 continue
                 
-            # Split into fields
             fields = raw_c.split('\x1f', 2)
             if len(fields) < 3:
                 continue
                 
             commit_hash, author_email, body = fields
             
-            # Identify AI contributions
             coauthors = coauthor_pattern.findall(body)
             msg_mentions = msg_pattern.findall(body)
             
-            # Target specific bot accounts rather than the entire developer domain
-            is_ai_email = any(bot_id in author_email.lower() for bot_id in [
-                "copilot@github.com", 
-                "noreply@anthropic.com", 
-                "aider@aider.chat", 
-                "tabnine", 
-                "cursor", 
-                "windsurf",
-                "gemini"
-            ])
+            author_email_lower = author_email.lower().strip()
+            ai_email_exacts = [
+                "copilot@github.com",
+                "noreply@anthropic.com",
+                "aider@aider.chat"
+            ]
+            ai_email_domains = [
+                "@tabnine.com",
+                "@cursor.com",
+                "@cursor.sh",
+                "@windsurf.ai",
+                "@gemini.ai",
+                "@openai.com"
+            ]
+            is_ai_email = (author_email_lower in ai_email_exacts or 
+                           any(author_email_lower.endswith(dom) for dom in ai_email_domains))
             
             if coauthors or msg_mentions or is_ai_email:
-                # Extract Git trailers strictly matching 'Name: value' format at the end of the message
-                trailers = re.findall(r'^(reviewed-by|approved-by|signed-off-by):\s*(.*)$', body, re.IGNORECASE | re.MULTILINE)
+                # Strictly parse Git trailers from the very last block of the commit body
+                blocks = [b.strip() for b in body.strip().split('\n\n') if b.strip()]
                 has_human_review = False
-                for key, val in trailers:
-                    val_lower = val.lower()
-                    # Ensure reviewer name is not a known AI assistant or bot
-                    is_reviewer_ai = any(bot in val_lower for bot in [
-                        "copilot", "claude", "aider", "tabnine", "cursor", 
-                        "windsurf", "gemini", "chatgpt", "gpt-4", "deepseek", 
-                        "mistral", "qwen", "llama", "bot", "ai"
-                    ])
-                    if not is_reviewer_ai:
-                        has_human_review = True
-                        break
+                if blocks:
+                    last_block = blocks[-1]
+                    lines = last_block.splitlines()
+                    is_trailer_block = True
+                    parsed_trailers = []
+                    for line in lines:
+                        match_tr = re.match(r'^([a-zA-Z0-9_-]+):\s*(.*)$', line.strip())
+                        if not match_tr:
+                            is_trailer_block = False
+                            break
+                        parsed_trailers.append((match_tr.group(1).lower(), match_tr.group(2)))
+                    
+                    if is_trailer_block:
+                        for key, val in parsed_trailers:
+                            if key in ["reviewed-by", "approved-by", "signed-off-by"]:
+                                val_lower = val.lower()
+                                # Ensure reviewer is a human (use word boundaries to prevent false positives)
+                                is_reviewer_ai = any(
+                                    re.search(r'\b' + re.escape(bot) + r'\b', val_lower)
+                                    for bot in [
+                                        "copilot", "claude", "aider", "tabnine", "cursor", 
+                                        "windsurf", "gemini", "chatgpt", "gpt-4", "deepseek", 
+                                        "mistral", "qwen", "llama", "bot", "ai"
+                                    ]
+                                )
+                                if not is_reviewer_ai:
+                                    has_human_review = True
+                                    break
                 
                 if not has_human_review:
                     tool_name = "AI Tool"
@@ -197,15 +244,15 @@ class AIMarker(BaseScannerPlugin):
                         tool_name = coauthors[0]
                     elif msg_mentions:
                         tool_name = msg_mentions[0]
-                    elif "copilot" in author_email.lower():
+                    elif "copilot" in author_email_lower:
                         tool_name = "Copilot"
-                    elif "anthropic" in author_email.lower():
+                    elif "anthropic" in author_email_lower:
                         tool_name = "Claude"
-                    elif "aider" in author_email.lower():
+                    elif "aider" in author_email_lower:
                         tool_name = "Aider"
                         
                     findings.append({
-                        "file": "",  # Represents repository/git level finding
+                        "file": "",  
                         "line": 0,
                         "name": "ai_unreviewed_commit",
                         "severity": "MEDIUM",
