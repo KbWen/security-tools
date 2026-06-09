@@ -89,7 +89,7 @@ class AIMarker(BaseScannerPlugin):
                         "line": line_num,
                         "name": name,
                         "severity": "INFO",
-                        "suggestion": f"This code block is marked as generated or assisted by {tool}. Verify that proper human review has been performed.",
+                        "suggestion": f"This code block is marked as generated or assisted by {tool}. Verify that proper human review has been performed. If this is a discussion or false positive, rephrase the comment or add inline comment '# ghostcheck-ignore ai_comment_signature'.",
                         "context": line.strip()
                     })
                     break
@@ -190,7 +190,8 @@ class AIMarker(BaseScannerPlugin):
                         "line": 0,
                         "name": "ai_unreviewed_commit",
                         "severity": "MEDIUM",
-                        "suggestion": f"Commit {commit_hash[:8]} was authored or assisted by {tool_name} but lacks human review trailers (e.g. 'Reviewed-by:').",
+                        "suggestion": f"Commit {commit_hash[:8]} was authored or assisted by {tool_name} but lacks human review trailers (e.g. 'Reviewed-by:'). "
+                                      f"If this is a human author named {tool_name}, add a 'Reviewed-by: DevName' trailer to your commit message, or add the commit hash to ignore lists.",
                         "context": f"Commit {commit_hash[:8]}: {body.splitlines()[0] if body.splitlines() else ''}"
                     })
         return findings

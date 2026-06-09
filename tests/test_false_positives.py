@@ -14,7 +14,7 @@ def test_fp_crm_role_placeholder():
     # or renaming the variable to 'user_role' or 'job_title'.
     assert len(findings) == 1
     assert findings[0]['name'] == 'high_risk_placeholder_name'
-    assert "user_role" not in findings[0]['suggestion']  # Suggestion points to role risks
+    assert "user_role" in findings[0]['suggestion']  # Suggestion now points to user_role as a rename option
 
 def test_fp_simple_greeting_delimiter():
     # Scenario: A simple greeting template "Hello {name}". It does not need delimiters.

@@ -96,7 +96,7 @@ class PromptTemplateScanner(BaseScannerPlugin):
                         "line": line_num,
                         "name": "high_risk_placeholder_name",
                         "severity": "HIGH",
-                        "suggestion": f"Placeholder '{var_name}' uses a name reserved for instructions. An attacker could exploit this to override system prompts.",
+                        "suggestion": f"Placeholder '{var_name}' uses a name reserved for LLM system directives. An attacker could exploit this to override instructions. Rename the variable (e.g. to 'user_role' or 'organization_rules') or add inline comment '# ghostcheck-ignore high_risk_placeholder_name' if this is a false positive.",
                         "context": line.strip()
                     })
 
@@ -109,7 +109,7 @@ class PromptTemplateScanner(BaseScannerPlugin):
                         "line": line_num,
                         "name": "high_risk_placeholder_name",
                         "severity": "HIGH",
-                        "suggestion": f"Jinja2 placeholder '{{{{ {var_name} }}}}' uses a name reserved for instructions. An attacker could exploit this to override system prompts.",
+                        "suggestion": f"Jinja2 placeholder '{{{{ {var_name} }}}}' uses a name reserved for LLM system directives. An attacker could exploit this to override instructions. Rename the variable or add inline comment '# ghostcheck-ignore high_risk_placeholder_name' if this is a false positive.",
                         "context": line.strip()
                     })
 
@@ -171,7 +171,8 @@ class PromptTemplateScanner(BaseScannerPlugin):
                     "severity": "MEDIUM",
                     "suggestion": f"Placeholder '{var_name}' is interpolated without clear delimiters. "
                                   f"Wrap user input in XML tags (e.g. <input>{{{var_name}}}</input>), "
-                                  f"triple quotes (\"\"\"), or horizontal rules (---) to isolate it from system instructions.",
+                                  f"triple quotes (\"\"\"), or horizontal rules (---) to isolate it from system instructions. "
+                                  f"If this is a simple template where injection is not a concern, add inline comment '# ghostcheck-ignore missing_input_delimiter' to bypass.",
                     "context": placeholder_line
                 })
 
@@ -188,7 +189,8 @@ class PromptTemplateScanner(BaseScannerPlugin):
                     "name": "insecure_jinja_safe_filter",
                     "severity": "HIGH",
                     "suggestion": f"Use of '| safe' filter with placeholder '{match.group(1).strip()}'. "
-                                  f"This disables HTML escaping and can lead to cross-site scripting (XSS) or injection if rendered in a web/UI context.",
+                                  f"This disables HTML escaping and can lead to cross-site scripting (XSS) or injection if rendered in a web/UI context. "
+                                  f"If you intentionally want to bypass escaping for trusted input, add inline comment '# ghostcheck-ignore insecure_jinja_safe_filter'.",
                     "context": line.strip()
                 })
 
@@ -207,7 +209,8 @@ class PromptTemplateScanner(BaseScannerPlugin):
                     "name": "suspicious_jailbreak_phrasing",
                     "severity": "MEDIUM",
                     "suggestion": f"Suspicious instruction override phrasing detected: '{line.strip()}'. "
-                                  f"Ensure this is not a hardcoded prompt injection vulnerability or bad example.",
+                                  f"Ensure this is not a hardcoded prompt injection vulnerability or bad example. "
+                                  f"If this is a defensive instruction or test fixture, add inline comment '# ghostcheck-ignore suspicious_jailbreak_phrasing'.",
                     "context": line.strip()
                 })
 
