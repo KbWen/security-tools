@@ -3,6 +3,7 @@ import os
 import json
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+from .secrets import _is_placeholder_value
 
 class PrivilegeAuditor(BaseScannerPlugin):
 
@@ -224,19 +225,39 @@ class PrivilegeAuditor(BaseScannerPlugin):
             for i, line in enumerate(lines):
                 # GPA-06: api_key_command_arg
                 if self.cmd_arg_regex.search(line):
-                    findings.append({
-                        "file": file_path,
-                        "line": i + 1,
-                        "name": "api_key_command_arg",
-                        "severity": "HIGH",
-                        "suggestion": "API key passed as a command-line argument. Pass API keys through environment variables instead.",
-                        "context": line.strip()
-                    })
+                    api_key_match = self.api_key_regex.search(line)
+                    is_placeholder = False
+                    if api_key_match:
+                        raw_key = api_key_match.group(1)
+                        check_key = raw_key
+                        for prefix in ["sk-proj-", "sk-ant-", "sk-", "AIzaSy"]:
+                            if check_key.startswith(prefix):
+                                check_key = check_key[len(prefix):]
+                                break
+                        if _is_placeholder_value(check_key) or _is_placeholder_value(raw_key):
+                            is_placeholder = True
+                    if not is_placeholder:
+                        findings.append({
+                            "file": file_path,
+                            "line": i + 1,
+                            "name": "api_key_command_arg",
+                            "severity": "HIGH",
+                            "suggestion": "API key passed as a command-line argument. Pass API keys through environment variables instead.",
+                            "context": line.strip()
+                        })
 
                 # GPA-07: api_key_hardcoded
                 match = self.api_key_regex.search(line)
                 if match:
                     raw_key = match.group(1)
+                    check_key = raw_key
+                    for prefix in ["sk-proj-", "sk-ant-", "sk-", "AIzaSy"]:
+                        if check_key.startswith(prefix):
+                            check_key = check_key[len(prefix):]
+                            break
+                    if _is_placeholder_value(check_key) or _is_placeholder_value(raw_key):
+                        continue
+
                     masked_key = raw_key[:4] + "*" * (len(raw_key) - 8) + raw_key[-4:] if len(raw_key) > 8 else "****"
                     masked_context = line.replace(raw_key, masked_key).strip()
                     

@@ -140,9 +140,33 @@ class AIMarker(BaseScannerPlugin):
                     break
         return findings
 
+    def _get_secure_git(self):
+        git_path = shutil.which("git")
+        if not git_path:
+            return None
+        abs_git = os.path.abspath(git_path)
+        cwd = os.getcwd()
+        project_abs = os.path.abspath(self.root_path)
+        if abs_git.startswith(cwd) or abs_git.startswith(project_abs):
+            # Scan PATH manually excluding current folder or relative entries
+            path_env = os.environ.get("PATH", "")
+            paths = path_env.split(os.pathsep)
+            for p in paths:
+                if not p or p.strip() in [".", ""]:
+                    continue
+                p_abs = os.path.abspath(p)
+                if p_abs == cwd or p_abs == project_abs:
+                    continue
+                for ext in ["", ".exe", ".cmd", ".bat"]:
+                    candidate = os.path.join(p, f"git{ext}")
+                    if os.path.exists(candidate) and os.path.isfile(candidate):
+                        return candidate
+            return None
+        return git_path
+
     def scan_git_history(self) -> List[Dict[str, Any]]:
         findings = []
-        git_executable = shutil.which("git")
+        git_executable = self._get_secure_git()
         if not git_executable:
             return findings
 
@@ -206,37 +230,37 @@ class AIMarker(BaseScannerPlugin):
                            any(author_email_lower.endswith(dom) for dom in ai_email_domains))
             
             if coauthors or msg_mentions or is_ai_email:
-                # Strictly parse Git trailers from the very last block of the commit body
-                blocks = [b.strip() for b in body.strip().split('\n\n') if b.strip()]
+                # Strictly parse Git trailers from the bottom of the commit body up
+                lines = body.strip().splitlines()
                 has_human_review = False
-                if blocks:
-                    last_block = blocks[-1]
-                    lines = last_block.splitlines()
-                    is_trailer_block = True
-                    parsed_trailers = []
-                    for line in lines:
-                        match_tr = re.match(r'^([a-zA-Z0-9_-]+):\s*(.*)$', line.strip())
-                        if not match_tr:
-                            is_trailer_block = False
+                parsed_trailers = []
+                for line in reversed(lines):
+                    line_str = line.strip()
+                    if not line_str:
+                        if parsed_trailers:
                             break
+                        continue
+                    match_tr = re.match(r'^([a-zA-Z0-9_-]+):\s*(.*)$', line_str)
+                    if match_tr:
                         parsed_trailers.append((match_tr.group(1).lower(), match_tr.group(2)))
-                    
-                    if is_trailer_block:
-                        for key, val in parsed_trailers:
-                            if key in ["reviewed-by", "approved-by", "signed-off-by"]:
-                                val_lower = val.lower()
-                                # Ensure reviewer is a human (use word boundaries to prevent false positives)
-                                is_reviewer_ai = any(
-                                    re.search(r'\b' + re.escape(bot) + r'\b', val_lower)
-                                    for bot in [
-                                        "copilot", "claude", "aider", "tabnine", "cursor", 
-                                        "windsurf", "gemini", "chatgpt", "gpt-4", "deepseek", 
-                                        "mistral", "qwen", "llama", "bot", "ai"
-                                    ]
-                                )
-                                if not is_reviewer_ai:
-                                    has_human_review = True
-                                    break
+                    else:
+                        break
+                
+                for key, val in parsed_trailers:
+                    if key in ["reviewed-by", "approved-by", "signed-off-by"]:
+                        val_lower = val.lower()
+                        # Ensure reviewer is a human (use word boundaries to prevent false positives)
+                        is_reviewer_ai = any(
+                            re.search(r'\b' + re.escape(bot) + r'\b', val_lower)
+                            for bot in [
+                                "copilot", "claude", "aider", "tabnine", "cursor", 
+                                "windsurf", "gemini", "chatgpt", "gpt-4", "deepseek", 
+                                "mistral", "qwen", "llama", "bot", "ai"
+                            ]
+                        )
+                        if not is_reviewer_ai:
+                            has_human_review = True
+                            break
                 
                 if not has_human_review:
                     tool_name = "AI Tool"

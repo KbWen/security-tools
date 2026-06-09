@@ -265,11 +265,13 @@ class PromptTemplateScanner(BaseScannerPlugin):
         suspicious_words = ["ignore", "disregard", "bypass", "override"]
         target_words = ["previous", "above", "preceding", "system", "instruction", "instructions"]
         
+        flagged_jailbreak_lines = set()
         # Check line-by-line first
         for idx, line in enumerate(lines):
             line_num = idx + 1
             line_lower = line.lower()
             if any(w in line_lower for w in suspicious_words) and any(t in line_lower for t in target_words):
+                flagged_jailbreak_lines.add(line_num)
                 findings.append({
                     "file": file_path,
                     "line": line_num,
@@ -279,6 +281,40 @@ class PromptTemplateScanner(BaseScannerPlugin):
                                   f"Ensure this is not a hardcoded prompt injection vulnerability or bad example. "
                                   f"If this is a defensive instruction or test fixture, add inline comment '# ghostcheck-ignore suspicious_jailbreak_phrasing'.",
                     "context": line.strip()
+                })
+
+        # Rule 4a: Check multiline jailbreak phrasing using distance-bounded regex
+        multiline_jailbreak_re1 = re.compile(
+            r'\b(ignore|disregard|bypass|override)\b[\s\S]{0,100}?\b(previous|above|preceding|system|instructions?)\b',
+            re.IGNORECASE
+        )
+        multiline_jailbreak_re2 = re.compile(
+            r'\b(previous|above|preceding|system|instructions?)\b[\s\S]{0,100}?\b(ignore|disregard|bypass|override)\b',
+            re.IGNORECASE
+        )
+
+        for pattern in [multiline_jailbreak_re1, multiline_jailbreak_re2]:
+            for match in pattern.finditer(content):
+                start_offset = match.start()
+                line_num = content.count('\n', 0, start_offset) + 1
+                if line_num in flagged_jailbreak_lines:
+                    continue
+                flagged_jailbreak_lines.add(line_num)
+                
+                match_text = match.group(0).strip()
+                first_line = match_text.splitlines()[0] if match_text else ""
+                if len(first_line) > 100:
+                    first_line = first_line[:97] + "..."
+                    
+                findings.append({
+                    "file": file_path,
+                    "line": line_num,
+                    "name": "suspicious_jailbreak_phrasing",
+                    "severity": "MEDIUM",
+                    "suggestion": f"Suspicious multiline instruction override phrasing detected: '{first_line}'. "
+                                  f"Ensure this is not a hardcoded prompt injection vulnerability or bad example. "
+                                  f"If this is a defensive instruction or test fixture, add inline comment '# ghostcheck-ignore suspicious_jailbreak_phrasing'.",
+                    "context": first_line
                 })
 
         return findings

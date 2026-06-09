@@ -61,9 +61,9 @@ class EntropyScanner(BaseScannerPlugin):
         self.min_length = min_length
         # Ignore common base64 or hex characters if they are too regular, 
         # but here we focus on high randomness.
-        # Restrict hex ignore to shorter strings (< 32 chars) to avoid skipping long hex credentials.
+        # Restrict hex ignore to shorter strings (< 32 chars) and standard hash lengths (32, 40, 64, 128) to avoid false positives.
         self.ignore_patterns = [
-            re.compile(r'^[a-fA-F0-9]{1,31}$'),
+            re.compile(r'^[a-fA-F0-9]{1,31}$|^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$|^[a-fA-F0-9]{64}$|^[a-fA-F0-9]{128}$'),
         ]
 
     def calculate_entropy(self, text):

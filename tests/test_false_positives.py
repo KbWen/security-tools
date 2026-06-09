@@ -66,3 +66,38 @@ def test_fp_human_named_claude():
     # This is a known false positive if a developer is literally named Claude (or Gemini, etc.).
     assert len(coauthors) == 1
     assert coauthors[0].lower() == "claude"
+
+def test_apilinter_ignores_comments():
+    from ghostcheck.checks.api_linter import APILinter
+    scanner = APILinter()
+    content = """
+    // Access-Control-Allow-Origin: "*"
+    /*
+    Access-Control-Allow-Origin: "*"
+    */
+    # Access-Control-Allow-Origin: "*"
+    """
+    findings = scanner.scan_content("config.js", content)
+    assert len(findings) == 0
+
+def test_privilege_auditor_ignores_placeholders():
+    from ghostcheck.checks.privilege_auditor import PrivilegeAuditor
+    scanner = PrivilegeAuditor()
+    content = """
+    openai_key = "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    anthropic_key = "sk-ant-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    google_key = "AIzaSy000000000000000000000000000000000"
+    """
+    findings = scanner.scan_file("utils.py", content)
+    # None of these should be flagged because they are placeholders
+    assert len(findings) == 0
+
+def test_ci_auditor_ignores_commented_actions():
+    from ghostcheck.checks.ci_auditor import CIAuditor
+    scanner = CIAuditor()
+    content = """
+    # uses: actions/checkout@v4
+    #  uses: actions/setup-node@v3
+    """
+    findings = scanner.scan_file(".github/workflows/test.yml", content)
+    assert len(findings) == 0

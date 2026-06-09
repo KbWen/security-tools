@@ -1,3 +1,4 @@
+import os
 import re
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
@@ -63,6 +64,45 @@ class LogicAuditor(BaseScannerPlugin):
             }
         ]
 
+    def _clean_comments(self, content: str, file_path: str) -> str:
+        ext = os.path.splitext(file_path)[1].lower()
+        
+        # 1. Multi-line comments / docstrings
+        # Replace the matches with spaces and newlines of equal length to preserve offsets
+        def replacer(m):
+            s = m.group(0)
+            return ''.join('\n' if c == '\n' else ' ' for c in s)
+            
+        multiline_patterns = [
+            re.compile(r'/\*([\s\S]*?)\*/'),
+            re.compile(r'<!--([\s\S]*?)-->'),
+            re.compile(r'<\#([\s\S]*?)\#>')
+        ]
+        if ext in ('.py', '.pyw'):
+            multiline_patterns.extend([
+                re.compile(r'"""([\s\S]*?)"""'),
+                re.compile(r"'''([\s\S]*?)'''")
+            ])
+            
+        for p in multiline_patterns:
+            content = p.sub(replacer, content)
+            
+        # 2. Single-line comments
+        # Replace from comment token to end of line with spaces (preserving newline)
+        def single_replacer(m):
+            return ''.join(' ' for _ in m.group(0))
+            
+        if ext in ('.py', '.yaml', '.yml', '.toml', '.ini', '.conf', '.cfg', '.sh', '.bash'):
+            content = re.sub(r'#.*', single_replacer, content)
+        elif ext in ('.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.cs', '.cpp', '.c', '.h', '.ps1'):
+            if ext == '.ps1':
+                content = re.sub(r'#.*', single_replacer, content)
+            else:
+                content = re.compile(r'^\s*#.*', re.MULTILINE).sub(single_replacer, content)
+            content = re.sub(r'//.*', single_replacer, content)
+            
+        return content
+
     def scan_file(self, file_path, content):
         findings = []
         
@@ -70,32 +110,29 @@ class LogicAuditor(BaseScannerPlugin):
         # Mobile heuristic expansion: include .dart, .swift, .kt, and directories like /lib/, /android/, /ios/
         is_client_side = any(path_lower.endswith(ext) for ext in ['.jsx', '.tsx', '.vue', '.svelte', '.dart', '.swift', '.kt']) or \
                          any(folder in path_lower for folder in ['/components/', '/views/', '/pages/', '/frontend/', '/lib/', '/android/', '/ios/', '/mobile/'])
-                         
+                          
         relevant_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.dart', '.java', '.kt', '.php', '.swift']
         if not any(path_lower.endswith(ext) for ext in relevant_exts):
             return []
+
+        clean_content = self._clean_comments(content, file_path)
 
         for p in self.logic_patterns:
             if p['name'] == 'potential_logic_bypass' and not is_client_side:
                 continue
                 
-            for match in p['pattern'].finditer(content):
+            for match in p['pattern'].finditer(clean_content):
                 start_offset = match.start()
                 
-                # Check if the matched line starts with comment characters
+                line_idx = content.count('\n', 0, start_offset) + 1
+                matched_text = match.group(0).strip()
+                
+                # Get context from the original content
                 line_start = content.rfind('\n', 0, start_offset) + 1
                 line_end = content.find('\n', start_offset)
                 if line_end == -1:
                     line_end = len(content)
-                current_line = content[line_start:line_end].strip()
-                
-                if current_line.startswith(('#', '//', '/*', '*')):
-                    continue
-                    
-                line_idx = content.count('\n', 0, start_offset) + 1
-                matched_text = match.group(0).strip()
-                # Keep context readable but compact (limit to 100 chars or first line)
-                context_snippet = matched_text.splitlines()[0] if matched_text else ""
+                context_snippet = content[line_start:line_end].strip()
                 if len(context_snippet) > 100:
                     context_snippet = context_snippet[:97] + "..."
                 

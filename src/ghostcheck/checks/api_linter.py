@@ -1,3 +1,4 @@
+import os
 import re
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
@@ -53,25 +54,63 @@ class APILinter(BaseScannerPlugin):
                 pass
         return findings
 
+    def _clean_comments(self, content: str, file_path: str) -> str:
+        ext = os.path.splitext(file_path)[1].lower()
+        
+        # 1. Multi-line comments / docstrings
+        # Replace the matches with spaces and newlines of equal length to preserve offsets
+        def replacer(m):
+            s = m.group(0)
+            return ''.join('\n' if c == '\n' else ' ' for c in s)
+            
+        multiline_patterns = [
+            re.compile(r'/\*([\s\S]*?)\*/'),
+            re.compile(r'<!--([\s\S]*?)-->'),
+            re.compile(r'<\#([\s\S]*?)\#>')
+        ]
+        if ext in ('.py', '.pyw'):
+            multiline_patterns.extend([
+                re.compile(r'"""([\s\S]*?)"""'),
+                re.compile(r"'''([\s\S]*?)'''")
+            ])
+            
+        for p in multiline_patterns:
+            content = p.sub(replacer, content)
+            
+        # 2. Single-line comments
+        # Replace from comment token to end of line with spaces (preserving newline)
+        def single_replacer(m):
+            return ''.join(' ' for _ in m.group(0))
+            
+        if ext in ('.py', '.yaml', '.yml', '.toml', '.ini', '.conf', '.cfg', '.sh', '.bash'):
+            content = re.sub(r'#.*', single_replacer, content)
+        elif ext in ('.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.cs', '.cpp', '.c', '.h', '.ps1'):
+            if ext == '.ps1':
+                content = re.sub(r'#.*', single_replacer, content)
+            else:
+                content = re.compile(r'^\s*#.*', re.MULTILINE).sub(single_replacer, content)
+            content = re.sub(r'//.*', single_replacer, content)
+            
+        return content
+
     def scan_content(self, file_path, content):
         findings = []
+        clean_content = self._clean_comments(content, file_path)
         for rule in self.rules:
-            matches = rule['pattern'].finditer(content)
+            matches = rule['pattern'].finditer(clean_content)
             for match in matches:
                 start_offset = match.start()
                 
-                # Filter out comments
+                line_idx = content.count('\n', 0, start_offset) + 1
+                matched_text = match.group(0).strip()
+                
+                # Get the actual context line from original content for reporting
                 line_start = content.rfind('\n', 0, start_offset) + 1
                 line_end = content.find('\n', start_offset)
                 if line_end == -1:
                     line_end = len(content)
-                current_line = content[line_start:line_end].strip()
-                if current_line.startswith(('#', '//', '/*', '*')):
-                    continue
-                    
-                line_idx = content.count('\n', 0, start_offset) + 1
-                matched_text = match.group(0).strip()
-                context_snippet = matched_text.splitlines()[0] if matched_text else ""
+                context_snippet = content[line_start:line_end].strip()
+                
                 if len(context_snippet) > 100:
                     context_snippet = context_snippet[:97] + "..."
                     
