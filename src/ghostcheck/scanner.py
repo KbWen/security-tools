@@ -29,6 +29,8 @@ from .checks.context_auditor import ContextAuditor
 from .checks.privilege_auditor import PrivilegeAuditor
 from .checks.shadow_ai import ShadowAIDetector
 from .checks.tamper_auditor import TamperAuditor
+from .checks.prompt_template_scanner import PromptTemplateScanner
+from .checks.ai_marker import AIMarker
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -503,7 +505,7 @@ class Scanner:
                 def _matches(plugin, modules):
                     pname = getattr(plugin, 'name', '').lower()
                     for m in modules:
-                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci")
+                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain")
                         if m_clean in pname:
                             return True
                     return False

@@ -30,5 +30,12 @@
     "gitlab_privileged_runner": "LLM06: Excessive Agency",
     
     "package_not_found": "LLM09: Misinformation (Hallucination)",
-    "hallucinated_api_endpoint": "LLM09: Misinformation (Hallucination)"
+    "hallucinated_api_endpoint": "LLM09: Misinformation (Hallucination)",
+    
+    "high_risk_placeholder_name": "LLM01: Prompt Injection",
+    "missing_input_delimiter": "LLM01: Prompt Injection",
+    "insecure_jinja_safe_filter": "LLM01: Prompt Injection",
+    "suspicious_jailbreak_phrasing": "LLM01: Prompt Injection",
+    "ai_unreviewed_commit": "LLM06: Excessive Agency",
+    "ai_comment_signature": "LLM06: Excessive Agency"
 }
