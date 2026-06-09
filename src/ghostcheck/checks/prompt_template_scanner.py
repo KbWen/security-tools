@@ -72,9 +72,9 @@ class PromptTemplateScanner(BaseScannerPlugin):
         # Rule 1: High-risk placeholder names
         high_risk_names = {'system', 'instruction', 'instructions', 'prompt', 'rules', 'directive', 'directives', 'role', 'roles'}
         
-        # Regexes supporting optional whitespace and trailing expressions/lookups (e.g. { system.content }, { system['rules'] })
-        fstring_placeholder_re = re.compile(r'(?<!{){\s*([a-zA-Z_][a-zA-Z0-9_]*)(?:\[[^\]]*\]|\.[a-zA-Z0-9_]+)*\s*}')
-        jinja_placeholder_re = re.compile(r'{{\s*([a-zA-Z_][a-zA-Z0-9_]*)(?:\[[^\]]*\]|\.[a-zA-Z0-9_]+)*\s*}}')
+        # Regexes supporting format specifiers, conversion flags, Jinja filters, and nested attributes/lookups
+        fstring_placeholder_re = re.compile(r'(?<!{){\s*([a-zA-Z_][a-zA-Z0-9_]*)[^}]*}')
+        jinja_placeholder_re = re.compile(r'{{\s*([a-zA-Z_][a-zA-Z0-9_]*)[^}]*}}')
 
         # Check line by line for context
         for idx, line in enumerate(lines):

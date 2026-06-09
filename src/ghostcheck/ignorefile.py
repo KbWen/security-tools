@@ -28,8 +28,11 @@ class IgnoreMatcher:
     def is_ignored(self, path):
         # 標準化路徑
         abs_path = os.path.realpath(path)
-        if self.base_path and os.path.commonpath([self.base_path, abs_path]) == self.base_path:
-            path = os.path.relpath(abs_path, self.base_path)
+        try:
+            if self.base_path and os.path.commonpath([self.base_path, abs_path]) == self.base_path:
+                path = os.path.relpath(abs_path, self.base_path)
+        except (ValueError, OSError):
+            pass
         
         path = path.replace(os.sep, '/')
         if path.startswith('./'):

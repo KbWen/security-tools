@@ -505,7 +505,7 @@ class Scanner:
                 def _matches(plugin, modules):
                     pname = getattr(plugin, 'name', '').lower()
                     for m in modules:
-                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain")
+                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
                         if m_clean in pname:
                             return True
                     return False
@@ -625,7 +625,7 @@ class Scanner:
             ctx_str = str(fnd.get('context', ''))
             if "ghostcheck-ignore" in ctx_str:
                 import re
-                if re.search(r'(#|//|/\*|<!--)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
+                if re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
                     if fnd.get('severity') == 'CRITICAL':
                         fnd['message'] = (fnd.get('message', '') + " [TAMPER_ATTEMPT: CRITICAL finding cannot be ignored]").strip()
                     else:

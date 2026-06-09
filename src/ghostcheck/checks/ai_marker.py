@@ -55,10 +55,11 @@ class AIMarker(BaseScannerPlugin):
 
         # 2. Programmatically audit Git history (once per scan invocation)
         # Protect with thread lock to avoid race conditions in parallel scans
-        with self._git_lock:
-            if not self._git_scanned:
-                findings.extend(self.scan_git_history())
-                self._git_scanned = True
+        if not self._git_scanned:
+            with self._git_lock:
+                if not self._git_scanned:
+                    findings.extend(self.scan_git_history())
+                    self._git_scanned = True
 
         return findings
 
@@ -114,7 +115,14 @@ class AIMarker(BaseScannerPlugin):
         # %x1f: Unit Separator
         # %B: Raw Body
         # %x1e: Record Separator (\x1e)
-        cmd = [git_executable, "-C", self.root_path, "-c", "core.quotePath=false", "log", "--format=%H%x1f%ae%x1f%B%x1e", "-n", "100"]
+        # Disable hooks and pager overrides using core.hooksPath and core.pager configuration overrides
+        cmd = [
+            git_executable, "-C", self.root_path,
+            "-c", "core.quotePath=false",
+            "-c", "core.hooksPath=/dev/null",
+            "-c", "core.pager=cat",
+            "log", "--format=%H%x1f%ae%x1f%B%x1e", "-n", "100"
+        ]
         
         try:
             # Enforce 10s timeout to prevent hanging, and process bytes directly to avoid CP950 decoding crashes
@@ -151,7 +159,6 @@ class AIMarker(BaseScannerPlugin):
                 continue
                 
             commit_hash, author_email, body = fields
-            body_lower = body.lower()
             
             # Identify AI contributions
             coauthors = coauthor_pattern.findall(body)
@@ -169,10 +176,22 @@ class AIMarker(BaseScannerPlugin):
             ])
             
             if coauthors or msg_mentions or is_ai_email:
-                # Case-insensitive check for human review trailers
-                has_review = any(x in body_lower for x in ("reviewed-by:", "approved-by:", "signed-off-by:"))
+                # Extract Git trailers strictly matching 'Name: value' format at the end of the message
+                trailers = re.findall(r'^(reviewed-by|approved-by|signed-off-by):\s*(.*)$', body, re.IGNORECASE | re.MULTILINE)
+                has_human_review = False
+                for key, val in trailers:
+                    val_lower = val.lower()
+                    # Ensure reviewer name is not a known AI assistant or bot
+                    is_reviewer_ai = any(bot in val_lower for bot in [
+                        "copilot", "claude", "aider", "tabnine", "cursor", 
+                        "windsurf", "gemini", "chatgpt", "gpt-4", "deepseek", 
+                        "mistral", "qwen", "llama", "bot", "ai"
+                    ])
+                    if not is_reviewer_ai:
+                        has_human_review = True
+                        break
                 
-                if not has_review:
+                if not has_human_review:
                     tool_name = "AI Tool"
                     if coauthors:
                         tool_name = coauthors[0]

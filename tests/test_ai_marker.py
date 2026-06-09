@@ -32,9 +32,11 @@ def test_scan_git_history_mocked(monkeypatch, tmp_path):
             self.returncode = returncode
 
     def mock_run(args, **kwargs):
-        # Commit 1: Unreviewed Claude commit (using \x1f and \x1e delimiters)
-        # Commit 2: Reviewed Copilot commit (case-insensitive review trailer)
-        # Commit 3: Human commit with @anthropic.com domain (no warning)
+        # Commit 1: Unreviewed Claude commit
+        # Commit 2: Reviewed Copilot commit (human reviewer)
+        # Commit 3: Human commit with @anthropic.com domain
+        # Commit 4: AI commit spoofed with 'reviewed-by: copilot' (AI reviewer)
+        # Commit 5: AI commit with casual text 'I have not reviewed-by any developer'
         simulated_output = (
             "c1c1c1c1\x1fnoreply@anthropic.com\x1ffeat: add new agent logic\n\n"
             "Co-authored-by: Claude <noreply@anthropic.com>\x1e"
@@ -43,6 +45,12 @@ def test_scan_git_history_mocked(monkeypatch, tmp_path):
             "reviewed-by: Human Lead <human@example.com>\x1e"
             "c3c3c3c3\x1fhuman@anthropic.com\x1ffeat: normal human commit\n\n"
             "Co-authored-by: Human Dev <human@anthropic.com>\x1e"
+            "c4c4c4c4\x1fcopilot@github.com\x1ffeat: spoofed review commit\n\n"
+            "Co-authored-by: Copilot <copilot@github.com>\n"
+            "reviewed-by: copilot\x1e"
+            "c5c5c5c5\x1fcopilot@github.com\x1ffeat: casual text mention\n\n"
+            "Co-authored-by: Copilot <copilot@github.com>\n"
+            "I have not reviewed-by any developer\x1e"
         )
         # We output raw bytes
         return MockCompletedProcess(simulated_output.encode('utf-8'))
@@ -57,12 +65,12 @@ def test_scan_git_history_mocked(monkeypatch, tmp_path):
     scanner = AIMarker(root_path=str(tmp_path))
     findings = scanner.scan_git_history()
     
-    # Only the unreviewed Claude commit (Commit 1) should trigger a warning
-    # Commit 2 is reviewed, Commit 3 is by a human dev at Anthropic.
-    assert len(findings) == 1
-    assert findings[0]['name'] == 'ai_unreviewed_commit'
-    assert findings[0]['severity'] == 'MEDIUM'
-    assert 'c1c1c1c1' in findings[0]['suggestion']
+    # Commits 1, 4, and 5 should trigger warnings. Commits 2 and 3 are safe.
+    assert len(findings) == 3
+    finding_hashes = [f['suggestion'] for f in findings]
+    assert any('c1c1c1c1' in h for h in finding_hashes)
+    assert any('c4c4c4c4' in h for h in finding_hashes)
+    assert any('c5c5c5c5' in h for h in finding_hashes)
 
 def test_scanner_end_to_end_integration(tmp_path):
     # Tests that the new plugins are automatically loaded and executed in the main Scanner pipeline
