@@ -23,6 +23,8 @@
   - `[shadow-ai-detection] docs/specs/shadow-ai-detection.md [Frozen] [Updated: 2026-05-20]`
   - `[auto-mode-integration] docs/specs/auto-mode-integration.md [Frozen] [Updated: 2026-06-05]`
   - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
+  - `[prompt-template-scanner] docs/specs/prompt_template_scanner.md [Frozen] [Updated: 2026-06-09]`
+  - `[ai-marker] docs/specs/ai_marker.md [Frozen] [Updated: 2026-06-09]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -77,6 +79,10 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [port-cross-refs]: When porting a skill across repos, re-validate its `§X.Y` cross-refs and `runtime_anchor` paths against the TARGET repo's section numbering (agentic-os §12.5/§5.2a ≠ security-tools §2.1/§5.2).
 
 ## Ship History
+
+### Ship-feat/older-issues-bundle-2026-06-09
+- Feature shipped: Prompt Template Security & AI Code Tracking Scanners. Added `PromptTemplateScanner` for detection of prompt template injection and `AIMarker` for detection of AI comments/commit co-authors without human review.
+- Tests: Pass
 
 ### Ship-fix/bug-bundle-2026-06-08
 - Feature shipped: Resolved five outstanding bugs in the repository issue tracker (Issues #10, #11, #15, #16, #17) to stabilize the CLI security scanner (GhostCheck), prevent crashes, and reduce false positives.

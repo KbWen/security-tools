@@ -1,3 +1,6 @@
+---
+status: frozen
+---
 # E4-F2: AI-Generated Code Marker
 
 ## Problem Description

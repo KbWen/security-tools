@@ -1,3 +1,6 @@
+---
+status: frozen
+---
 # E3-F2: Prompt Template Injection Scanner
 
 ## Problem Description
