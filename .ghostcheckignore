@@ -13,6 +13,7 @@ tmp_chaos_test/
 friction_tests/
 friction_test_workspace/
 摩擦測試/
+test_simulate/
 report*.txt
 report.json
 ghostcheck.toml
@@ -56,4 +57,6 @@ src/ghostcheck/checks/
 src/ghostcheck/plugins/
 src/ghostcheck/presets/
 src/ghostcheck/honeypot.py
+src/ghostcheck/init.py
+src/ghostcheck/config.py
 report.json

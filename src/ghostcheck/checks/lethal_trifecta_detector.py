@@ -12,7 +12,7 @@ class LethalTrifectaDetector(BaseScannerPlugin):
 
     @property
     def name(self) -> str:
-        return "lethaltrifectadetector"
+        return "lethal_trifecta_logic_detector"
 
     @property
     def description(self) -> str:

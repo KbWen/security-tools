@@ -13,7 +13,7 @@ class KillSwitchAuditor(BaseScannerPlugin):
 
     @property
     def name(self) -> str:
-        return "killswitchauditor"
+        return "killswitch_logic_auditor"
 
     @property
     def description(self) -> str:

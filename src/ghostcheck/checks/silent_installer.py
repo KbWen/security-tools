@@ -10,7 +10,7 @@ class SilentInstaller(BaseScannerPlugin):
     @property
     def name(self) -> str:
         # Preserve name for configuration compatibility
-        return "silentpackageinstalldetector"
+        return "silent_package_install_rules_detector"
 
     @property
     def description(self) -> str:
