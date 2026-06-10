@@ -1,8 +1,4 @@
 {
-    "rag_unisolated_context": "LLM01: Prompt Injection",
-    "rag_filter_injection": "LLM01: Prompt Injection",
-    "rag_missing_schema_validation": "LLM06: Excessive Agency",
-    "rag_missing_guardrails": "LLM06: Excessive Agency",
     "lethal_trifecta_detected": "LLM06: Excessive Agency",
     "elevated_agent_privilege": "LLM06: Excessive Agency",
     "kill_switch_missing": "LLM06: Excessive Agency",
