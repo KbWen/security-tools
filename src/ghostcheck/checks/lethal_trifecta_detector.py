@@ -208,14 +208,16 @@ class TrifectaVisitor(ast.NodeVisitor):
         ]
         private_shorts = [
             'open', 'connect', 'MongoClient', 'getenv', 'copy', 'listdir',
-            'read_text', 'read_bytes', 'walk', 'create_engine', 'getline', 'input',
+            'read_text', 'read_bytes', 'walk', 'create_engine', 'getline',
             'socket', 'create_connection', 'ClientSession'
         ]
         if func_name in private_funcs or short_name in private_shorts:
             self.add_capability("private_data", node.lineno, f"Call to private data API: {func_name or short_name}()")
             
         # Category B: Untrusted Input
-        if func_name in ['input', 'get_json', 'form.get', 'query', 'search', 'retrieve'] or short_name in ['input', 'get_json', 'query', 'search', 'retrieve']:
+        untrusted_funcs = ['input', 'get_json', 'form.get', 'request.get_json', 'request.form.get']
+        untrusted_shorts = ['input', 'get_json']
+        if func_name in untrusted_funcs or short_name in untrusted_shorts:
             self.add_capability("untrusted_input", node.lineno, f"Call to input api: {func_name or short_name}()")
 
         # Category C: Command/Tool Execution

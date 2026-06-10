@@ -48,6 +48,10 @@ class GhostCheckHoneypotGenerator:
         """
         if not url:
             return False, "Error: CanaryToken URL is required."
+        
+        # Validate URL format to prevent injection
+        if not url.startswith(('http://', 'https://')):
+            return False, "Error: CanaryToken URL must start with http:// or https://"
 
         target_abs = os.path.abspath(target_path)
         if not os.path.exists(target_abs):
@@ -59,7 +63,7 @@ class GhostCheckHoneypotGenerator:
         created_files = []
         for filename, template in cls.DECOY_FILES.items():
             file_path = os.path.join(target_abs, filename)
-            content = template.format(url=url)
+            content = template.replace("{url}", url)
             try:
                 with open(file_path, "w", encoding="utf-8") as f:
                     f.write(content)

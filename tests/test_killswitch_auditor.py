@@ -120,3 +120,21 @@ while (true) {
     f.write_text(code, encoding="utf-8")
     findings = auditor.scan([str(f)], None)
     assert any(f["name"] == "Missing Agentic Kill-Switch" for f in findings)
+
+def test_js_infinite_loop_return_compliant(tmp_path):
+    code = """
+function run() {
+    let step = 0;
+    while (true) {
+        step++;
+        if (step > 10) {
+            return;
+        }
+    }
+}
+"""
+    auditor = KillSwitchAuditor()
+    f = tmp_path / "test_loop.js"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert not any(f["name"] == "Missing Agentic Kill-Switch" for f in findings)

@@ -26,7 +26,7 @@ class OWASPLLMReporter(BaseReporterPlugin):
             return text
         return f"{self.colors[severity]}{text}{self.colors['RESET']}"
 
-    def report(self, findings, stream=None):
+    def report(self, findings, stream=None, **kwargs):
         def _print(*args, **kwargs):
             if stream:
                 print(*args, **kwargs, file=stream)

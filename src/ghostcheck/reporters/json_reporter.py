@@ -6,7 +6,7 @@ class JsonReporter(BaseReporterPlugin):
     def name(self) -> str:
         return "json"
 
-    def report(self, findings, stream=None):
+    def report(self, findings, stream=None, **kwargs):
         # Machine-readable output - simple JSON array
         data = json.dumps(findings, indent=2)
         if stream:

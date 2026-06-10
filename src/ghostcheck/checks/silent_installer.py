@@ -83,6 +83,12 @@ class SilentInstaller(BaseScannerPlugin):
             trimmed = line.strip()
             if trimmed.startswith('#') or trimmed.startswith('//'):
                 continue
+            
+            # Strip inline comments before parsing
+            comment_idx = line.find('#')
+            if comment_idx > 0:
+                line = line[:comment_idx]
+                line_lower = line.lower()
                 
             matched_installer = None
             is_install_cmd = False
@@ -136,9 +142,11 @@ class SilentInstaller(BaseScannerPlugin):
                             break
                 elif matched_installer == 'npm':
                     idx = line_lower.find('install')
-                    if idx == -1:
+                    if idx != -1:
+                        after_action = line[idx + 7:].strip()
+                    else:
                         idx = line_lower.find('add')
-                    after_action = line[idx + 4:].strip()
+                        after_action = line[idx + 3:].strip()
                     packages = [p for p in after_action.split() if not p.startswith('-')]
                     # If plain 'npm install' with no package args, ignore
                     if len(packages) > 0:

@@ -191,14 +191,21 @@ class KillSwitchVisitor(ast.NodeVisitor):
             has_kill_switch = False
             for body_node in ast.walk(node):
                 if isinstance(body_node, ast.If):
-                    has_break = False
+                    has_exit = False
                     for child in ast.walk(body_node):
-                        if isinstance(child, ast.Break):
-                            has_break = True
+                        if isinstance(child, (ast.Break, ast.Return)):
+                            has_exit = True
                             break
-                    if has_break:
+                    if has_exit:
                         if self._is_limit_condition(body_node.test):
                             has_kill_switch = True
+                            break
+                        # Also accept conditional returns/breaks that check for None/sentinel
+                        for comparator in ast.walk(body_node.test):
+                            if isinstance(comparator, ast.Constant) and comparator.value is None:
+                                has_kill_switch = True
+                                break
+                        if has_kill_switch:
                             break
             if not has_kill_switch:
                 self.findings.append({
@@ -490,7 +497,7 @@ class JsKillSwitchVisitor:
         has_brk = [False]
         def traverse(n):
             if not n: return
-            if getattr(n, 'type', '') == 'BreakStatement':
+            if getattr(n, 'type', '') in ['BreakStatement', 'ReturnStatement']:
                 has_brk[0] = True
                 return
             for k, val in n.__dict__.items():
