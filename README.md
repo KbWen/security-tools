@@ -4,10 +4,10 @@ div align="center">
 
 **Blazing-fast, zero-dependency security scanner for the AI-assisted development era.**
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-105%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Identify high-risk vulnerabilities, malicious directives, and "ghost" security threats introduced by AI agents before they reach your CI/CD pipeline.*
 
@@ -38,6 +38,13 @@ By anchoring your project conventions in verifiable constraints, GhostCheck ensu
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🎯 v1.1.0: Agentic Security Checkers & Honeypot CLI
+A simple collection of helper utilities shared to verify basic agent safety behaviors:
+*   **Honeypot CLI (`ghostcheck honeypot`):** Easily deploy decoy canary credentials in `.env.canary`, `aws_credentials.canary`, and SSH files to trace if hijacked agents attempt to crawl the workspace. Registers automatically in ignores.
+*   **Lethal Trifecta AST Detector:** Audits Python/JS ASTs to trace when a single scope combines private data reading, user interaction, and command execution (lethal trifecta).
+*   **Agentic Killswitch Auditor:** Simple AST validator to make sure loop boundaries (`while True` or recursion) implement iteration caps, timeouts, or human prompts.
+*   **Silent Installer Auditor:** Checks `.cursorrules`, `.mdc`, and shell scripts to block silent dependencies installations (`pip install -y` or unpinned libraries) that open supply chain risks.
 
 ### 🔌 v1.0.3: Extensible Plugins & Red Team Hardening
 *   **Plugin-Based Architecture:** Scanners and reporters are fully decoupled, making it simple to write custom logic.
@@ -133,7 +140,7 @@ ghostcheck scan --staged
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 105 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 178 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -148,7 +155,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 105 passed in 3.95s =============================
+============================= 178 passed in 6.05s =============================
 ```
 
 ---

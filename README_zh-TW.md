@@ -4,10 +4,10 @@
 
 **為 AI 輔助開發時代量身打造的極速、零依賴安全性掃描工具。**
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-105%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼進入 CI/CD 流程前，精準識別高風險漏洞、惡意指令與「幻覺」安全性威脅。*
 
@@ -38,6 +38,13 @@ AI Agent 正在重塑軟體開發，但也帶來了全新的攻擊面。**GhostC
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🎯 v1.1.0: Agent 專屬安全性檢查與本地誘捕工具 (Honeypot)
+分享幾個簡單實用的 Agent 邊界檢查工具，幫助驗證 Agent 的安全執行邊界：
+*   **本地誘捕 CLI (`ghostcheck honeypot`)：** 一鍵在工作區部署偽裝的 credentials 檔案（如 `.env.canary`、`aws_credentials.canary` 及 SSH 金鑰），用以測試和追蹤被劫持的 Agent 是否會私自探測並向外傳送金鑰。產生後會自動加進忽略清單避免自我誤報。
+*   **Lethal Trifecta AST 偵測器：** 分析 Python/JS 的抽象語法樹 (AST)，檢測單一執行範疇內是否同時包含私有資料讀取、用戶互動與系統指令執行（致命三要素）。
+*   **Agent 逃逸生命週期審計 (Killswitch Auditor)：** 檢測 infinite loop (`while true` 或 recursive 呼叫) 是否有設定合理的次數上限、逾時限制或人工確認門檻。
+*   **靜態相依套件安裝稽核 (Silent Installer)：** 掃描 `.cursorrules`、`.mdc` 指令檔及 Shell 腳本，防範未鎖定版本或帶有 `-y` 的動態背景套件安裝，降低供應鏈被劫持的風險。
 
 ### 🔌 v1.0.3: 擴展插件與紅隊防禦強化
 *   **模組化插件架構：** 掃描器與報表輸出完全解耦，方便快速編寫自定義掃描邏輯。
@@ -133,7 +140,7 @@ ghostcheck scan --staged
 
 ## 🧪 執行測試與驗證
 
-透過執行 105 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 178 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -148,7 +155,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 105 passed in 3.95s =============================
+============================= 178 passed in 6.05s =============================
 ```
 
 ---

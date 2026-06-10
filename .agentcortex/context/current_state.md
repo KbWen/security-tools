@@ -86,7 +86,8 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
   - Implemented `KillSwitchAuditor` (renamed from `kill_switch_auditor` to `killswitch_auditor.py`) to verify iteration limits, loop breakers, and HITL confirmations (Issue #8).
   - Implemented `SilentInstaller` (renamed from `silent_package_install_detector` to `silent_installer.py`) to block dynamic installer calls inside tools, rules, and scripts (Issue #9).
   - Implemented CLI command `ghostcheck honeypot` (direct command, no subcommands) to deploy decoy canaries (Issue #6).
-- Tests: Pass (177/177 tests passing).
+- Tests: Pass (178/178 tests passing).
+- Tag: Shipped as v1.1.0.
 
 
 ### Ship-feat/older-issues-bundle-2026-06-10
