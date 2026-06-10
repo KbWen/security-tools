@@ -1,9 +1,21 @@
 {
+    "rag_unisolated_context": "LLM01: Prompt Injection",
+    "rag_filter_injection": "LLM01: Prompt Injection",
+    "rag_missing_schema_validation": "LLM06: Excessive Agency",
+    "rag_missing_guardrails": "LLM06: Excessive Agency",
+    "lethal_trifecta_detected": "LLM06: Excessive Agency",
+    "elevated_agent_privilege": "LLM06: Excessive Agency",
+    "kill_switch_missing": "LLM06: Excessive Agency",
+    "unconstrained_llm_call": "LLM06: Excessive Agency",
+    "missing_hitl_confirmation": "LLM06: Excessive Agency",
+    "silent_package_installation": "LLM03: Supply Chain Vulnerabilities",
+    
     "mcp_insecure_binding": "LLM02: Sensitive Information Disclosure",
     "hidden_prompt_injection": "LLM01: Prompt Injection",
     "mcp_tool_poisoning_injection": "LLM01: Prompt Injection",
     "Agent Rule Injection": "LLM01: Prompt Injection",
     "risky_prompt_template": "LLM01: Prompt Injection",
+
     
     "mcp_hardcoded_api_key": "LLM02: Sensitive Information Disclosure",
     "hardcoded_secret": "LLM02: Sensitive Information Disclosure",

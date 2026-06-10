@@ -55,4 +55,5 @@ AGENTS.md
 src/ghostcheck/checks/
 src/ghostcheck/plugins/
 src/ghostcheck/presets/
+src/ghostcheck/honeypot.py
 report.json

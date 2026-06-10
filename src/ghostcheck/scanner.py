@@ -399,7 +399,12 @@ class Scanner:
         fnd_id = self._get_fnd_id(fnd)
         
         # Narrow exemption: Only specific known data/config files
-        exempt_files = ['src/ghostcheck/data/secret_patterns.json', 'ghostcheck.toml', 'src/ghostcheck/scanner.py']
+        exempt_files = [
+            'src/ghostcheck/data/secret_patterns.json',
+            'ghostcheck.toml',
+            'src/ghostcheck/scanner.py',
+            'src/ghostcheck/honeypot.py'
+        ]
         if any(file_path.endswith(x) for x in exempt_files):
             return True
             

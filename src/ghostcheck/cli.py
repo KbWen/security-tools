@@ -89,6 +89,15 @@ def main():
     
     # list-plugins command
     subparsers.add_parser("list-plugins", parents=[parent_parser], help="List all loaded plugins")
+
+    # honeypot command
+    honeypot_parser = subparsers.add_parser("honeypot", parents=[parent_parser], help="Manage security honeypots")
+    honeypot_sub = honeypot_parser.add_subparsers(dest="honeypot_cmd")
+
+    init_hp = honeypot_sub.add_parser("init", help="Initialize and generate canary files (honeytokens)")
+    init_hp.add_argument("--url", help="CanaryToken URL (DNS/HTTP) to inject into decoy files", required=True)
+    init_hp.add_argument("path", nargs="?", default=".", help="Target path to write honeypots (default: .)")
+
     
     # Version flag
     parser.add_argument("--version", action="version", version=f"GhostCheck {__version__}")
@@ -107,6 +116,17 @@ def main():
             success_ci, msg_ci = initializer.generate_ci_pipeline(args.ci)
             print(f"{get_icon('ok', use_unicode) if success_ci else get_icon('warn', use_unicode)} {msg_ci}")
         sys.exit(0 if success else 1)
+
+    if args.command == "honeypot":
+        if args.honeypot_cmd == "init":
+            from .honeypot import GhostCheckHoneypotGenerator
+            success, msg = GhostCheckHoneypotGenerator.initialize(args.path, args.url)
+            print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
+            sys.exit(0 if success else 1)
+        else:
+            print("Error: Unknown honeypot action. Use 'init'.")
+            sys.exit(2)
+
 
     # Load configuration
     config = GhostCheckConfig(".")
