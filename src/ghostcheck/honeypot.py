@@ -4,25 +4,25 @@ from typing import Tuple
 class GhostCheckHoneypotGenerator:
 
     DECOY_FILES = {
-        ".env.decoy": (
-            "# GHOSTCHECK-HONEYPOT-DECOY\n"
+        ".env.canary": (
+            "# GHOSTCHECK-HONEYPOT-CANARY\n"
             "AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE\n"
             "AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n"
             "CANARY_TOKEN_URL={url}\n"
             "DATABASE_URL=postgresql://decoy_user:decoy_pass@localhost:5432/decoy_db?token_url={url}\n"
         ),
-        "aws_credentials.decoy": (
-            "# GHOSTCHECK-HONEYPOT-DECOY\n"
+        "aws_credentials.canary": (
+            "# GHOSTCHECK-HONEYPOT-CANARY\n"
             "[default]\n"
             "aws_access_key_id = AKIAIOSFODNN7EXAMPLE\n"
             "aws_secret_access_key = wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY\n"
             "aws_session_token = canary_token_url={url}\n"
         ),
-        "id_rsa.decoy": (
-            "# GHOSTCHECK-HONEYPOT-DECOY\n"
+        "id_rsa.canary": (
+            "# GHOSTCHECK-HONEYPOT-CANARY\n"
             "-----BEGIN OPENSSH PRIVATE KEY-----\n"
             "b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtcn\n"
-            "NhAAAAAwEAAQAAAYEA0G55a1k1M3A...decoy...\n"
+            "NhAAAAAwEAAQAAAYEA0G55a1k1M3A...canary...\n"
             "# CanaryToken Verification Callback: {url}\n"
             "-----END OPENSSH PRIVATE KEY-----\n"
         )
@@ -113,7 +113,7 @@ class GhostCheckHoneypotGenerator:
                     # add newline if not at start of line
                     if existing_lines and not existing_lines[-1] == "":
                         f.write("\n")
-                    f.write("# GhostCheck Decoy Honeypots\n")
+                    f.write("# GhostCheck Canary Honeypots\n")
                     for fn in missing_ignores:
                         f.write(f"{fn}\n")
             except Exception:

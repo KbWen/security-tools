@@ -146,3 +146,38 @@ def outer_function(user_query):
     trifectas = [fnd for fnd in findings if fnd["name"] == "Lethal Trifecta Detected"]
     assert len(trifectas) == 1
 
+def test_js_lethal_trifecta_detected(tmp_path):
+    checker = LethalTrifectaDetector()
+    f = tmp_path / "agent_unsafe.js"
+    f.write_text("""
+const fs = require('fs');
+const { exec } = require('child_process');
+
+function execute_agent_tool(user_query) {
+    // 1. Untrusted Input: user_query parameter
+    // 2. Private Data Access: fs.readFileSync
+    const conf = fs.readFileSync('config.txt', 'utf-8');
+    
+    // 3. Tool Execution: exec
+    exec('echo ' + user_query);
+}
+""")
+    findings = checker.scan([str(f)], config=None)
+    assert any(fnd["name"] == "Lethal Trifecta Detected" for fnd in findings)
+    assert any(fnd["severity"] == "CRITICAL" for fnd in findings)
+
+def test_js_elevated_privilege(tmp_path):
+    checker = LethalTrifectaDetector()
+    f = tmp_path / "agent_elevated.js"
+    f.write_text("""
+const { exec } = require('child_process');
+
+function execute_safe_tool(user_query) {
+    // 2 capabilities: Untrusted Input and Tool Execution (no Private Data)
+    exec('echo ' + user_query);
+}
+""")
+    findings = checker.scan([str(f)], config=None)
+    assert any(fnd["name"] == "Elevated Agent Privilege" for fnd in findings)
+    assert any(fnd["severity"] == "WARNING" for fnd in findings)
+

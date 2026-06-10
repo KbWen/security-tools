@@ -92,11 +92,8 @@ def main():
 
     # honeypot command
     honeypot_parser = subparsers.add_parser("honeypot", parents=[parent_parser], help="Manage security honeypots")
-    honeypot_sub = honeypot_parser.add_subparsers(dest="honeypot_cmd")
-
-    init_hp = honeypot_sub.add_parser("init", help="Initialize and generate canary files (honeytokens)")
-    init_hp.add_argument("--url", help="CanaryToken URL (DNS/HTTP) to inject into decoy files", required=True)
-    init_hp.add_argument("path", nargs="?", default=".", help="Target path to write honeypots (default: .)")
+    honeypot_parser.add_argument("--url", help="CanaryToken URL (DNS/HTTP) to inject into canary files")
+    honeypot_parser.add_argument("path", nargs="?", default=".", help="Target path to write honeypots (default: .)")
 
     
     # Version flag
@@ -118,14 +115,16 @@ def main():
         sys.exit(0 if success else 1)
 
     if args.command == "honeypot":
-        if args.honeypot_cmd == "init":
-            from .honeypot import GhostCheckHoneypotGenerator
-            success, msg = GhostCheckHoneypotGenerator.initialize(args.path, args.url)
-            print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
-            sys.exit(0 if success else 1)
-        else:
-            print("Error: Unknown honeypot action. Use 'init'.")
+        config = GhostCheckConfig(".")
+        url = args.url or config.get_canary_url()
+        if not url:
+            print(f"{get_icon('warn', use_unicode)} Error: CanaryToken URL is required. Please specify it via '--url' or configure 'honeypot.canary_url' in ghostcheck.toml.")
             sys.exit(2)
+            
+        from .honeypot import GhostCheckHoneypotGenerator
+        success, msg = GhostCheckHoneypotGenerator.initialize(args.path, url)
+        print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
+        sys.exit(0 if success else 1)
 
 
     # Load configuration

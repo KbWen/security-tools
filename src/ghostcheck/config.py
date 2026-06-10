@@ -90,6 +90,41 @@ class GhostCheckConfig:
                 else:
                     self.config[key] = new_data[key]
 
+    def get_canary_url(self) -> Optional[str]:
+        # Search upward for ghostcheck.toml or pyproject.toml
+        current = os.path.abspath(self.project_root)
+        search_paths = []
+        while True:
+            search_paths.append(current)
+            if os.path.exists(os.path.join(current, ".git")):
+                break
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+            
+        for path in reversed(search_paths):
+            # Check ghostcheck.toml
+            toml_path = os.path.join(path, "ghostcheck.toml")
+            if os.path.exists(toml_path):
+                data = self._read_toml(toml_path)
+                url = data.get("tool", {}).get("ghostcheck", {}).get("honeypot", {}).get("canary_url")
+                if url:
+                    return url
+                url = data.get("honeypot", {}).get("canary_url")
+                if url:
+                    return url
+                
+            # Check pyproject.toml
+            pyproject_path = os.path.join(path, "pyproject.toml")
+            if os.path.exists(pyproject_path):
+                data = self._read_toml(pyproject_path)
+                if "tool" in data and "ghostcheck" in data["tool"]:
+                    url = data["tool"]["ghostcheck"].get("honeypot", {}).get("canary_url")
+                    if url:
+                        return url
+        return None
+
     def get(self, key: str, default: Any = None) -> Any:
         return self.config.get(key, default)
 
