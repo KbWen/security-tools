@@ -81,13 +81,13 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Ship History
 
 ### Ship-feat/older-issues-bundle-2-2026-06-10
-- Feature shipped: Converged next-gen AI security checkers (Epic 7, 8, 9) representing issues #5, #6, #7, #8, #9.
-  - Implemented `RAGPipelineAuditor` to statically audit RAG prompt templates, database configurations, and missing guardrails.
+- Feature shipped: Converged next-gen AI security checkers (Epic 7, 8, 9) representing issues #6, #7, #8, #9 (RAG Issue #5 removed per instructions).
   - Implemented `LethalTrifectaDetector` to audit ASTs for co-occurrence of private data, user input, and tool/shell execution.
   - Implemented `KillSwitchAuditor` to enforce iteration limits, loop breakers, and HITL confirmations on destructive tools.
   - Implemented `SilentPackageInstallDetector` to block dynamic installer calls (pip, npm, uv) inside agent tools.
   - Implemented CLI subcommand `ghostcheck honeypot init` to deploy decoy canaries immune to SAST self-scanning.
-- Tests: Pass (167/167 tests passing, 18 new unit tests added).
+- Tests: Pass (184/184 tests passing).
+
 
 ### Ship-feat/older-issues-bundle-2026-06-10
 
