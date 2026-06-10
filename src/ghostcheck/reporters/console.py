@@ -64,8 +64,16 @@ class ConsoleReporter(BaseReporterPlugin):
             
             if 'message' in f:
                 _print(f"   {f['message']}")
-            if 'context' in f:
-                _print(f"   {self._dim('Context: ' + str(f.get('context', '')))}")
+            
+            # Defense-in-depth masking to prevent plain credentials leakage
+            context = f.get('context')
+            raw_val = f.get('_raw_value')
+            if context:
+                context_str = str(context)
+                if raw_val and str(raw_val) in context_str:
+                    masked_val = raw_val[:4] + "*" * (len(raw_val) - 8) + raw_val[-4:] if len(raw_val) > 8 else "****"
+                    context_str = context_str.replace(str(raw_val), masked_val)
+                _print(f"   {self._dim('Context: ' + context_str)}")
             elif 'value_preview' in f:
                 _print(f"   {self._dim('Value: ' + str(f.get('value_preview', '')))}")
             

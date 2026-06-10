@@ -18,7 +18,7 @@ class SecretValidator:
         if not self.enabled or requests is None:
             return None
             
-        token = finding.get('context')
+        token = finding.get('_raw_value') or finding.get('context')
         name = finding.get('name', '')
         
         # Example validation for OpenAI

@@ -60,7 +60,7 @@ class TamperAuditor(BaseScannerPlugin):
             if idx != -1:
                 # Check if there is a comment token before it
                 prefix = line_lower[:idx]
-                if not any(token in prefix for token in ['#', '//', '/*', '<!--']):
+                if not any(token in prefix for token in ['#', '//', '/*', '<!--', '--', 'rem', '::']):
                     findings.append({
                         "file": file_path,
                         "line": i + 1,

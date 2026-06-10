@@ -9,8 +9,11 @@ def _has_keyword(text: str, keyword: str) -> bool:
     if any(ord(char) > 0x2e80 for char in keyword_lower):
         return keyword_lower in text_lower
         
-    # Boundary check for space-delimited/alphanumeric languages
-    pattern = r'(?<![a-zA-Z0-9])' + re.escape(keyword_lower) + r'(?![a-zA-Z0-9])'
+    # Build boundary check pattern dynamically based on whether boundary characters are alphanumeric
+    left_boundary = r'(?<![a-zA-Z0-9])' if keyword_lower[0].isalnum() else ''
+    right_boundary = r'(?![a-zA-Z0-9])' if keyword_lower[-1].isalnum() else ''
+    
+    pattern = left_boundary + re.escape(keyword_lower) + right_boundary
     return bool(re.search(pattern, text_lower))
 
 
@@ -43,6 +46,13 @@ class ContextAuditor:
         filename_lower = filename.lower()
         if any(filename_lower.endswith(ext) for ext in doc_exts):
             return True
+            
+        # Ensure we don't treat code files (e.g. rules.py) as documentation
+        source_exts = ['.py', '.js', '.ts', '.jsx', '.tsx', '.go', '.java', '.kt', '.php', '.rb', '.cs', '.swift', '.cpp', '.c', '.h', '.sh', '.bat', '.ps1', '.sql']
+        ext = os.path.splitext(filename_lower)[1]
+        if ext in source_exts:
+            return False
+            
         if "readme" in filename_lower or "rules" in filename_lower:
             return True
         return False
@@ -72,20 +82,39 @@ class ContextAuditor:
             return True
             
         # 2. Block/List Context Check (Look back up to 100 lines)
-        # We look for the parent list item or the nearest text outside a code block.
         start_idx = max(0, target_idx - 100)
         context_window = lines[start_idx:target_idx]
         
         # Are we in a code block?
-        # A simple heuristic: count ``` before the target line
         code_block_count = sum(1 for i in range(target_idx) if lines[i].strip().startswith("```"))
         in_code_block = code_block_count % 2 != 0
         
-        context_line = ""
+        non_blank_count = 0
         for prev_line in reversed(context_window):
             stripped = prev_line.strip()
-            if not stripped or stripped.startswith("```"):
+            
+            # If we were in a code block, and we hit the opening block markdown ```
+            # We check the lines immediately before this code block, but stop traversing further to avoid cross-boundary false positives.
+            if in_code_block and stripped.startswith("```"):
+                try:
+                    line_pos = lines.index(prev_line)
+                    above_window = lines[max(0, line_pos - 5):line_pos]
+                    for ab_line in reversed(above_window):
+                        if ab_line.strip():
+                            if any(_has_keyword(ab_line.lower(), kw) for kw in self.negative_keywords + self.example_keywords):
+                                return True
+                            if re.match(r'^#+\s', ab_line) or ab_line.strip().startswith("```"):
+                                break
+                except ValueError:
+                    pass
+                break
+                
+            if not stripped:
                 continue
+                
+            # Stop walk-back if we hit structural elements
+            if stripped.startswith("```") or re.match(r'^#+\s', prev_line) or stripped == "---":
+                break
                 
             prev_lower = prev_line.lower()
             
@@ -93,8 +122,9 @@ class ContextAuditor:
             if any(_has_keyword(prev_lower, kw) for kw in self.negative_keywords + self.example_keywords):
                 return True
                 
-            # If it's a major structural element (header), we stop looking further
-            if re.match(r'^#+\s', prev_line):
+            # Limit the number of non-blank context lines we traverse to prevent carrying context across unrelated paragraphs
+            non_blank_count += 1
+            if non_blank_count > 10:
                 break
             
         return False

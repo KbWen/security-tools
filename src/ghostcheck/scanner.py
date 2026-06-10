@@ -29,6 +29,8 @@ from .checks.context_auditor import ContextAuditor
 from .checks.privilege_auditor import PrivilegeAuditor
 from .checks.shadow_ai import ShadowAIDetector
 from .checks.tamper_auditor import TamperAuditor
+from .checks.prompt_template_scanner import PromptTemplateScanner
+from .checks.ai_marker import AIMarker
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -223,6 +225,8 @@ class Scanner:
             for file in files:
                 if file in ['requirements.txt', 'package.json']:
                     file_path = os.path.join(root, file)
+                    if not self._is_safe_path(file_path):
+                        continue
                     findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -232,6 +236,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 for plugin in plugins:
                     findings.extend(plugin.scan([file_path], self.config))
         return findings
@@ -243,6 +249,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -253,6 +261,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -263,6 +273,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -273,6 +285,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -283,6 +297,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -293,6 +309,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -303,6 +321,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
@@ -314,8 +334,10 @@ class Scanner:
         if not plugin: return []
         for root, files in self._iter_files(limit_files):
             for file in files:
-                file_path = os.path.join(root, file)
                 if file in ['requirements.txt', 'package.json']:
+                    file_path = os.path.join(root, file)
+                    if not self._is_safe_path(file_path):
+                        continue
                     findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -326,6 +348,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -336,6 +360,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -346,6 +372,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -356,6 +384,8 @@ class Scanner:
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
+                if not self._is_safe_path(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return findings
 
@@ -503,7 +533,7 @@ class Scanner:
                 def _matches(plugin, modules):
                     pname = getattr(plugin, 'name', '').lower()
                     for m in modules:
-                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci")
+                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
                         if m_clean in pname:
                             return True
                     return False
@@ -623,7 +653,7 @@ class Scanner:
             ctx_str = str(fnd.get('context', ''))
             if "ghostcheck-ignore" in ctx_str:
                 import re
-                if re.search(r'(#|//|/\*|<!--)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
+                if re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
                     if fnd.get('severity') == 'CRITICAL':
                         fnd['message'] = (fnd.get('message', '') + " [TAMPER_ATTEMPT: CRITICAL finding cannot be ignored]").strip()
                     else:

@@ -61,9 +61,9 @@ class EntropyScanner(BaseScannerPlugin):
         self.min_length = min_length
         # Ignore common base64 or hex characters if they are too regular, 
         # but here we focus on high randomness.
-        # Pure hex (often just hashes) is ignored case-insensitively.
+        # Restrict hex ignore to shorter strings (< 32 chars) and standard hash lengths (32, 40, 64, 128) to avoid false positives.
         self.ignore_patterns = [
-            re.compile(r'^[a-fA-F0-9]+$'),
+            re.compile(r'^[a-fA-F0-9]{1,31}$|^[a-fA-F0-9]{32}$|^[a-fA-F0-9]{40}$|^[a-fA-F0-9]{64}$|^[a-fA-F0-9]{128}$'),
         ]
 
     def calculate_entropy(self, text):
@@ -116,13 +116,17 @@ class EntropyScanner(BaseScannerPlugin):
                 start_offset = match.start()
                 line_idx = content.count('\n', 0, start_offset)
                 
+                # Mask token for safe reporting in context
+                masked_token = token[:4] + "*" * (len(token) - 8) + token[-4:] if len(token) > 8 else "****"
+                
                 findings.append({
                     "file": file_path,
                     "line": line_idx + 1,
                     "name": "high_entropy_secret",
                     "severity": "MEDIUM",
                     "entropy": round(entropy, 2),
-                    "context": token,
+                    "context": masked_token,
+                    "_raw_value": token, # Private field for verification only, skipped by reporters
                     "message": f"High entropy string detected ({round(entropy, 2)}). Likely an undocumented secret.",
                     "suggestion": "Verify if this string is a sensitive token and move it to a secure vault if necessary."
                 })

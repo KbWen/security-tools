@@ -21,7 +21,7 @@ class CIAuditor(BaseScannerPlugin):
             },
             {
                 "name": "gha_unpinned_action",
-                "pattern": r'uses:\s*[^@]+@(main|master|v\d+)', # Matches @main or @v1
+                "pattern": r'uses:\s*[^@\s]+@(?![a-fA-F0-9]{40}\b)[a-zA-Z0-9_./-]+', # Flags any mutable tag/branch (not 40-char SHA)
                 "severity": "LOW",
                 "suggestion": "Pin actions to specific commit SHAs for supply chain security."
             },
@@ -112,6 +112,16 @@ class CIAuditor(BaseScannerPlugin):
             flags = re.IGNORECASE | re.DOTALL if p['name'] in ["gha_write_all_permission", "gha_pull_request_target_risk"] else re.IGNORECASE
             for match in re.finditer(p['pattern'], content, flags):
                 start_offset = match.start()
+                
+                # Filter out comments
+                line_start = content.rfind('\n', 0, start_offset) + 1
+                line_end = content.find('\n', start_offset)
+                if line_end == -1:
+                    line_end = len(content)
+                current_line = content[line_start:line_end].strip()
+                if current_line.startswith('#'):
+                    continue
+
                 line_idx = content.count('\n', 0, start_offset)
                 context_preview = content[max(0, start_offset - 10):min(len(content), match.end() + 10)].replace('\n', ' ')
                 

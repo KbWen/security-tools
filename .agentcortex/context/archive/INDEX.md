@@ -8,7 +8,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `.agentcortex/bin/validate.*` → `test-antigravity-test-20260605.md` (Resolved README_zh-TW.md canary validation failures in CI scripts)
 - `src/ghostcheck/checks/context_auditor.py` → `fix-fp-reduction-and-context-intelligence.md` (Context Intelligence layer added for FP reduction)
 - `src/ghostcheck/checks/privilege_auditor.py` → `feat-agent-least-privilege-audit.md` (Agent Least Privilege Audit checker implemented)
-- `src/ghostcheck/plugins/*` → `feat-shadow-ai-detection.md` (Reporter decoupling and Red Team hardening)
+- `src/ghostcheck/checks/prompt_template_scanner.py` → `feat-older-issues-bundle.md` (Implemented Prompt Template Injection Scanner plugin)
+- `src/ghostcheck/checks/ai_marker.py` → `feat-older-issues-bundle.md` (Implemented AI-Generated Code Marker plugin)
 - `src/ghostcheck/checks/` → `fix-bug-bundle.md` (Resolved outstanding bugs in diff scanner, severity engine, mcp auditor, entropy scanner, and hallucination checker)
 
 ## By Pattern
@@ -24,6 +25,9 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[bug-fix-bundle]` → `fix-bug-bundle.md`
 - `[scoped-pkg-encoding]` → `fix-bug-bundle.md`
 - `[kebab-case-exclusion]` → `fix-bug-bundle.md`
+- `[prompt-template-injection]` → `feat-older-issues-bundle.md`
+- `[ai-code-marking]` → `feat-older-issues-bundle.md`
+- `[git-audit-hardening]` → `feat-older-issues-bundle.md`
 
 ## By Decision
 
@@ -35,3 +39,9 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[plugin-decoupling]` → Scanners and Reporters abstracted to base classes (`feat-shadow-ai-detection.md`)
 - `[scoped-package-quote]` → Force URL-encoding with safe='' for NPM scoped packages to prevent 404 registry checks (`fix-bug-bundle.md`)
 - `[kebab-case-false-positives]` → Ignore kebab-case strings in entropy scanner if they consist of purely alphabetic/short-numeric words (`fix-bug-bundle.md`)
+- `[windows-binary-planting-mitigation]` → Resolved Windows binary planting (CWE-427) via absolute resolved git executable path and `-C` flag (`feat-older-issues-bundle.md`)
+- `[spoof-proof-git-delimiter]` → Used ASCII control characters `\x1f` and `\x1e` as separators in git log formatting to prevent commit message spoofing (`feat-older-issues-bundle.md`)
+- `[scanner-preset-registration]` → Automatically registered `supply_chain` module in Next.js, Django, FastAPI, and Flutter presets (`feat-older-issues-bundle.md`)
+- `[comment-evasion-preprocessor]` → Strip comments while preserving character offsets in APILinter and LogicAuditor to resolve false positives and prevent evasion (`feat-older-issues-bundle.md`)
+- `[dynamic-test-key-generation]` → Dynamically construct mock API keys at test runtime to prevent triggering GitHub Advanced Security Secret Scanning alerts (`feat-older-issues-bundle.md`)
+
