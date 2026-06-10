@@ -93,3 +93,5 @@ patch_scanners.py
 test_results.txt
 .ghostcheck-baseline.json
 .ghostcheckbaseline
+
+test_simulate/

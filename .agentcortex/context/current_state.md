@@ -82,11 +82,11 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ### Ship-feat/older-issues-bundle-2-2026-06-10
 - Feature shipped: Converged next-gen AI security checkers (Epic 7, 8, 9) representing issues #6, #7, #8, #9 (RAG Issue #5 removed per instructions).
-  - Implemented `LethalTrifectaDetector` to audit ASTs for co-occurrence of private data, user input, and tool/shell execution.
-  - Implemented `KillSwitchAuditor` to enforce iteration limits, loop breakers, and HITL confirmations on destructive tools.
-  - Implemented `SilentPackageInstallDetector` to block dynamic installer calls (pip, npm, uv) inside agent tools.
-  - Implemented CLI subcommand `ghostcheck honeypot init` to deploy decoy canaries immune to SAST self-scanning.
-- Tests: Pass (184/184 tests passing).
+  - Implemented `LethalTrifectaDetector` to audit Python/JS ASTs for co-occurrence of private data, user input, and tool/shell execution (Issue #7).
+  - Implemented `KillSwitchAuditor` (renamed from `kill_switch_auditor` to `killswitch_auditor.py`) to verify iteration limits, loop breakers, and HITL confirmations (Issue #8).
+  - Implemented `SilentInstaller` (renamed from `silent_package_install_detector` to `silent_installer.py`) to block dynamic installer calls inside tools, rules, and scripts (Issue #9).
+  - Implemented CLI command `ghostcheck honeypot` (direct command, no subcommands) to deploy decoy canaries (Issue #6).
+- Tests: Pass (177/177 tests passing).
 
 
 ### Ship-feat/older-issues-bundle-2026-06-10
