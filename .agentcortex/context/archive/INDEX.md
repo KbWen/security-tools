@@ -42,3 +42,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[windows-binary-planting-mitigation]` → Resolved Windows binary planting (CWE-427) via absolute resolved git executable path and `-C` flag (`feat-older-issues-bundle.md`)
 - `[spoof-proof-git-delimiter]` → Used ASCII control characters `\x1f` and `\x1e` as separators in git log formatting to prevent commit message spoofing (`feat-older-issues-bundle.md`)
 - `[scanner-preset-registration]` → Automatically registered `supply_chain` module in Next.js, Django, FastAPI, and Flutter presets (`feat-older-issues-bundle.md`)
+- `[comment-evasion-preprocessor]` → Strip comments while preserving character offsets in APILinter and LogicAuditor to resolve false positives and prevent evasion (`feat-older-issues-bundle.md`)
+- `[dynamic-test-key-generation]` → Dynamically construct mock API keys at test runtime to prevent triggering GitHub Advanced Security Secret Scanning alerts (`feat-older-issues-bundle.md`)
+

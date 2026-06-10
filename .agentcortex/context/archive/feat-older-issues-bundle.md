@@ -9,7 +9,7 @@
 
 ## Session Info
 - Agent: Antigravity (Gemini 3.5 Flash)
-- Session: 2026-06-09T09:02:00+08:00
+- Session: 2026-06-09T09:29:23+08:00
 - Platform: Antigravity
 
 ## Drift Log
@@ -29,4 +29,19 @@
 - Target: Implement E3-F2 (Prompt Template Scanner) and E4-F2 (AI Code Marker)
 
 ## Resume
-- Plan approved by user. Proceeding to implementation.
+- Plan approved by user.
+- Completed all implementation of prompt template scanner and AI marker.
+- Dispatched SecurityReviewer subagent to review the entire security linter suite.
+- Hardened 9 core files spanning comment evasion, credentials masking, path traversal, git trailer verification, ReDoS bounds, and XSS defense.
+- Hardened all checkers against multiline comment/docstring bypasses by implementing a robust comment stripper in APILinter and LogicAuditor.
+- Added multiline jailbreak phrasing checking to PromptTemplateScanner using distance-bounded regexes.
+- Hardened PrivilegeAuditor to skip placeholder/dummy credentials.
+- Filtered out commented-out action steps in CIAuditor.
+- Successfully verified the entire test suite (149/149 tests passed).
+- Staged, committed (with Reviewed-by trailer), and pushed to remote branch feat/older-issues-bundle. Ready for final ship phase.
+
+## Observability
+- Error sink: CLI standard error (stderr) and output report files (SARIF/HTML/JSON).
+- Health check: N/A (CLI tool). Verification is done via local test suite execution and repository validation script.
+- Rollback signal: Any user reports of scanning crashes (traceback printed to stderr) or false negatives/positives.
+- Known Risks: No production error reporting configured. Errors in catch blocks will be logged to stderr/stdout only. Risk: silent failures in release builds if stdout/stderr is not monitored by CI or operators.
