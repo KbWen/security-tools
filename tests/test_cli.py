@@ -41,3 +41,17 @@ def test_cli_version_command(capsys):
     assert f"GhostCheck version: {__version__}" in out
     assert "Python version:" in out
     assert "Platform:" in out
+
+
+def test_cli_check_rules(capsys):
+    from unittest.mock import MagicMock
+    with patch('sys.argv', ['ghostcheck', 'check-rules']), \
+         patch('ghostcheck.scanner.Scanner.scan_rules') as mock_scan_rules:
+        mock_scan_rules.return_value = [
+            {"name": "risky_rule", "severity": "HIGH", "message": "Malicious rules found", "file": ".cursorrules", "line": 5}
+        ]
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 1
+    out, err = capsys.readouterr()
+    assert "risky_rule" in out or "risky_rule" in err

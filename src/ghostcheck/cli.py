@@ -84,6 +84,9 @@ def main():
     # check-deps command
     subparsers.add_parser("check-deps", parents=[parent_parser], help="Check dependencies for hallucinations")
     
+    # check-rules command
+    subparsers.add_parser("check-rules", parents=[parent_parser], help="Scan for security risks in AI rules")
+    
     # check-secrets command
     subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
     
@@ -214,6 +217,8 @@ def main():
             findings = scanner.scan(limit_files=limit_files)
         elif args.command == "check-deps":
             findings = scanner.scan_dependencies(limit_files=limit_files)
+        elif args.command == "check-rules":
+            findings = scanner.scan_rules(limit_files=limit_files)
         elif args.command == "check-secrets":
             findings = scanner.scan_secrets(limit_files=limit_files)
             
