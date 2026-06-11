@@ -24,7 +24,8 @@ class GhostCheckConfig:
         "ssl_verify": True,
         "custom_safe_keywords": [],
         "custom_example_keywords": [],
-        "preset": None
+        "preset": None,
+        "timeout": 10
     }
 
     def __init__(self, project_root: str):
@@ -140,5 +141,7 @@ class GhostCheckConfig:
             self.config['ssl_verify'] = False
         if hasattr(args, 'preset') and args.preset:
             self.config['preset'] = args.preset
-        if hasattr(args, 'timeout') and args.timeout:
+        if hasattr(args, 'timeout') and args.timeout is not None:
+            if not isinstance(args.timeout, int) or args.timeout <= 0:
+                raise ValueError("Timeout must be a positive integer.")
             self.config['timeout'] = args.timeout

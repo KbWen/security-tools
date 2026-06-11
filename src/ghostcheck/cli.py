@@ -56,7 +56,7 @@ def main():
     parent_parser.add_argument("--load-local-plugins", action="store_true", help="Enable loading plugins from local workspace .ghostcheck/plugins")
     parent_parser.add_argument("--debug", action="store_true", help="Enable verbose debug logging")
     parent_parser.add_argument("--insecure", action="store_true", help="Skip SSL certificate verification")
-    parent_parser.add_argument("--timeout", type=int, default=10, help="Network timeout in seconds (default: 10)")
+    parent_parser.add_argument("--timeout", type=int, default=None, help="Network timeout in seconds (default: 10)")
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
