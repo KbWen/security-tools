@@ -22,3 +22,13 @@ def test_cli_help(capsys):
     out, err = capsys.readouterr()
     assert "GhostCheck: AI-Era Security Scanner" in out
 
+
+def test_config_timeout():
+    from ghostcheck.config import GhostCheckConfig
+    class Args:
+        timeout = 42
+    config = GhostCheckConfig(".")
+    config.update_from_args(Args())
+    assert config.get("timeout") == 42
+
+

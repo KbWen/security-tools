@@ -140,3 +140,5 @@ class GhostCheckConfig:
             self.config['ssl_verify'] = False
         if hasattr(args, 'preset') and args.preset:
             self.config['preset'] = args.preset
+        if hasattr(args, 'timeout') and args.timeout:
+            self.config['timeout'] = args.timeout
