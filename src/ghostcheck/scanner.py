@@ -45,12 +45,25 @@ class Scanner:
         # Normalize and store absolute path for boundary checks
         # AC-H3: 使用 realpath 以確保符號連結下的一致性
         self.root_path = os.path.realpath(root_path)
+        
+        # Determine the project root directory by traversing upwards for project files
+        start_dir = self.root_path if os.path.isdir(self.root_path) else os.path.dirname(self.root_path)
+        self.project_root = start_dir
+        curr = start_dir
+        while True:
+            if any(os.path.exists(os.path.join(curr, marker)) for marker in ['.git', 'pyproject.toml', 'ghostcheck.toml']):
+                self.project_root = curr
+                break
+            parent = os.path.dirname(curr)
+            if parent == curr:
+                break
+            curr = parent
         self.ignore_enabled = ignore_enabled
         self.offline = offline
         self.config = config
         # Load baseline: prefer explicit path, fallback to .ghostcheckbaseline in root
         if not baseline_path:
-            auto_baseline = os.path.join(self.root_path, '.ghostcheckbaseline')
+            auto_baseline = os.path.join(self.project_root, '.ghostcheckbaseline')
             if os.path.exists(auto_baseline):
                 baseline_path = auto_baseline
                 
@@ -113,10 +126,10 @@ class Scanner:
         timeout = self.config.get('timeout', 10) if self.config else 10
 
         # AC-14: Ignore Handling
-        ignore_file = os.path.join(self.root_path, '.ghostcheckignore')
+        ignore_file = os.path.join(self.project_root, '.ghostcheckignore')
         self.ignore_matcher = IgnoreMatcher(
             ignore_file if ignore_enabled else None,
-            base_path=self.root_path
+            base_path=self.project_root
         )
 
         self.plugin_manager = PluginManager()
@@ -167,14 +180,18 @@ class Scanner:
 
     def _is_safe_path(self, file_path):
         """Ensures the path is within project root and handles potential directory traversal."""
+        if not file_path or not isinstance(file_path, str):
+            return False
         try:
             abs_path = os.path.normpath(os.path.realpath(file_path))
-            root_abs = os.path.normpath(self.root_path)
+            root_abs = os.path.normpath(os.path.realpath(self.root_path))
             
-            if os.path.isdir(root_abs):
-                return os.path.commonpath([root_abs, abs_path]) == root_abs
-            return True
-        except (ValueError, OSError):
+            # If root_abs points to a file, use its directory for verification
+            if not os.path.isdir(root_abs):
+                root_abs = os.path.dirname(root_abs)
+                
+            return os.path.commonpath([root_abs, abs_path]) == root_abs
+        except (ValueError, OSError, TypeError):
             return False
 
     def _read_file_safe(self, file_path):
@@ -205,7 +222,7 @@ class Scanner:
         if limit_files:
             # Yield specific files for Git Diff Scan
             for f in limit_files:
-                if os.path.exists(f) and os.path.isfile(f):
+                if f and isinstance(f, str) and os.path.exists(f) and os.path.isfile(f):
                     yield os.path.dirname(f), [os.path.basename(f)]
             return
 
@@ -264,7 +281,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_iac(self, limit_files=None):
         findings = []
@@ -276,7 +293,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_ci(self, limit_files=None):
         findings = []
@@ -288,7 +305,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_firebase(self, limit_files=None):
         findings = []
@@ -300,7 +317,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_mcp(self, limit_files=None):
         findings = []
@@ -312,7 +329,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_agency(self, limit_files=None):
         findings = []
@@ -326,7 +343,7 @@ class Scanner:
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_vulnerabilities(self, limit_files=None):
         findings = []
@@ -339,7 +356,7 @@ class Scanner:
                     if not self._is_safe_path(file_path):
                         continue
                     findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_mobile(self, limit_files=None):
         findings = []
@@ -351,7 +368,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_api(self, limit_files=None):
         findings = []
@@ -363,7 +380,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_entropy(self, limit_files=None):
         findings = []
@@ -375,7 +392,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_ai_supply_chain(self, limit_files=None):
         findings = []
@@ -387,7 +404,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def _get_fnd_id(self, fnd):
         """Extracts a stable ID for the finding regardless of which scanner produced it."""
@@ -479,14 +496,68 @@ class Scanner:
         if line > len(lines):
             return ""
             
-        # Target line
-        target_line = lines[line - 1]
+        # Track multiline quote states from line 1 up to the target line
+        in_double_quote = False
+        in_single_quote = False
+        in_triple_double = False
+        in_triple_single = False
         
-        # Normalize: strip whitespace to ignore minor formatting changes
-        normalized = target_line.strip()
-        # AC-S4: Handle common suppression comments in hash to keep it stable
-        normalized = normalized.split('#')[0].strip() # Ignore comments after the line
-        
+        for idx in range(line):
+            current_line = lines[idx]
+            is_target = (idx == line - 1)
+            normalized = current_line.strip() if is_target else current_line
+            
+            escape = False
+            comment_idx = len(normalized)
+            
+            i = 0
+            while i < len(normalized):
+                # Triple quotes checks outside regular string literals
+                if not escape and not in_single_quote and not in_double_quote:
+                    if not in_triple_single and normalized[i:i+3] == '"""':
+                        in_triple_double = not in_triple_double
+                        i += 3
+                        continue
+                    if not in_triple_double and normalized[i:i+3] == "'''":
+                        in_triple_single = not in_triple_single
+                        i += 3
+                        continue
+                
+                # If inside a triple-quoted multiline string, ignore other single/double quotes
+                if in_triple_double or in_triple_single:
+                    i += 1
+                    continue
+                    
+                char = normalized[i]
+                if escape:
+                    escape = False
+                    i += 1
+                    continue
+                if char == '\\':
+                    escape = True
+                    i += 1
+                    continue
+                if char == '"' and not in_single_quote:
+                    in_double_quote = not in_double_quote
+                elif char == "'" and not in_double_quote:
+                    in_single_quote = not in_single_quote
+                
+                if is_target and not in_double_quote and not in_single_quote:
+                    # Check markers outside any string literal
+                    if normalized[i:i+2] == '//':
+                        comment_idx = i
+                        break
+                    if normalized[i] == '#':
+                        comment_idx = i
+                        break
+                    if normalized[i:i+2] == '--':
+                        comment_idx = i
+                        break
+                i += 1
+                
+            if is_target:
+                normalized = normalized[:comment_idx].strip()
+                
         return hashlib.sha256(normalized.encode()).hexdigest()[:16]
 
 
@@ -578,7 +649,7 @@ class Scanner:
                 rel_path = ""
             else:
                 try:
-                    rel_path = os.path.relpath(file_path, self.root_path).replace(os.sep, '/')
+                    rel_path = os.path.relpath(file_path, self.project_root).replace(os.sep, '/')
                 except (ValueError, Exception):
                     rel_path = file_path.replace(os.sep, '/')
             
@@ -655,7 +726,7 @@ class Scanner:
             # AC-H6: Relativize paths for reports
             if fnd.get('file'):
                 try:
-                    fnd['file'] = os.path.relpath(fnd['file'], self.root_path).replace(os.sep, '/')
+                    fnd['file'] = os.path.relpath(fnd['file'], self.project_root).replace(os.sep, '/')
                 except (ValueError, Exception):
                     fnd['file'] = fnd['file'].replace(os.sep, '/')
 

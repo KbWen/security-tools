@@ -81,11 +81,12 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Ship History
 
 ### Ship-feat/older-issues-bundle-3-2026-06-11
-- Issues shipped: Resolved Issues #26, #29, and #25 to improve CLI ergonomics and command flexibility.
-  - Implemented timeout override from CLI argument `--timeout` with strict type validation (blocking boolean/float bypasses), default fallback logic, and config file merging support (Issue #26).
-  - Added `ghostcheck version` subcommand to print tool version, Python version, and platform information (Issue #29).
-  - Added `ghostcheck check-rules` subcommand and refactored `Scanner` to apply unified post-processing (baseline, self-scan exemptions, inline ignore) with path and line number sanitization to prevent crashes on malformed inputs (Issue #25).
-- Tests: Pass (182/182 tests passing).
+- Issues shipped: Resolved Issues #26, #29, and #25 to improve CLI ergonomics, command flexibility, and runtime robustness.
+  - Implemented timeout override from CLI argument `--timeout` and configuration files with strict type validation (blocking float, string, and boolean subclass bypasses) and default fallback logic (Issue #26).
+  - Added `ghostcheck version` subcommand to print tool version, Python version, and platform information, hardened against headless runtimes lacking active `sys.stdout` streams (Issue #29).
+  - Added `ghostcheck check-rules` subcommand and refactored `Scanner` to apply unified post-processing normalization (`_post_process()`) across all 11 scanning subcommands. Sanitized line numbers, path relativization, and added `TypeError` defenses in path traversal checking to prevent crashes on malformed inputs (Issue #25).
+  - Hardened symlink path traversal checks in `_is_safe_path()` using `os.path.realpath`, corrected a path relativization bug on single file target initialization, resolved test suite NameError import, and implemented a content-aware heuristics check in `AgentRulesLinter`.
+- Tests: Pass (188/188 tests passing).
 - Review: Pass (Independent peer reviewer subagent verdict & adversarial re-review).
 
 ### Ship-feat/older-issues-bundle-2-2026-06-10

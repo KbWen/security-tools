@@ -30,6 +30,16 @@ class AgentRulesLinter(BaseScannerPlugin):
         for file_path in files:
             filename = os.path.basename(file_path).lower()
             filepath_normalized = file_path.replace('\\', '/').lower()
+            
+            # Base candidacy: Only Markdown or hidden config rule files
+            is_rule_candidate = (
+                filename == '.cursorrules' or
+                file_path.endswith('.mdc') or
+                file_path.endswith('.md')
+            )
+            if not is_rule_candidate:
+                continue
+                
             is_rule_file = (
                 filename == '.cursorrules' or
                 file_path.endswith('.mdc') or
@@ -40,11 +50,20 @@ class AgentRulesLinter(BaseScannerPlugin):
                     '.agents/' in filepath_normalized
                 ))
             )
-            if not is_rule_file:
-                continue
+            
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
+
+                # Content-Aware Heuristics fallback: inspect content for AI instruction/directive patterns
+                if not is_rule_file:
+                    ai_directives = ['you are', 'system prompt', 'ai assistant', 'copilot', 'instructions for', 'rules for']
+                    content_lower = content.lower()
+                    if any(x in content_lower for x in ai_directives):
+                        is_rule_file = True
+
+                if not is_rule_file:
+                    continue
 
                 findings.extend(self.scan_file(file_path, content))
 
@@ -124,6 +143,13 @@ class AgentRulesLinter(BaseScannerPlugin):
                 '.agents/' in filepath_normalized
             ))
         )
+        if not is_rule_file:
+            # Fallback to content-aware AI directives check
+            ai_directives = ['you are', 'system prompt', 'ai assistant', 'copilot', 'instructions for', 'rules for']
+            content_lower = content.lower()
+            if any(x in content_lower for x in ai_directives):
+                is_rule_file = True
+
         if not is_rule_file:
             return findings
 

@@ -89,6 +89,11 @@ class GhostCheckConfig:
                             seen.append(item)
                     self.config[key] = seen
                 else:
+                    if key == 'timeout':
+                        timeout_val = new_data[key]
+                        if timeout_val is not None:
+                            if type(timeout_val) is not int or timeout_val <= 0:
+                                raise ValueError("Timeout must be a positive integer.")
                     self.config[key] = new_data[key]
 
     def get_canary_url(self) -> Optional[str]:

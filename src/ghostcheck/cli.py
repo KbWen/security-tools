@@ -23,14 +23,18 @@ def get_icon(icon_type, use_unicode=True):
     return char if use_unicode else fallback
 
 def main():
+    if sys.stdout is None:
+        sys.stdout = io.StringIO()
+    if sys.stderr is None:
+        sys.stderr = io.StringIO()
     # Fix: Reconfigure stdout to UTF-8 with replacement to avoid cp950/encoding crashes
     # on non-UTF-8 terminals (e.g., Windows cmd). Falls back gracefully.
-    if hasattr(sys.stdout, 'reconfigure'):
+    if sys.stdout is not None and hasattr(sys.stdout, 'reconfigure'):
         try:
             sys.stdout.reconfigure(encoding='utf-8', errors='replace')
         except Exception:
             pass
-    elif hasattr(sys.stdout, 'buffer'):
+    elif sys.stdout is not None and hasattr(sys.stdout, 'buffer'):
         try:
             sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         except Exception:
@@ -108,14 +112,19 @@ def main():
     args = parser.parse_args()
     
     # Determine encoding/unicode support
-    stdout_encoding = (sys.stdout.encoding or 'ascii').lower()
+    stdout_encoding = 'ascii'
+    if sys.stdout is not None and getattr(sys.stdout, 'encoding', None):
+        stdout_encoding = sys.stdout.encoding.lower()
     use_unicode = not args.ascii_only and stdout_encoding == 'utf-8'
 
     if args.command == "version":
-        import platform
         print(f"GhostCheck version: {__version__}")
-        print(f"Python version: {platform.python_version()}")
-        print(f"Platform: {platform.platform()}")
+        try:
+            import platform
+            print(f"Python version: {platform.python_version()}")
+            print(f"Platform: {platform.platform()}")
+        except Exception as e:
+            print(f"Environment info unavailable: {e}")
         sys.exit(0)
 
     if args.command == "init":
