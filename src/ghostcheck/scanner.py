@@ -228,7 +228,7 @@ class Scanner:
                     if not self._is_safe_path(file_path):
                         continue
                     findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_secrets(self, limit_files=None):
         findings = []
@@ -240,7 +240,7 @@ class Scanner:
                     continue
                 for plugin in plugins:
                     findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_rules(self, limit_files=None):
         findings = []
@@ -252,7 +252,7 @@ class Scanner:
                 if not self._is_safe_path(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
-        return findings
+        return self._post_process(findings)
 
     def scan_docker(self, limit_files=None):
         findings = []
@@ -557,54 +557,7 @@ class Scanner:
 
         return findings
 
-    def scan(self, limit_files=None):
-        import concurrent.futures
-        
-        all_files = []
-        cached_results = []
-        files_to_scan = []
-
-        for root, files in self._iter_files(limit_files):
-            for file in files:
-                file_path = os.path.join(root, file)
-                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
-                    continue
-                
-                # Check cache
-                fp = self._get_file_fingerprint(file_path)
-                if fp in self.results_cache:
-                    self.cache_hits += 1
-                    if os.getenv("GHOSTCHECK_DEBUG") == "1":
-                        print(f"[DEBUG] Cache hit for {file_path}")
-                    cached_results.extend(self.results_cache[fp])
-                else:
-                    files_to_scan.append(file_path)
-                all_files.append(file_path)
-
-        raw_findings = list(cached_results)
-        new_scan_cache = {}
-
-        # Optimization: Use max_workers based on CPU count for I/O + Regex heavy tasks
-        if files_to_scan:
-            with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
-                future_to_file = {executor.submit(self._process_single_file, f): f for f in files_to_scan}
-                for future in concurrent.futures.as_completed(future_to_file):
-                    f_path = future_to_file[future]
-                    try:
-                        result = future.result()
-                        if result:
-                            raw_findings.extend(result)
-                        
-                        # Update cache entry for this file
-                        fp = self._get_file_fingerprint(f_path)
-                        if fp:
-                            self.results_cache[fp] = result or []
-                    except Exception as e:
-                        print(f"Error scanning {f_path}: {e}")
-            
-            # Save cache after new scans
-            self._save_results_cache()
-        
+    def _post_process(self, raw_findings):
         # v0.6.0: Inline suppression and Baseline filter
         filtered = []
         file_content_cache = {}
@@ -703,5 +656,56 @@ class Scanner:
             filtered.append(fnd)
 
         return self.severity_engine.adjust_findings(filtered)
+
+    def scan(self, limit_files=None):
+        import concurrent.futures
+        
+        all_files = []
+        cached_results = []
+        files_to_scan = []
+
+        for root, files in self._iter_files(limit_files):
+            for file in files:
+                file_path = os.path.join(root, file)
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
+                
+                # Check cache
+                fp = self._get_file_fingerprint(file_path)
+                if fp in self.results_cache:
+                    self.cache_hits += 1
+                    if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                        print(f"[DEBUG] Cache hit for {file_path}")
+                    cached_results.extend(self.results_cache[fp])
+                else:
+                    files_to_scan.append(file_path)
+                all_files.append(file_path)
+
+        raw_findings = list(cached_results)
+        new_scan_cache = {}
+
+        # Optimization: Use max_workers based on CPU count for I/O + Regex heavy tasks
+        if files_to_scan:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count() or 4) as executor:
+                future_to_file = {executor.submit(self._process_single_file, f): f for f in files_to_scan}
+                for future in concurrent.futures.as_completed(future_to_file):
+                    f_path = future_to_file[future]
+                    try:
+                        result = future.result()
+                        if result:
+                            raw_findings.extend(result)
+                        
+                        # Update cache entry for this file
+                        fp = self._get_file_fingerprint(f_path)
+                        if fp:
+                            self.results_cache[fp] = result or []
+                    except Exception as e:
+                        print(f"Error scanning {f_path}: {e}")
+            
+            # Save cache after new scans
+            self._save_results_cache()
+        
+        # v0.6.0: Inline suppression and Baseline filter
+        return self._post_process(raw_findings)
 
 
