@@ -584,6 +584,12 @@ class Scanner:
             
             fnd_id = self._get_fnd_id(fnd)
             line = fnd.get('line', 0)
+            if not isinstance(line, int):
+                try:
+                    line = int(line)
+                except (ValueError, TypeError):
+                    line = 0
+            fnd['line'] = line
             
             # v1.0.0: Robust Hash-based FP
             content_hash = ""
@@ -647,7 +653,7 @@ class Scanner:
                 fnd['robust_fingerprint'] = robust_fp
             
             # AC-H6: Relativize paths for reports
-            if 'file' in fnd:
+            if fnd.get('file'):
                 try:
                     fnd['file'] = os.path.relpath(fnd['file'], self.root_path).replace(os.sep, '/')
                 except (ValueError, Exception):
