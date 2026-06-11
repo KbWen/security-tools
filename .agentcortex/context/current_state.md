@@ -80,6 +80,13 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-feat/older-issues-bundle-3-2026-06-11
+- Issues shipped: Resolved Issues #26, #29, and #25 to improve CLI ergonomics and command flexibility.
+  - Implemented timeout override from CLI argument `--timeout` inside `config.py` (Issue #26).
+  - Added `ghostcheck version` subcommand to print tool version, Python version, and platform information (Issue #29).
+  - Added `ghostcheck check-rules` subcommand to execute rule-based linting/scanning via `scanner.scan_rules()` (Issue #25).
+- Tests: Pass (181/181 tests passing).
+
 ### Ship-feat/older-issues-bundle-2-2026-06-10
 - Feature shipped: Converged next-gen AI security checkers (Epic 7, 8, 9) representing issues #6, #7, #8, #9 (RAG Issue #5 removed per instructions).
   - Implemented `LethalTrifectaDetector` to audit Python/JS ASTs for co-occurrence of private data, user input, and tool/shell execution (Issue #7).
