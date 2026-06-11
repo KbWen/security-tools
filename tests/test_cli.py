@@ -32,3 +32,12 @@ def test_config_timeout():
     assert config.get("timeout") == 42
 
 
+def test_cli_version_command(capsys):
+    with patch('sys.argv', ['ghostcheck', 'version']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+    out, err = capsys.readouterr()
+    assert f"GhostCheck version: {__version__}" in out
+    assert "Python version:" in out
+    assert "Platform:" in out

@@ -66,6 +66,9 @@ def main():
     scan_parser.add_argument("--staged", action="store_true", help="Only scan files staged in Git")
     scan_parser.add_argument("--diff", help="Only scan files changed since specific Git ref (e.g. HEAD~1)")
     
+    # version command
+    subparsers.add_parser("version", parents=[parent_parser], help="Show version and environment information")
+
     # init command
     init_parser = subparsers.add_parser("init", parents=[parent_parser], help="Initialize GhostCheck in the current project")
     init_parser.add_argument("path", nargs="?", default=".", help="Target path to initialize (default: .)")
@@ -104,6 +107,13 @@ def main():
     # Determine encoding/unicode support
     stdout_encoding = (sys.stdout.encoding or 'ascii').lower()
     use_unicode = not args.ascii_only and stdout_encoding == 'utf-8'
+
+    if args.command == "version":
+        import platform
+        print(f"GhostCheck version: {__version__}")
+        print(f"Python version: {platform.python_version()}")
+        print(f"Platform: {platform.platform()}")
+        sys.exit(0)
 
     if args.command == "init":
         initializer = GhostCheckInitializer(args.path)
