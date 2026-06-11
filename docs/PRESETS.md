@@ -2,13 +2,16 @@
 
 v1.0.0 引入了**框架預設策略 (Framework Presets)**，讓 GhostCheck 從一個通用的掃描器進階為具備「框架感知」能力的專業工具。
 
-## 為什麼需要 Presets？
+## 💡 為什麼要有 Presets？
 
-不同的開發框架（如 Next.js 或 Flutter）面臨的安全威脅截然不同：
-- **Next.js**: 關注 Vercel 環境變數洩漏、API Route 權限與前端依賴幻覺。
-- **Flutter**: 關注 `pub.dev` 供應鏈污染、Android/iOS 原生設定安全與 Mobile Config 洩漏。
+因為用 Next.js 踩的雷，跟用 Flutter 踩的坑，完全是兩碼子事！如果用同套標準去掃，不是整天跳一堆無關的 False Positive，就是真正致命的漏洞沒掃到。
 
-透過 Presets，GhostCheck 可以自動過濾無關的掃描模組，並針對特定框架的高風險點進行深度檢查。
+*   **Next.js 專案**：你最怕的可能是 API Route 權限沒設好、前端一不小心把 `.env` 密鑰打包出去，或是 npm 套件又被 AI 幻覺給坑了。
+*   **Flutter 專案**：你最擔心的則是 `pub.dev` 上的套件有沒有毒、Android/iOS 原生設定（像是 `AndroidManifest.xml`）有沒有門戶大開，或者 Mobile Config 不小心洩漏。
+
+如果每次掃描都要手動調參數，工程師絕對會直接下 `Ctrl+C` 擺爛不掃了。
+
+透過 **Presets（框架預設配置）**，GhostCheck 就能自動看懂你的專案型態，把無關的掃描模組直接遮蔽，只針對你用的框架進行深度「健檢」，省時又精準！
 
 ## 支援的 Presets
 

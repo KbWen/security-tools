@@ -2,14 +2,14 @@
 
 # 👻 GhostCheck
 
-**為 AI 輔助開發時代量身打造的極速、零依賴安全性掃描工具。**
+**為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
 [![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![測試狀態](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
-*在 AI Agent 產出的程式碼進入 CI/CD 流程前，精準識別高風險漏洞、惡意指令與「幻覺」安全性威脅。*
+*在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
 ---
 
@@ -19,21 +19,24 @@
 
 ## 🚀 願景
 
-AI Agent 正在重塑軟體開發，但也帶來了全新的攻擊面。**GhostCheck** 彌補了傳統靜態應用程式安全測試 (SAST) 與 AI 原生安全性之間的鴻溝，確保您的程式碼在享受 AI 速度的同時，依然保持企業級的穩固與安全。
+現在寫 code 誰不用 AI？雖然 AI Agent 寫起 code 來飛快，但常常也是「一本正經地胡說八道」，甚至悄悄挖個大坑等你踩雷。傳統的安全掃描工具 (SAST) 根本看不懂 AI 時代的「指令注入」或「套件幻覺」，於是 **GhostCheck** 就誕生了！
+
+我們不搞繁複的安裝，主打一個**「零依賴、超輕量、極速掃描」**。它就像是你在 AI 開發時代的最佳安全防護網（Safety Net），在程式碼被 commit 或是 push 之前幫你做最後把關，讓你既能享受 AI 的光速開發，又不用擔心隔天伺服器被駭、後台直接拋出 Exception！
 
 ---
 
-## 🧠 為什麼採用 AgentCortex？
+## 🧠 為什麼你需要 GhostCheck？
 
-**GhostCheck** 是基於 **AgentCortex** 哲學所構建。我們堅信，AI 輔助開發必須建立在**可驗證的工程指令與規範 (Verifiable Engineering Directives)** 之上。
+**GhostCheck** 的核心理念很簡單：既然 AI 可以幫我們寫 code，那它也極有可能在不知不覺中幫我們「加料」。「AI 輔助開發」雖然爽，但如果沒有**可驗證的工程指令與規範 (Verifiable Engineering Directives)** 當作煞車，那就是載著你全速往懸崖衝的跑車。
 
-傳統掃描器僅針對標準的開發者漏洞（例如 SQL 注入或緩衝區溢位）。而在 AI 時代，我們面臨全新的威脅：
-*   **過度授權 (Excessive Agency)：** AI 工具被賦予過高權限（如 root）執行任意指令。
-*   **工具中毒 (Tool Poisoning)：** 惡意第三方工具（如 MCP 伺服器）劫持 Agent 的執行。
-*   **指令注入 (Instruction Injection)：** 隱藏在文件或程式碼中的惡意指令，旨在劫持或控制 Agent 的行為。
-*   **AI 供應鏈安全 (AI Supply Chain Vulnerabilities)：** AI 幻覺所產生的虛構套件引用或惡意依賴。
+傳統的靜態掃描工具只會檢查 SQL Injection 或是 Buffer Overflow 這些人類開發者常踩的雷。但在 AI 稱霸的時代，我們面臨的是全新、甚至有點獵奇的威脅：
 
-透過將專案約定鎖定在可驗證的約束條件中，GhostCheck 確保 AI Agent 成為安全、可靠的共同設計者。
+*   **過度授權 (Excessive Agency)：** AI Agent 拿著 root 權限在你的系統裡「裸奔」，高興執行什麼就執行什麼。
+*   **工具中毒 (Tool Poisoning)：** 不小心引進了有毒的第三方工具（例如來路不明的 MCP 伺服器），導致 Agent 被人劫持。
+*   **指令注入 (Instruction Injection)：** 有些惡意指令藏在 README 或是註解裡，AI Agent 一讀到就「被洗腦」，乖乖聽從駭客的指示。
+*   **AI 供應鏈安全 (AI Supply Chain Vulnerabilities)：** AI 一時想不起來某個套件名稱，就自己「通靈」瞎掰一個不存在的 dependency，直接把你的專案推進供應鏈漏洞的深淵。
+
+GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent 在幫你寫 code 的時候老老實實遵守規範，成為真正幫你省力、而不是天天幫你寫 Bug 的神隊友！
 
 ---
 
