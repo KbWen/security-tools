@@ -142,6 +142,6 @@ class GhostCheckConfig:
         if hasattr(args, 'preset') and args.preset:
             self.config['preset'] = args.preset
         if hasattr(args, 'timeout') and args.timeout is not None:
-            if not isinstance(args.timeout, int) or args.timeout <= 0:
+            if type(args.timeout) is not int or args.timeout <= 0:
                 raise ValueError("Timeout must be a positive integer.")
             self.config['timeout'] = args.timeout

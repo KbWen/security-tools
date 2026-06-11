@@ -52,6 +52,20 @@ def test_config_timeout():
     config4 = GhostCheckConfig(".")
     with pytest.raises(ValueError, match="Timeout must be a positive integer"):
         config4.update_from_args(ArgsNeg())
+        
+    # 4. Boolean bypass check
+    class ArgsBool:
+        timeout = True
+    config5 = GhostCheckConfig(".")
+    with pytest.raises(ValueError, match="Timeout must be a positive integer"):
+        config5.update_from_args(ArgsBool())
+
+    # 5. Float bypass check
+    class ArgsFloat:
+        timeout = 10.5
+    config6 = GhostCheckConfig(".")
+    with pytest.raises(ValueError, match="Timeout must be a positive integer"):
+        config6.update_from_args(ArgsFloat())
 
 
 def test_cli_version_command(capsys):
@@ -78,3 +92,18 @@ def test_cli_check_rules(capsys):
     out, err = capsys.readouterr()
     assert "risky_rule" in out or "risky_rule" in err
     assert "Malicious rules found" in out or "Malicious rules found" in err
+
+
+def test_scanner_post_process_robustness():
+    from ghostcheck.scanner import Scanner
+    scanner = Scanner(".")
+    
+    # 1. Missing file path, malformed line number (string instead of int)
+    findings = [
+        {"name": "test_finding", "severity": "HIGH", "file": None, "line": "invalid_line"}
+    ]
+    processed = scanner._post_process(findings)
+    assert len(processed) == 1
+    assert processed[0]['file'] == ""
+    assert processed[0]['line'] == 0
+    assert processed[0]['severity'] == "HIGH"
