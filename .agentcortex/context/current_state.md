@@ -80,6 +80,11 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-fix/ci-failure-2026-06-12
+- Quick-win shipped: Resolved validation CI failures caused by missing/optimized canary phrases in README files.
+  - Updated `validate.sh` and `validate.ps1` to check for updated canary phrases ('安全防禦' for `README_zh-TW.md` and 'Why GhostCheck?' for `README.md`).
+- Tests: Pass (190/190 tests passed, local PS1 & SH validators passed).
+
 ### Ship-feat/older-issues-bundle-3-2026-06-11
 - Issues shipped: Resolved Issues #26, #29, and #25 to improve CLI ergonomics, command flexibility, and runtime robustness.
   - Implemented timeout override from CLI argument `--timeout` and configuration files with strict type validation (blocking float, string, and boolean subclass bypasses) and default fallback logic (Issue #26).
