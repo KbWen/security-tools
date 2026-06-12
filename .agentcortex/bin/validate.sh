@@ -269,7 +269,7 @@ for localized_file in \
   [[ -f "$localized_file" ]] || { echo "missing localized file: $localized_file"; exit 1; }
 done
 
-grep -F -q -- '安全性掃描工具' "$ROOT/README_zh-TW.md" || {
+grep -F -q -- '安全防禦' "$ROOT/README_zh-TW.md" || {
   echo "localized doc appears mojibaked or re-encoded: $ROOT/README_zh-TW.md"
   exit 1
 }
@@ -277,7 +277,7 @@ grep -F -q -- '測試教戰守則' "$ROOT/.agentcortex/docs/TESTING_PROTOCOL_zh-
   echo "localized doc appears mojibaked or re-encoded: $ROOT/.agentcortex/docs/TESTING_PROTOCOL_zh-TW.md"
   exit 1
 }
-grep -F -q -- 'Why AgentCortex?' "$ROOT/README.md" || {
+grep -F -q -- 'Why GhostCheck?' "$ROOT/README.md" || {
   echo "english doc appears mojibaked or re-encoded: $ROOT/README.md"
   exit 1
 }

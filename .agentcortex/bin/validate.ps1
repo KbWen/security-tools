@@ -213,9 +213,9 @@ foreach ($localizedFile in @(
 )) {
     Assert-PathExists -Path $localizedFile -Message "missing localized file: $localizedFile"
 }
-Assert-FileContains -Path (Join-NormalPath $root 'README_zh-TW.md') -Pattern '\u5B89\u5168\u6027\u6383\u63cf\u5de5\u5177' -Message 'localized doc appears mojibaked or re-encoded: README_zh-TW.md'
+Assert-FileContains -Path (Join-NormalPath $root 'README_zh-TW.md') -Pattern '\u5B89\u5168\u9632\u79A6' -Message 'localized doc appears mojibaked or re-encoded: README_zh-TW.md'
 Assert-FileContains -Path (Join-NormalPath $root '.agentcortex/docs/TESTING_PROTOCOL_zh-TW.md') -Pattern '\u6E2C\u8A66\u6559\u6230\u5B88\u5247' -Message 'localized doc appears mojibaked or re-encoded: .agentcortex/docs/TESTING_PROTOCOL_zh-TW.md'
-Assert-FileContains -Path (Join-NormalPath $root 'README.md') -Pattern ([regex]::Escape('Why AgentCortex?')) -Message 'english doc appears mojibaked or re-encoded: README.md'
+Assert-FileContains -Path (Join-NormalPath $root 'README.md') -Pattern ([regex]::Escape('Why GhostCheck?')) -Message 'english doc appears mojibaked or re-encoded: README.md'
 Assert-FileContains -Path (Join-NormalPath $root '.agentcortex/docs/guides/audit-guardrails.md') -Pattern ([regex]::Escape('Test 1: Invisible Assistant Check (.gitignore Automation)')) -Message 'english doc appears mojibaked or re-encoded: .agentcortex/docs/guides/audit-guardrails.md'
 Assert-FileContains -Path (Join-NormalPath $root '.agentcortex/docs/guides/audit-guardrails_zh-TW.md') -Pattern '\u81EA\u52D5\u5316.*Shell Script' -Message 'localized doc appears mojibaked or re-encoded: .agentcortex/docs/guides/audit-guardrails_zh-TW.md'
 Write-Output 'AgentCortex integrity check passed'
