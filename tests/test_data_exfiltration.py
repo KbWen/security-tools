@@ -512,3 +512,468 @@ def test_mcp_file_name_heuristic(tmp_path):
     findings = run_scan(detector, tmp_path, "my_mcp_tools.py", code)
     assert any("MCP Tool File Leakage" in f["name"] for f in findings)
 
+
+def test_mcp_parameter_arbitrary_file_leak(tmp_path):
+    # Case 1: Unvalidated dynamic parameter read
+    code_unvalidated = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str):
+    with open(user_path, "r") as f:
+        return f.read()
+"""
+    # Case 2: Validated dynamic parameter read (should be ignored)
+    code_validated = """
+import mcp
+from pathlib import Path
+
+@mcp.tool()
+def read_safe_log(user_path: str):
+    p = Path(user_path).resolve()
+    if not p.is_relative_to("/var/log"):
+        raise ValueError("Invalid path")
+    return open(p).read()
+"""
+    detector = DataExfiltrationDetector()
+    findings_unval = run_scan(detector, tmp_path, "test_mcp_unval.py", code_unvalidated)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_unval)
+
+    findings_val = run_scan(detector, tmp_path, "test_mcp_val.py", code_validated)
+    assert not any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_val)
+
+
+def test_metadata_ssrf_exfiltration(tmp_path):
+    # Decimal IP exfiltration
+    code_decimal = 'openai.chat.completions.create(prompt="http://2852039166/latest/meta-data/")'
+    # Hex IP exfiltration
+    code_hex = 'openai.chat.completions.create(prompt="http://0xa9fea9fe/latest/")'
+    # Dotted Hex IP exfiltration
+    code_dotted_hex = 'openai.chat.completions.create(prompt="http://0xA9.0xFE.0xA9.0xFE/")'
+    # Dotted Octal IP exfiltration
+    code_octal = 'openai.chat.completions.create(prompt="http://0251.0376.0251.0376/")'
+    # IPv6 transition format
+    code_ipv6 = 'openai.chat.completions.create(prompt="http://[::ffff:a9fe:a9fe]/")'
+    # Azure WireServer IP
+    code_azure = 'openai.chat.completions.create(prompt="http://168.63.129.16/metadata")'
+    # Alibaba Cloud IP
+    code_alibaba = 'openai.chat.completions.create(prompt="http://100.100.100.200/")'
+    # Oracle Cloud IP
+    code_oracle = 'openai.chat.completions.create(prompt="http://192.0.0.192/")'
+
+    detector = DataExfiltrationDetector()
+
+    for i, code in enumerate([code_decimal, code_hex, code_dotted_hex, code_octal, code_ipv6, code_azure, code_alibaba, code_oracle]):
+        findings = run_scan(detector, tmp_path, f"test_ssrf_{i}.py", code)
+        assert any("Metadata API SSRF Leakage" in f["name"] for f in findings), f"Failed for code: {code}"
+
+
+def test_subscript_taint_propagation(tmp_path):
+    # Key-level taint propagation
+    code = """
+import os
+import openai
+
+config = {
+    "public_model": "gpt-4",
+    "secret_key": os.environ.get("API_KEY")
+}
+
+# Accessing a safe key should NOT alert (no false positive)
+openai.chat.completions.create(
+    model=config["public_model"],
+    prompt="hello"
+)
+
+# Accessing a tainted key MUST alert
+openai.chat.completions.create(
+    model="gpt-4",
+    prompt=config["secret_key"]
+)
+"""
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_subscript.py", code)
+    leakage_findings = [f for f in findings if "LLM Prompt Leakage" in f["name"]]
+    assert len(leakage_findings) == 1
+    assert leakage_findings[0]["line"] == 17
+
+
+def test_extra_metadata_ssrf_and_normalization(tmp_path):
+    """
+    Test additional metadata SSRF patterns and IP normalization logic.
+    測試額外的雲端 Metadata SSRF 模式與 IP 正規化邏輯。
+    """
+    # 1. Test "metadata.google.internal" and "instance-data"
+    # 測試 "metadata.google.internal" 與 "instance-data"
+    code_meta_host = 'openai.chat.completions.create(prompt="http://metadata.google.internal/computeMetadata")'
+    code_inst_data = 'openai.chat.completions.create(prompt="http://instance-data/latest/meta-data/")'
+
+    # 2. Test IPv6 transition format like [::ffff:169.254.169.254]
+    # 測試 IPv6 轉換格式，如 [::ffff:169.254.169.254]
+    code_ipv6_transition = 'openai.chat.completions.create(prompt="http://[::ffff:169.254.169.254]/")'
+
+    # 3. Test host with port: 169.254.169.254:80
+    # 測試帶有連接埠的實例 IP：169.254.169.254:80
+    code_host_port = 'openai.chat.completions.create(prompt="http://169.254.169.254:80/")'
+
+    # 4. Test single octal host: 025177524776 (2852039166 in octal)
+    # 測試單個八進制主機：025177524776 (即十進制 2852039166)
+    code_octal_host = 'openai.chat.completions.create(prompt="http://025177524776/")'
+
+    detector = DataExfiltrationDetector()
+
+    for idx, code in enumerate([code_meta_host, code_inst_data, code_ipv6_transition, code_host_port, code_octal_host]):
+        findings = run_scan(detector, tmp_path, f"test_extra_ssrf_{idx}.py", code)
+        assert any("Metadata API SSRF Leakage" in f["name"] for f in findings), f"Failed for code: {code}"
+
+
+def test_validation_scanner_path_compare(tmp_path):
+    """
+    Test Python ValidationScanner path comparison (e.g. ".." in path or ".." == path).
+    測試 Python ValidationScanner 路徑比較邏輯（例如 ".." in path 或 ".." == path）。
+    """
+    code_unvalidated = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str):
+    # No ".." check, should alert
+    return open(user_path).read()
+"""
+
+    code_validated_1 = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str):
+    if ".." in user_path:
+        raise ValueError("Invalid path")
+    return open(user_path).read()
+"""
+
+    code_validated_2 = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str):
+    if user_path == "..":
+        raise ValueError("Invalid path")
+    return open(user_path).read()
+"""
+
+    detector = DataExfiltrationDetector()
+
+    findings_unval = run_scan(detector, tmp_path, "test_val_unval.py", code_unvalidated)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_unval)
+
+    findings_val1 = run_scan(detector, tmp_path, "test_val_val1.py", code_validated_1)
+    assert not any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_val1)
+
+    findings_val2 = run_scan(detector, tmp_path, "test_val_val2.py", code_validated_2)
+    assert not any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_val2)
+
+
+def test_unsupported_ast_nodes_resolve_name(tmp_path):
+    """
+    Test that _resolve_name and _resolve_expression gracefully handle unsupported AST nodes.
+    測試 _resolve_name 與 _resolve_expression 能優雅處理不支援的 AST 節點。
+    """
+    from ghostcheck.checks.data_exfiltration_detector import PythonDataExfiltrationVisitor, JsDataExfiltrationVisitor
+    
+    # Python visitor test with unsupported nodes
+    visitor = PythonDataExfiltrationVisitor("dummy.py", set(), {})
+    # Pass None or non-AST node to trigger fallbacks
+    assert visitor._resolve_name(None) == ""
+    assert visitor._resolve_expression(None) is None
+    
+    # JS visitor test with unsupported nodes
+    js_visitor = JsDataExfiltrationVisitor("dummy.js")
+    assert js_visitor._resolve_expression(None) == ""
+
+
+def test_subscript_and_attribute_assignment_taint(tmp_path):
+    """
+    Test key-level subscript assignments (e.g. config["secret_key"] = ...) and attribute assignments (cfg.secret_key = ...).
+    測試鍵級下標賦值（如 config["secret_key"] = ...）與屬性賦值（如 cfg.secret_key = ...）的污點傳遞。
+    """
+    code_subscript = """
+import os
+import openai
+
+config = {}
+config["secret_key"] = os.environ.get("API_KEY")
+openai.chat.completions.create(
+    model="gpt-4",
+    prompt=config["secret_key"]
+)
+"""
+
+    code_attribute = """
+import os
+import openai
+
+class Config:
+    pass
+
+cfg = Config()
+cfg.secret_key = os.environ.get("API_KEY")
+openai.chat.completions.create(
+    model="gpt-4",
+    prompt=cfg.secret_key
+)
+"""
+
+    detector = DataExfiltrationDetector()
+
+    findings_sub = run_scan(detector, tmp_path, "test_assign_sub.py", code_subscript)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings_sub)
+
+    findings_attr = run_scan(detector, tmp_path, "test_assign_attr.py", code_attribute)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings_attr)
+
+
+def test_mcp_unvalidated_params_direct_read(tmp_path):
+    """
+    Test direct file read patterns inside MCP tools such as path.read() or open(path).read().
+    測試 MCP 工具中的直接檔案讀取模式，如 path.read() 或 open(path).read()。
+    """
+    code_path_read = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str):
+    # Calling read() directly on parameter
+    return user_path.read()
+"""
+
+    code_open_read = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str):
+    # Calling open().read() directly
+    return open(user_path).read()
+"""
+
+    detector = DataExfiltrationDetector()
+
+    findings_path = run_scan(detector, tmp_path, "test_direct_path_read.py", code_path_read)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_path)
+
+    findings_open = run_scan(detector, tmp_path, "test_direct_open_read.py", code_open_read)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_open)
+
+
+def test_mcp_returns_metadata_ssrf(tmp_path):
+    """
+    Test MCP tool returning cloud metadata endpoint directly.
+    測試 MCP 工具直接返回雲端 Metadata 端點的漏洞。
+    """
+    code = """
+import mcp
+
+@mcp.tool()
+def get_cloud_info():
+    return "169.254.169.254"
+"""
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_mcp_ssrf.py", code)
+    assert any("Metadata API SSRF Leakage" in f["name"] for f in findings)
+
+
+def test_js_ast_identifier_constant_resolve_and_concatenation(tmp_path):
+    """
+    Test JS identifier resolving to literal, binary addition concatenation, and direct process.env pass.
+    測試 JS 識別碼解析為字面值、二元加法拼接，以及直接傳遞 process.env 的場景。
+    """
+    code = """
+    const my_host = "169.254.169.254";
+    const concat_host = "http://169.254." + "169.254/";
+    
+    completions.create({
+        prompt: my_host
+    });
+
+    completions.create({
+        prompt: concat_host
+    });
+
+    completions.create({
+        prompt: process.env.API_KEY
+    });
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_js_extra.js", code)
+    # Check that both SSRF leakage and Prompt leakage are detected
+    assert any("Metadata API SSRF Leakage" in f["name"] for f in findings)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings)
+
+
+def test_js_ast_member_and_call_taint(tmp_path):
+    """
+    Test member object taint propagation, fs.readFileSync inside call expression, and high entropy/sensitive literal taint.
+    測試 JS 成員屬性污點傳遞、呼叫運算式內部的 fs.readFileSync，以及高熵/敏感關鍵字字面值的偵測。
+    """
+    code = """
+    const config = {};
+    config.secret_key = process.env.API_KEY;
+    
+    completions.create({
+        prompt: config.secret_key
+    });
+
+    completions.create({
+        prompt: fs.readFileSync('.env', 'utf8')
+    });
+
+    // High entropy literal (len >= 24)
+    completions.create({
+        prompt: "abcdefghijklmnopqrstuvwx"
+    });
+
+    // Sensitive keyword literal
+    completions.create({
+        prompt: "my_api_key_value"
+    });
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_js_member.js", code)
+    # Should detect exfiltration findings
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings)
+
+
+def test_js_ast_mcp_params_class_and_returns(tmp_path):
+    """
+    Test JS function parameters, class definitions, and ReturnStatement branches (mcp_sensitive_leak, mcp_param_leak, metadata_ssrf, fs.readFileSync).
+    測試 JS 函數參數、類別宣告，以及 Return 語句分支（如敏感檔案外洩、參數路徑外洩、Metadata SSRF、fs.readFileSync）。
+    """
+    code = """
+    import * as mcp from 'mcp';
+    
+    class ToolManager {
+        constructor() {}
+    }
+
+    function read_sensitive(user_path) {
+        return fs.readFileSync('.env');
+    }
+
+    function read_param(user_path) {
+        return fs.readFileSync(user_path);
+    }
+
+    function get_meta() {
+        return "http://169.254.169.254";
+    }
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_js_mcp_returns.js", code)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings)
+    assert any("Metadata API SSRF Leakage" in f["name"] for f in findings)
+
+
+def test_detector_scan_edge_cases(tmp_path):
+    """
+    Test scan() and scan_text() edge cases: plugin name/description, non-target extension, reading errors, unbalanced parentheses, public directory writes.
+    測試 scan() 與 scan_text() 的邊界情況：外掛名稱與描述、非目標副檔名、讀取錯誤、未閉合的括號、以及公開目錄寫入。
+    """
+    detector = DataExfiltrationDetector()
+    
+    # 1. Plugin properties
+    # 測試外掛基本屬性
+    assert detector.name == "data_exfiltration_detector"
+    assert "data exfiltration" in detector.description.lower()
+
+    # 2. Scanning non-target file extension (should return empty list)
+    # 掃描不支援的副檔名
+    findings_txt = run_scan(detector, tmp_path, "test.txt", "some content")
+    assert findings_txt == []
+
+    # 3. Scanning non-existent file path (should handle gracefully and return empty list)
+    # 掃描不存在的路徑
+    findings_nonexistent = detector.scan(["non_existent_file.py"], None)
+    assert findings_nonexistent == []
+
+    # 4. Text-based scan with unbalanced parentheses in LLM call arguments list
+    # 文字掃描：未閉合的括號
+    code_unbalanced = """
+    # Force text scan fallback by triggering syntax error
+    class : InvalidSyntax
+    openai.chat.completions.create(prompt=os.environ.get("KEY"
+    """
+    findings_unbalanced = run_scan(detector, tmp_path, "test_unbalanced.py", code_unbalanced)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings_unbalanced)
+
+    # 5. Public output leakage via text-based scan with process.env and public directory path
+    # 文字掃描：寫入公開目錄且含環境變數
+    code_public_write = 'fs.writeFileSync("public/leak.txt", process.env.API_KEY);'
+    findings_public = run_scan(detector, tmp_path, "test_public.js", code_public_write)
+    assert any("Public Output Leakage" in f["name"] for f in findings_public)
+
+
+def test_harmless_exclusions_extra(tmp_path):
+    """
+    Test harmless exclusions in paths (.example, .template, etc.).
+    測試路徑中無害排除字尾（例如 .example, .template 等）的覆蓋。
+    """
+    code = """
+    import mcp
+    
+    @mcp.tool()
+    def get_template():
+        # Using a path with .example / .template should be treated as harmless
+        with open("config.json.example", "r") as f:
+            return f.read()
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_harmless_extra.py", code)
+    assert not any("MCP Tool File Leakage" in f["name"] for f in findings)
+
+
+def test_subscript_and_attribute_base_taint_propagation(tmp_path):
+    """
+    Test fallback base taint propagation when accessing a subscript or attribute on a tainted base object directly.
+    測試當直接存取已受污染之基礎物件的下標或屬性時，後備的基礎物件污點傳遞邏輯（覆蓋 L266-269 與 L285-288）。
+    """
+    code_sub = """
+import os
+import openai
+
+env = os.environ
+openai.chat.completions.create(
+    model="gpt-4",
+    prompt=env["ANY_KEY"]
+)
+"""
+
+    code_attr = """
+import os
+import openai
+
+env = os.environ
+openai.chat.completions.create(
+    model="gpt-4",
+    prompt=env.ANY_KEY
+)
+"""
+
+    detector = DataExfiltrationDetector()
+
+    findings_sub = run_scan(detector, tmp_path, "test_base_taint_sub.py", code_sub)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings_sub)
+
+    findings_attr = run_scan(detector, tmp_path, "test_base_taint_attr.py", code_attr)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings_attr)
+
+
+def test_entropy_empty_string():
+    """
+    Test that calculate_entropy handles empty input gracefully by returning 0.0.
+    測試 calculate_entropy 遇到空字串時能優雅返回 0.0。
+    """
+    assert calculate_entropy("") == 0.0
+
+
+
+

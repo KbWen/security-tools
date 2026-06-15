@@ -40,12 +40,17 @@ Establish a static analysis detector, `DataExfiltrationDetector`, to identify an
     Contain hardcoded string literals with high Shannon entropy (> 4.5) matching secret patterns.
   - 直接傳遞讀取自環境變數（如 `os.environ` 或 `process.env`）的敏感 key。
     Directly propagate values read from environment stores (such as `os.environ` or `process.env`).
+  - 包含混淆後的雲端中繼資料服務 IP 或主機網域（Metadata SSRF 檢測），支持十進位、十六進位、八進位及 IPv6 映射之 dotted IP 正規化解析（如 AWS/GCP `169.254.169.254`、Azure WireServer `168.63.129.16`、阿里雲 `100.100.100.200`、Oracle `192.0.0.192`）。
+    Contain obfuscated cloud metadata service IPs or hostnames (Metadata SSRF Detection), supporting normalization of decimal, hexadecimal, octal, and IPv6-mapped dotted IP formats (e.g., AWS/GCP `169.254.169.254`, Azure WireServer `168.63.129.16`, Alibaba Cloud `100.100.100.200`, Oracle `192.0.0.192`).
 
 ### AC2: MCP Tool 檔案外洩檢測 (Python & JS AST) / MCP Tool Data Exfiltration Detection
 - **檢測對象 (Target Structures)**：檢測 MCP Server 中定義的工具函數（通常帶有 `@mcp.tool` 裝飾器或 TS 中宣告的 tools 註冊）。
   Analyzes functions decorated with `@mcp.tool`, `fastmcp.tool`, or dynamically registered using MCP SDKs.
-- **觸發規則 (Detection Logic)**：若工具函數的實作邏輯中，同時存在「讀取敏感路徑檔案」（如 `os.path.join(home, '.ssh')`、`.env`、`aws/credentials`）與「回傳檔案內容給呼叫者」的行為，應引發 `CRITICAL` 級別警告。
-  Triggers a `CRITICAL` finding if a tool implementation reads files from sensitive paths (e.g., `.env`, SSH directory, AWS credentials) and subsequently returns the raw file contents to the LLM.
+- **觸發規則 (Detection Logic)**：
+  - **敏感檔案讀取洩漏 (Sensitive File Read Leakage)**：若工具函數的實作邏輯中，同時存在「讀取敏感路徑檔案」（如 `os.path.join(home, '.ssh')`、`.env`、`aws/credentials`）與「回傳檔案內容給呼叫者」的行為，應引發 `CRITICAL` 級別警告。
+    Triggers a `CRITICAL` finding if a tool implementation reads files from sensitive paths (e.g., `.env`, SSH directory, AWS credentials) and subsequently returns the raw file contents to the LLM context.
+  - **動態參數任意讀取防護 (Dynamic Parameter Arbitrary Read Protection)**：當工具函數接受來自 LLM 外部輸入的動態路徑參數並進行讀取與回傳時，若缺乏路徑安全性校驗邏輯（例如未調用 `is_relative_to`、`realpath`、`abspath` 或未檢查 `".." in path` 等安全防護），應引發 `HIGH` 級別警告。
+    Triggers a `HIGH` finding if a tool reads and returns content from a path dynamically received from parameter input without verifying relative safety (e.g., missing checks like `is_relative_to`, `realpath`, `abspath`, or checking `".." in path`).
 
 ### AC3: 公開目錄敏感寫入檢測 / Public-Facing Directory Write Auditing
 - **檢測對象 (Target Invocations)**：檢測程式碼中的檔案寫入呼叫（如 `open()`, `fs.writeFileSync()`）。

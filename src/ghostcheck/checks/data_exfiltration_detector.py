@@ -33,6 +33,96 @@ def has_high_entropy_token(text: str) -> bool:
             return True
     return False
 
+def is_metadata_ip_or_host(text: str) -> bool:
+    if not text:
+        return False
+    text_lower = text.lower()
+    if "metadata.google.internal" in text_lower or "instance-data" in text_lower:
+        return True
+    url_hosts = re.findall(r'https?://([a-zA-Z0-9_\.\-\:\[\]]+)', text)
+    dotted_patterns = re.findall(r'\b[a-zA-Z0-9_\.\-\:\[\]]+\b', text)
+    candidates = list(set(url_hosts + dotted_patterns))
+    target_uints = {2852039166, 2822734096, 1684301000, 3221225664}
+    for cand in candidates:
+        cand = cand.strip("[]")
+        if not cand:
+            continue
+        cand_lower = cand.lower()
+        if "::ffff:" in cand_lower:
+            for hex_pair in ["a9fe:a9fe", "a83f:8110", "6464:64c8", "c000:00c0", "c000:c0"]:
+                if hex_pair in cand_lower:
+                    return True
+            for dotted_ip in ["169.254.169.254", "168.63.129.16", "100.100.100.200", "192.0.0.192"]:
+                if dotted_ip in cand_lower:
+                    return True
+            continue
+        if cand_lower == "metadata" or cand_lower.startswith("metadata:") or cand_lower.endswith(".metadata"):
+            return True
+        host = cand
+        if ":" in cand:
+            parts = cand.split(":")
+            if len(parts) == 2 and parts[1].isdigit():
+                host = parts[0]
+        if "." in host:
+            subparts = host.split(".")
+            if len(subparts) == 4:
+                try:
+                    octets = []
+                    for sp in subparts:
+                        sp = sp.strip()
+                        if not sp:
+                            break
+                        if sp.lower().startswith("0x"):
+                            val = int(sp, 16)
+                        elif sp.startswith("0") and len(sp) > 1 and all(c in "01234567" for c in sp):
+                            val = int(sp, 8)
+                        else:
+                            val = int(sp, 10)
+                        if 0 <= val <= 255:
+                            octets.append(val)
+                        else:
+                            break
+                    if len(octets) == 4:
+                        uint_val = (octets[0] << 24) + (octets[1] << 16) + (octets[2] << 8) + octets[3]
+                        if uint_val in target_uints:
+                            return True
+                except ValueError:
+                    pass
+        else:
+            try:
+                if host.lower().startswith("0x"):
+                    val = int(host, 16)
+                elif host.startswith("0") and len(host) > 1 and all(c in "01234567" for c in host):
+                    val = int(host, 8)
+                else:
+                    val = int(host, 10)
+                if val in target_uints:
+                    return True
+            except ValueError:
+                pass
+    return False
+
+class ValidationScanner(ast.NodeVisitor):
+    def __init__(self):
+        self.validated = False
+    def visit_Call(self, node: ast.Call):
+        func_name = ""
+        if isinstance(node.func, ast.Name):
+            func_name = node.func.id
+        elif isinstance(node.func, ast.Attribute):
+            func_name = node.func.attr
+        if func_name in ['is_relative_to', 'realpath', 'abspath', 'is_safe', 'validate_path']:
+            self.validated = True
+        self.generic_visit(node)
+    def visit_Compare(self, node: ast.Compare):
+        if isinstance(node.left, ast.Constant) and node.left.value == '..':
+            self.validated = True
+        for op in node.comparators:
+            if isinstance(op, ast.Constant) and op.value == '..':
+                self.validated = True
+        self.generic_visit(node)
+
+
 
 class WrapperHarvester(ast.NodeVisitor):
     def __init__(self, aliases):
@@ -152,7 +242,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                 for scope in reversed(self.parent.scopes):
                     if name_node.id in scope:
                         t = scope[name_node.id].get("taint")
-                        if t and t not in ['mcp_sensitive_leak', 'public_write_handle']:
+                        if t and t not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
                             self.taint_found = t
                             return
                 if name_node.id in self.parent.aliases:
@@ -164,11 +254,38 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                     self.taint_found = 'sensitive'
                     return
 
+            def visit_Subscript(self, subscript_node: ast.Subscript):
+                base_name = self.parent._resolve_name(subscript_node.value)
+                slice_val = self.parent._resolve_expression(subscript_node.slice)
+                if base_name:
+                    for scope in reversed(self.parent.scopes):
+                        if base_name in scope:
+                            if isinstance(slice_val, str) and scope[base_name].get("sub_taints", {}).get(slice_val):
+                                self.taint_found = scope[base_name]["sub_taints"][slice_val]
+                                return
+                            base_taint = scope[base_name].get("taint")
+                            if base_taint and base_taint not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
+                                self.taint_found = base_taint
+                                return
+                self.generic_visit(subscript_node)
+
             def visit_Attribute(self, attr_node: ast.Attribute):
                 resolved = self.parent._resolve_name(attr_node)
                 if resolved in ['os.environ', 'os.getenv', 'environ']:
                     self.taint_found = 'env'
                     return
+                base_name = self.parent._resolve_name(attr_node.value)
+                attr_name = attr_node.attr
+                if base_name:
+                    for scope in reversed(self.parent.scopes):
+                        if base_name in scope:
+                            if scope[base_name].get("sub_taints", {}).get(attr_name):
+                                self.taint_found = scope[base_name]["sub_taints"][attr_name]
+                                return
+                            base_taint = scope[base_name].get("taint")
+                            if base_taint and base_taint not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
+                                self.taint_found = base_taint
+                                return
                 self.generic_visit(attr_node)
                 
             def visit_Call(self, call_node: ast.Call):
@@ -180,6 +297,9 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
 
             def visit_Constant(self, const_node: ast.Constant):
                 if isinstance(const_node.value, str):
+                    if is_metadata_ip_or_host(const_node.value):
+                        self.taint_found = 'metadata_ssrf'
+                        return
                     if has_high_entropy_token(const_node.value):
                         self.taint_found = 'high_entropy'
                         return
@@ -191,26 +311,37 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         checker.visit(node)
         return checker.taint_found
 
-    def _check_mcp_sensitive_read(self, node) -> bool:
+    def _is_path_validated(self, node) -> bool:
+        return getattr(self, 'current_function_validated', False)
+
+    def _check_mcp_sensitive_read(self, node) -> str:
         if not isinstance(node, ast.Call):
-            return False
+            return None
         func_name = self._resolve_name(node.func)
         if func_name == 'open' and node.args:
             path_val = self._resolve_expression(node.args[0])
             if isinstance(path_val, str) and self._is_sensitive_path(path_val):
-                return True
+                return 'mcp_sensitive_leak'
+            path_taint = self._check_expression_for_taint(node.args[0])
+            if path_taint == 'mcp_param':
+                if not self._is_path_validated(node.args[0]):
+                    return 'mcp_param_leak'
         elif func_name.endswith('.read') or func_name.endswith('.read_text') or func_name.endswith('.read_bytes'):
             if isinstance(node.func, ast.Attribute):
                 caller_val = self._resolve_expression(node.func.value)
                 if isinstance(caller_val, str) and self._is_sensitive_path(caller_val):
-                    return True
+                    return 'mcp_sensitive_leak'
+                path_taint = self._check_expression_for_taint(node.func.value)
+                if path_taint == 'mcp_param':
+                    if not self._is_path_validated(node.func.value):
+                        return 'mcp_param_leak'
                 elif isinstance(node.func.value, ast.Call):
                     sub_func = self._resolve_name(node.func.value.func)
                     if sub_func in ['open', 'Path', 'pathlib.Path'] and node.func.value.args:
                         sub_path = self._resolve_expression(node.func.value.args[0])
                         if isinstance(sub_path, str) and self._is_sensitive_path(sub_path):
-                            return True
-        return False
+                            return 'mcp_sensitive_leak'
+        return None
 
     def _check_public_write_handle(self, node) -> bool:
         if not isinstance(node, ast.Call):
@@ -233,26 +364,28 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                     return True
         return False
 
-    def _is_mcp_sensitive_expression(self, node) -> bool:
-        if self._check_mcp_sensitive_read(node):
-            return True
+    def _is_mcp_sensitive_expression(self, node) -> str:
+        read_type = self._check_mcp_sensitive_read(node)
+        if read_type:
+            return read_type
             
         class MCPTaintChecker(ast.NodeVisitor):
             def __init__(self, visitor_parent):
                 self.parent = visitor_parent
-                self.leak_found = False
+                self.leak_found = None
                 
             def visit_Name(self, name_node: ast.Name):
                 for scope in reversed(self.parent.scopes):
                     if name_node.id in scope:
                         t = scope[name_node.id].get("taint")
-                        if t == 'mcp_sensitive_leak':
-                            self.leak_found = True
+                        if t in ['mcp_sensitive_leak', 'mcp_param_leak']:
+                            self.leak_found = t
                             return
                         
             def visit_Call(self, call_node: ast.Call):
-                if self.parent._check_mcp_sensitive_read(call_node):
-                    self.leak_found = True
+                read_type = self.parent._check_mcp_sensitive_read(call_node)
+                if read_type:
+                    self.leak_found = read_type
                     return
                 self.generic_visit(call_node)
 
@@ -300,33 +433,47 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
 
         self.in_mcp_tool = is_mcp
         self.scopes.append({})
+        
+        scanner = ValidationScanner()
+        scanner.visit(node)
+        old_validated = getattr(self, 'current_function_validated', False)
+        self.current_function_validated = scanner.validated
+        
+        if self.in_mcp_tool:
+            for arg in node.args.args:
+                self.scopes[-1][arg.arg] = {"value": None, "taint": 'mcp_param', "sub_taints": {}}
+                
         self.generic_visit(node)
         self.scopes.pop()
         self.in_mcp_tool = old_mcp
+        self.current_function_validated = old_validated
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         self.visit_FunctionDef(node)
 
     def visit_With(self, node: ast.With):
         for item in node.items:
-            if self._check_mcp_sensitive_read(item.context_expr):
+            mcp_read = self._check_mcp_sensitive_read(item.context_expr)
+            if mcp_read:
                 if isinstance(item.optional_vars, ast.Name):
-                    self.scopes[-1][item.optional_vars.id] = {"value": None, "taint": 'mcp_sensitive_leak'}
+                    self.scopes[-1][item.optional_vars.id] = {"value": None, "taint": mcp_read, "sub_taints": {}}
             elif self._check_public_write_handle(item.context_expr):
                 if isinstance(item.optional_vars, ast.Name):
-                    self.scopes[-1][item.optional_vars.id] = {"value": None, "taint": 'public_write_handle'}
+                    self.scopes[-1][item.optional_vars.id] = {"value": None, "taint": 'public_write_handle', "sub_taints": {}}
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
         taint = None
         val = self._resolve_expression(node.value)
         
+        mcp_expr_taint = self._is_mcp_sensitive_expression(node.value)
+        
         if self._check_mcp_sensitive_read(node.value):
-            taint = 'mcp_sensitive_leak'
+            taint = self._check_mcp_sensitive_read(node.value)
         elif self._check_public_write_handle(node.value):
             taint = 'public_write_handle'
-        elif self._is_mcp_sensitive_expression(node.value):
-            taint = 'mcp_sensitive_leak'
+        elif mcp_expr_taint:
+            taint = mcp_expr_taint
         else:
             if isinstance(val, str):
                 if val in ['os.environ', 'os.getenv', 'environ']:
@@ -335,22 +482,57 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                     taint = 'sensitive'
                 elif has_high_entropy_token(val):
                     taint = 'high_entropy'
+                elif is_metadata_ip_or_host(val):
+                    taint = 'metadata_ssrf'
 
             if not taint:
                 taint = self._check_expression_for_taint(node.value)
 
         for target in node.targets:
             if isinstance(target, ast.Name):
-                self.scopes[-1][target.id] = {"value": val, "taint": taint}
+                self.scopes[-1][target.id] = {"value": val, "taint": taint, "sub_taints": {}}
             elif isinstance(target, (ast.Tuple, ast.List)):
                 for elt in target.elts:
                     if isinstance(elt, ast.Name):
-                        self.scopes[-1][elt.id] = {"value": val, "taint": taint}
+                        self.scopes[-1][elt.id] = {"value": val, "taint": taint, "sub_taints": {}}
+            elif isinstance(target, ast.Subscript):
+                base_name = self._resolve_name(target.value)
+                slice_val = self._resolve_expression(target.slice)
+                if base_name and isinstance(slice_val, str):
+                    found = False
+                    for scope in reversed(self.scopes):
+                        if base_name in scope:
+                            if "sub_taints" not in scope[base_name]:
+                                scope[base_name]["sub_taints"] = {}
+                            scope[base_name]["sub_taints"][slice_val] = taint
+                            found = True
+                            break
+                    if not found:
+                        self.scopes[-1][base_name] = {"value": {}, "taint": None, "sub_taints": {slice_val: taint}}
+            elif isinstance(target, ast.Attribute):
+                base_name = self._resolve_name(target.value)
+                attr_name = target.attr
+                if base_name:
+                    found = False
+                    for scope in reversed(self.scopes):
+                        if base_name in scope:
+                            if "sub_taints" not in scope[base_name]:
+                                scope[base_name]["sub_taints"] = {}
+                            scope[base_name]["sub_taints"][attr_name] = taint
+                            found = True
+                            break
+                    if not found:
+                        self.scopes[-1][base_name] = {"value": {}, "taint": None, "sub_taints": {attr_name: taint}}
         self.generic_visit(node)
 
     def visit_Return(self, node: ast.Return):
         if self.in_mcp_tool and node.value:
-            if self._is_mcp_sensitive_expression(node.value):
+            taint = self._check_expression_for_taint(node.value)
+            mcp_taint = self._is_mcp_sensitive_expression(node.value)
+            
+            leak_type = taint if taint in ['metadata_ssrf', 'mcp_param_leak', 'mcp_sensitive_leak'] else mcp_taint
+            
+            if leak_type == 'mcp_sensitive_leak':
                 self.findings.append({
                     "file": self.file_path,
                     "line": node.lineno,
@@ -358,6 +540,24 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                     "severity": "CRITICAL",
                     "message": "MCP tool returns sensitive file content directly to LLM context.",
                     "suggestion": "Do not return raw sensitive file content in MCP tools. Parse, filter, or restrict tool access."
+                })
+            elif leak_type == 'mcp_param_leak':
+                self.findings.append({
+                    "file": self.file_path,
+                    "line": node.lineno,
+                    "name": "AI Data Exfiltration: MCP Tool Parameter Arbitrary File Leakage",
+                    "severity": "HIGH",
+                    "message": "MCP tool reads and returns file content from an unvalidated parameter path, leading to arbitrary file leakage.",
+                    "suggestion": "Validate the parameter path before reading. Ensure it does not escape the workspace directory."
+                })
+            elif leak_type == 'metadata_ssrf':
+                self.findings.append({
+                    "file": self.file_path,
+                    "line": node.lineno,
+                    "name": "AI Data Exfiltration: Metadata API SSRF Leakage",
+                    "severity": "CRITICAL",
+                    "message": "MCP tool returns cloud metadata endpoint directly to LLM context.",
+                    "suggestion": "Do not return cloud metadata service URLs or credentials in MCP tools."
                 })
         self.generic_visit(node)
 
@@ -522,6 +722,26 @@ class JsDataExfiltrationVisitor:
             return left + right
         return ""
 
+    def _resolve_name(self, node) -> str:
+        if not node:
+            return ""
+        n_type = getattr(node, 'type', '')
+        if n_type == 'Identifier':
+            var_name = getattr(node, 'name', '')
+            for scope in reversed(self.scopes):
+                if var_name in scope:
+                    t = scope[var_name].get("taint")
+                    if t:
+                        return t
+            return var_name
+        elif n_type == 'MemberExpression':
+            obj_str = self._resolve_name(node.object)
+            prop_str = self._resolve_name(node.property)
+            if obj_str and prop_str:
+                return f"{obj_str}.{prop_str}"
+            return prop_str or obj_str
+        return ""
+
     def _is_sensitive_path(self, path: str) -> bool:
         normalized = path.replace('\\', '/')
         parts = normalized.split('/')
@@ -558,9 +778,36 @@ class JsDataExfiltrationVisitor:
                 if expr_str.startswith('process.env'):
                     found_taint[0] = 'env'
                     return
+                # Check for key-specific sub_taint
+                base_str = self._resolve_name(n.object)
+                prop_str = self._resolve_name(n.property)
+                if base_str and prop_str:
+                    for scope in reversed(self.scopes):
+                        if base_str in scope:
+                            if scope[base_str].get("sub_taints", {}).get(prop_str):
+                                found_taint[0] = scope[base_str]["sub_taints"][prop_str]
+                                return
+                            base_taint = scope[base_str].get("taint")
+                            if base_taint:
+                                found_taint[0] = base_taint
+                                return
+            elif n_type == 'CallExpression':
+                callee_str = self._resolve_expression(n)
+                if callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] and getattr(n, 'arguments', None):
+                    path_val = self._resolve_expression(n.arguments[0])
+                    if isinstance(path_val, str) and self._is_sensitive_path(path_val):
+                        found_taint[0] = 'mcp_sensitive_leak'
+                        return
+                    path_taint = self._check_expression_for_taint(n.arguments[0])
+                    if path_taint == 'mcp_param':
+                        found_taint[0] = 'mcp_param_leak'
+                        return
             elif n_type == 'Literal':
                 val = getattr(n, 'value', None)
                 if isinstance(val, str):
+                    if is_metadata_ip_or_host(val):
+                        found_taint[0] = 'metadata_ssrf'
+                        return
                     if has_high_entropy_token(val):
                         found_taint[0] = 'high_entropy'
                         return
@@ -588,7 +835,7 @@ class JsDataExfiltrationVisitor:
         node_type = getattr(node, 'type', '')
         line = self._get_line(node)
         
-        is_function = node_type in ['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression', 'MethodDefinition']
+        is_function = node_type in ['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']
         is_class = node_type in ['ClassDeclaration', 'ClassExpression']
 
         if is_function:
@@ -596,6 +843,11 @@ class JsDataExfiltrationVisitor:
             if self.has_mcp:
                 self.in_mcp_tool = True
             self.push_scope()
+            if self.in_mcp_tool:
+                for param in getattr(node, 'params', []) or []:
+                    p_name = getattr(param, 'name', '')
+                    if p_name:
+                        self.scopes[-1][p_name] = {"value": None, "taint": 'mcp_param', "sub_taints": {}}
         elif is_class:
             self.push_scope()
 
@@ -610,12 +862,15 @@ class JsDataExfiltrationVisitor:
                     taint = 'env'
                 elif self._is_sensitive_path(init_str):
                     taint = 'mcp_sensitive_leak'
+                elif is_metadata_ip_or_host(init_str):
+                    taint = 'metadata_ssrf'
                 else:
                     taint = self._check_expression_for_taint(init_val)
-                self.scopes[-1][id_name] = {"value": val, "taint": taint}
+                self.scopes[-1][id_name] = {"value": val, "taint": taint, "sub_taints": {}}
 
         elif node_type == 'AssignmentExpression':
-            left_str = self._resolve_expression(node.left)
+            left_str = self._resolve_name(node.left)
+            is_member = getattr(node.left, 'type', '') == 'MemberExpression'
             if left_str:
                 val = self._resolve_expression(node.right)
                 taint = None
@@ -624,9 +879,27 @@ class JsDataExfiltrationVisitor:
                     taint = 'env'
                 elif self._is_sensitive_path(right_str):
                     taint = 'mcp_sensitive_leak'
+                elif is_metadata_ip_or_host(right_str):
+                    taint = 'metadata_ssrf'
                 else:
                     taint = self._check_expression_for_taint(node.right)
-                self.scopes[-1][left_str] = {"value": val, "taint": taint}
+                
+                if is_member:
+                    base_str = self._resolve_name(node.left.object)
+                    prop_str = self._resolve_name(node.left.property)
+                    if base_str and prop_str:
+                        found = False
+                        for scope in reversed(self.scopes):
+                            if base_str in scope:
+                                if "sub_taints" not in scope[base_str]:
+                                    scope[base_str]["sub_taints"] = {}
+                                scope[base_str]["sub_taints"][prop_str] = taint
+                                found = True
+                                break
+                        if not found:
+                            self.scopes[-1][base_str] = {"value": {}, "taint": None, "sub_taints": {prop_str: taint}}
+                else:
+                    self.scopes[-1][left_str] = {"value": val, "taint": taint, "sub_taints": {}}
 
         elif node_type == 'ImportDeclaration':
             source = getattr(getattr(node, 'source', None), 'value', '')
@@ -648,13 +921,16 @@ class JsDataExfiltrationVisitor:
                 for arg in getattr(node, 'arguments', []):
                     taint = self._check_expression_for_taint(arg)
                     if taint:
+                        is_ssrf = (taint == 'metadata_ssrf')
+                        name = "AI Data Exfiltration: Metadata API SSRF Leakage" if is_ssrf else "AI Data Exfiltration: LLM Prompt Leakage"
+                        msg = f"Potential SSRF exfiltration of cloud metadata API to LLM API call '{callee_str}'." if is_ssrf else f"Potential sensitive data exfiltration to LLM API call '{callee_str}' via tainted prompt argument."
                         self.findings.append({
                             "file": self.file_path,
                             "line": line,
-                            "name": "AI Data Exfiltration: LLM Prompt Leakage",
+                            "name": name,
                             "severity": "HIGH",
-                            "message": f"Potential sensitive data exfiltration to LLM API call '{callee_str}' via tainted prompt argument.",
-                            "suggestion": "Sanitize prompts and remove sensitive environment variables, high-entropy keys, or credentials before invoking LLM APIs."
+                            "message": msg,
+                            "suggestion": "Do not pass cloud metadata service URLs or credentials to external LLMs. Ensure user input and tool outputs are properly sanitized."
                         })
 
             is_sensitive_read = False
@@ -682,8 +958,20 @@ class JsDataExfiltrationVisitor:
             if self.in_mcp_tool:
                 taint = self._check_expression_for_taint(node.argument)
                 is_leak = False
+                is_param_leak = False
                 if taint == 'mcp_sensitive_leak':
                     is_leak = True
+                elif taint == 'mcp_param_leak':
+                    is_param_leak = True
+                elif taint == 'metadata_ssrf':
+                    self.findings.append({
+                        "file": self.file_path,
+                        "line": line,
+                        "name": "AI Data Exfiltration: Metadata API SSRF Leakage",
+                        "severity": "CRITICAL",
+                        "message": "MCP tool returns cloud metadata endpoint directly to LLM context.",
+                        "suggestion": "Do not return cloud metadata service URLs or credentials in MCP tools."
+                    })
                 else:
                     arg_type = getattr(node.argument, 'type', '')
                     if arg_type == 'CallExpression':
@@ -692,6 +980,10 @@ class JsDataExfiltrationVisitor:
                             path_val = self._resolve_expression(node.argument.arguments[0])
                             if isinstance(path_val, str) and self._is_sensitive_path(path_val):
                                 is_leak = True
+                            else:
+                                path_taint = self._check_expression_for_taint(node.argument.arguments[0])
+                                if path_taint == 'mcp_param':
+                                    is_param_leak = True
                 
                 if is_leak:
                     self.findings.append({
@@ -701,6 +993,15 @@ class JsDataExfiltrationVisitor:
                         "severity": "CRITICAL",
                         "message": "MCP tool returns sensitive file content directly to LLM context.",
                         "suggestion": "Do not return raw sensitive file content in MCP tools. Parse, filter, or restrict tool access."
+                    })
+                elif is_param_leak:
+                    self.findings.append({
+                        "file": self.file_path,
+                        "line": line,
+                        "name": "AI Data Exfiltration: MCP Tool Parameter Arbitrary File Leakage",
+                        "severity": "HIGH",
+                        "message": "MCP tool reads and returns file content from an unvalidated parameter path, leading to arbitrary file leakage.",
+                        "suggestion": "Validate the parameter path before reading. Ensure it does not escape the workspace directory."
                     })
 
         for key, value in node.__dict__.items():
@@ -814,6 +1115,7 @@ class DataExfiltrationDetector(BaseScannerPlugin):
         file_lower = os.path.basename(file_path).lower()
         has_mcp_import = any(x in content for x in ['import mcp', 'require("mcp")', "require('mcp')", 'fastmcp']) or 'mcp' in file_lower or 'tool' in file_lower
         tainted_vars = set()
+        metadata_vars = set()
 
         # Pass 1: Identify tainted variables (assignments from env or high-entropy or sensitive names)
         # Regex updated to support TypeScript type annotations optional syntax (e.g. const conf: Config = ...)
@@ -827,15 +1129,20 @@ class DataExfiltrationDetector(BaseScannerPlugin):
                 var_name = m.group(1)
                 right_side = m.group(2)
                 is_tainted = False
+                is_metadata = False
                 if any(x in right_side for x in ['os.environ', 'process.env', 'os.getenv', 'environ.get']):
                     is_tainted = True
                 elif has_high_entropy_token(right_side):
                     is_tainted = True
                 elif self._is_sensitive_name(var_name):
                     is_tainted = True
+                elif is_metadata_ip_or_host(right_side):
+                    is_metadata = True
                 
                 if is_tainted:
                     tainted_vars.add(var_name)
+                if is_metadata:
+                    metadata_vars.add(var_name)
 
         # Pass 2: Match LLM calls and extract full parenthesized arguments list
         llm_api_pat = re.compile(r'\b(completions\.create|messages\.create|invoke|generateContent)\b')
@@ -867,24 +1174,19 @@ class DataExfiltrationDetector(BaseScannerPlugin):
                         args_content = content[open_paren_idx + 1 :]
 
             if args_content:
-                has_leak = False
-                if any(x in args_content for x in ['os.environ', 'process.env', 'os.getenv', 'environ.get']):
-                    has_leak = True
-                elif any(v in args_content for v in tainted_vars):
-                    has_leak = True
-                elif any(self._is_sensitive_name(token) for token in re.split(r'\W+', args_content)):
-                    has_leak = True
-                elif has_high_entropy_token(args_content):
-                    has_leak = True
+                is_ssrf = is_metadata_ip_or_host(args_content) or any(v in args_content for v in metadata_vars)
+                has_leak = is_ssrf or any(x in args_content for x in ['os.environ', 'process.env', 'os.getenv', 'environ.get']) or any(v in args_content for v in tainted_vars) or any(self._is_sensitive_name(token) for token in re.split(r'\W+', args_content)) or has_high_entropy_token(args_content)
 
                 if has_leak:
+                    name = "AI Data Exfiltration: Metadata API SSRF Leakage" if is_ssrf else "AI Data Exfiltration: LLM Prompt Leakage"
+                    msg = f"Potential SSRF exfiltration of cloud metadata API to LLM API call '{api_name}' detected via text scan." if is_ssrf else f"Potential sensitive data exfiltration to LLM API call '{api_name}' detected via text scan."
                     findings.append({
                         "file": file_path,
                         "line": line_num,
-                        "name": "AI Data Exfiltration: LLM Prompt Leakage",
+                        "name": name,
                         "severity": "HIGH",
-                        "message": f"Potential sensitive data exfiltration to LLM API call '{api_name}' detected via text scan.",
-                        "suggestion": "Sanitize prompts and remove sensitive environment variables, high-entropy keys, or credentials before invoking LLM APIs."
+                        "message": msg,
+                        "suggestion": "Do not pass cloud metadata service URLs or credentials to external LLMs. Ensure user input and tool outputs are properly sanitized."
                     })
 
         # Pass 3: Simple line-level fallback for reading sensitive files in files that use MCP
@@ -896,14 +1198,18 @@ class DataExfiltrationDetector(BaseScannerPlugin):
                 continue
 
             if has_mcp_import:
-                if any(x in line_lower for x in ['open(', 'readfilesync', 'readfile', 'read_text', 'read_bytes']) and self._is_sensitive_path(line_lower):
+                is_ssrf = is_metadata_ip_or_host(line_lower)
+                is_sensitive_read = any(x in line_lower for x in ['open(', 'readfilesync', 'readfile', 'read_text', 'read_bytes']) and self._is_sensitive_path(line_lower)
+                if is_ssrf or is_sensitive_read:
+                    name = "AI Data Exfiltration: Metadata API SSRF Leakage" if is_ssrf else "AI Data Exfiltration: MCP Tool File Leakage"
+                    msg = "Potential MCP tool cloud metadata read detected via text scan." if is_ssrf else "Potential MCP tool sensitive file read detected via text scan."
                     findings.append({
                         "file": file_path,
                         "line": line_num,
-                        "name": "AI Data Exfiltration: MCP Tool File Leakage",
+                        "name": name,
                         "severity": "CRITICAL",
-                        "message": "Potential MCP tool sensitive file read detected via text scan.",
-                        "suggestion": "Do not return raw sensitive file content in MCP tools. Parse, filter, or restrict tool access."
+                        "message": msg,
+                        "suggestion": "Do not return raw sensitive file content or metadata endpoints in MCP tools. Parse, filter, or restrict tool access."
                     })
 
             # AC3: Public Directory writes
