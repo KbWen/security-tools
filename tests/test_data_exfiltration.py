@@ -449,6 +449,21 @@ openai.chat.completions.create(prompt=my_secret)
     findings = run_scan(detector, tmp_path, "test_assign_entropy.py", code)
     assert any("LLM Prompt Leakage" in f["name"] for f in findings)
 
+def test_harmless_paths_ignored(tmp_path):
+    # Verify that .env.example, .env.template, credentials.dist, and id_rsa.pub are ignored
+    code = """
+    import mcp
+    from pathlib import Path
 
-
-
+    @mcp.tool()
+    def get_public_key():
+        # Reading public key or config example should NOT trigger warnings
+        p1 = Path("id_rsa.pub")
+        p2 = Path(".env.example")
+        p3 = Path(".env.template")
+        p4 = Path("credentials.dist")
+        return p1.read_text() + p2.read_text() + p3.read_text() + p4.read_text()
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_harmless.py", code)
+    assert not any("MCP Tool File Leakage" in f["name"] for f in findings)

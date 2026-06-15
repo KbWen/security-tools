@@ -132,6 +132,8 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials']
         for p in parts:
             if any(s in p for s in sensitive_parts):
+                if any(x in p for x in ['.example', '.template', '.dist', '.pub']):
+                    continue
                 return True
         return False
 
@@ -525,6 +527,8 @@ class JsDataExfiltrationVisitor:
         sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials']
         for p in parts:
             if any(s in p for s in sensitive_parts):
+                if any(x in p for x in ['.example', '.template', '.dist', '.pub']):
+                    continue
                 return True
         return False
 
@@ -793,6 +797,8 @@ class DataExfiltrationDetector(BaseScannerPlugin):
         sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials']
         for p in parts:
             if any(s in p for s in sensitive_parts):
+                if any(x in p for x in ['.example', '.template', '.dist', '.pub']):
+                    continue
                 return True
         return False
 
