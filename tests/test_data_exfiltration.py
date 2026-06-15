@@ -467,3 +467,48 @@ def test_harmless_paths_ignored(tmp_path):
     detector = DataExfiltrationDetector()
     findings = run_scan(detector, tmp_path, "test_harmless.py", code)
     assert not any("MCP Tool File Leakage" in f["name"] for f in findings)
+
+
+def test_long_entropy_token(tmp_path):
+    # Verify that a long key (>128 chars, e.g. 150 chars) is detected in text/entropy scan
+    import random
+    random.seed(42)
+    chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789+/"
+    long_key = "".join(random.choice(chars) for _ in range(150))
+    
+    code = f"""
+    openai.chat.completions.create(prompt="{long_key}")
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_long_key.py", code)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings)
+
+
+def test_text_scan_nested_parentheses_leak(tmp_path):
+    # Verify that nested parenthesized calls in text scan do not cause early termination
+    code = """
+    # Syntax error to force text scan fallback
+    class : InvalidSyntax
+    
+    openai.chat.completions.create(
+        model=get_model_name("default"),
+        messages=[{"role": "user", "content": os.environ.get("SECRET_KEY")}]
+    )
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_nested.py", code)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings)
+
+
+def test_mcp_file_name_heuristic(tmp_path):
+    # Verify that files named with 'mcp' trigger tool return leakage even without explicit import
+    code = """
+    def read_key():
+        with open(".env", "r") as f:
+            return f.read()
+    """
+    detector = DataExfiltrationDetector()
+    # Name the file with 'mcp' in the filename
+    findings = run_scan(detector, tmp_path, "my_mcp_tools.py", code)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings)
+

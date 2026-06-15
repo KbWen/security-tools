@@ -171,3 +171,49 @@ sub_run(cmd)
     findings = auditor.scan([str(f)], None)
     assert len(findings) >= 2
 
+
+def test_hitl_bypass_hardening(tmp_path):
+    # Verify that writing 'input(' in comments, docstrings, or string literals does not bypass silent installer scanning
+    
+    # Case 1: python docstring containing input()
+    code_docstring = """
+    '''
+    input('This is a docstring bypass attempt')
+    '''
+    import subprocess
+    subprocess.run("pip install flask -y")
+    """
+    
+    # Case 2: JS block comment containing input()
+    code_js_comment = """
+    /*
+    input('This is a block comment bypass attempt')
+    */
+    const exec = require('child_process').exec;
+    exec('npm install express -y');
+    """
+    
+    # Case 3: log string containing input(
+    code_string = """
+    import subprocess
+    print("Do not trigger input( here")
+    subprocess.run("pip install flask -y")
+    """
+
+    auditor = SilentInstaller()
+    
+    f1 = tmp_path / "docstring.py"
+    f1.write_text(code_docstring, encoding="utf-8")
+    findings1 = auditor.scan([str(f1)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings1)
+
+    f2 = tmp_path / "comment.sh"
+    f2.write_text(code_js_comment, encoding="utf-8")
+    findings2 = auditor.scan([str(f2)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings2)
+
+    f3 = tmp_path / "logstr.py"
+    f3.write_text(code_string, encoding="utf-8")
+    findings3 = auditor.scan([str(f3)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings3)
+

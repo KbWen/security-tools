@@ -69,16 +69,28 @@ class SilentInstaller(BaseScannerPlugin):
         # 1. HITL Warning Check (Bypass scanner if human prompts are present in the non-comment lines of the file)
         hitl_indicators = ['read -p', 'Read-Host', 'input(', 'readline(', 'confirm(']
         
-        # Filter out comment lines to prevent comment-based bypasses (e.g. # input())
+        # Strip comments, docstrings, and string literals to prevent comment/string-based bypasses
+        # Strip JS block comments /* ... */
+        clean_content = re.sub(r'/\*[\s\S]*?\*/', '', content)
+        # Strip Python docstrings/triple-quoted strings
+        clean_content = re.sub(r'"""[\s\S]*?"""', '', clean_content)
+        clean_content = re.sub(r"'''[\s\S]*?'''", '', clean_content)
+        
+        # Strip standard string literals and single line comments line-by-line
+        str_pat = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'')
         clean_lines = []
-        for line in content.split('\n'):
-            trimmed = line.strip()
-            if not (trimmed.startswith('#') or trimmed.startswith('//')):
-                clean_lines.append(line)
+        for line in clean_content.splitlines():
+            line_no_str = str_pat.sub('', line)
+            if '#' in line_no_str:
+                line_no_str = line_no_str.split('#')[0]
+            if '//' in line_no_str:
+                line_no_str = line_no_str.split('//')[0]
+            clean_lines.append(line_no_str)
         clean_content = '\n'.join(clean_lines)
         
         if any(indicator in clean_content for indicator in hitl_indicators):
             return []
+
 
         lines = content.split('\n')
         

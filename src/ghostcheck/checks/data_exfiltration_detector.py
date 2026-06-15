@@ -15,7 +15,7 @@ except ImportError:
     esprima = None
 
 # Match potential key/token candidates (base64, hex, or typical high-density strings)
-TOKEN_CANDIDATE_PAT = re.compile(r'\b[a-zA-Z0-9+/=_-]{23,128}\b')
+TOKEN_CANDIDATE_PAT = re.compile(r'\b[a-zA-Z0-9+/=_-]{23,256}\b')
 
 def calculate_entropy(text: str) -> float:
     if not text:
@@ -475,7 +475,8 @@ class JsDataExfiltrationVisitor:
         self.findings = []
         self.scopes = [{}]
         self.in_mcp_tool = False
-        self.has_mcp = False
+        file_lower = os.path.basename(file_path).lower()
+        self.has_mcp = 'mcp' in file_lower or 'tool' in file_lower
 
     def push_scope(self):
         self.scopes.append({})
@@ -810,7 +811,8 @@ class DataExfiltrationDetector(BaseScannerPlugin):
     def scan_text(self, file_path: str, content: str) -> List[Dict[str, Any]]:
         findings = []
         lines = content.splitlines()
-        has_mcp_import = any(x in content for x in ['import mcp', 'require("mcp")', "require('mcp')", 'fastmcp'])
+        file_lower = os.path.basename(file_path).lower()
+        has_mcp_import = any(x in content for x in ['import mcp', 'require("mcp")', "require('mcp')", 'fastmcp']) or 'mcp' in file_lower or 'tool' in file_lower
         tainted_vars = set()
 
         # Pass 1: Identify tainted variables (assignments from env or high-entropy or sensitive names)
@@ -835,33 +837,55 @@ class DataExfiltrationDetector(BaseScannerPlugin):
                 if is_tainted:
                     tainted_vars.add(var_name)
 
-        # Pass 2: Multi-line match LLM calls
-        llm_call_pat = re.compile(r'\b(completions\.create|messages\.create|invoke|generateContent)\s*\(([\s\S]*?)\)', re.MULTILINE)
-        for m in llm_call_pat.finditer(content):
+        # Pass 2: Match LLM calls and extract full parenthesized arguments list
+        llm_api_pat = re.compile(r'\b(completions\.create|messages\.create|invoke|generateContent)\b')
+        for m in llm_api_pat.finditer(content):
             api_name = m.group(1)
-            args_content = m.group(2)
             start_idx = m.start()
             line_num = content[:start_idx].count('\n') + 1
 
-            has_leak = False
-            if any(x in args_content for x in ['os.environ', 'process.env', 'os.getenv', 'environ.get']):
-                has_leak = True
-            elif any(v in args_content for v in tainted_vars):
-                has_leak = True
-            elif any(self._is_sensitive_name(token) for token in re.split(r'\W+', args_content)):
-                has_leak = True
-            elif has_high_entropy_token(args_content):
-                has_leak = True
+            # Extract the parenthesized block starting after the match
+            args_content = ""
+            open_paren_idx = content.find('(', m.end())
+            if open_paren_idx != -1:
+                # Ensure there is only whitespace between the api name and '('
+                between = content[m.end():open_paren_idx]
+                if between.strip() == "":
+                    # Walk to extract the full block balancing parentheses
+                    depth = 1
+                    i = open_paren_idx + 1
+                    while i < len(content) and depth > 0:
+                        char = content[i]
+                        if char == '(':
+                            depth += 1
+                        elif char == ')':
+                            depth -= 1
+                        i += 1
+                    if depth == 0:
+                        args_content = content[open_paren_idx + 1 : i - 1]
+                    else:
+                        args_content = content[open_paren_idx + 1 :]
 
-            if has_leak:
-                findings.append({
-                    "file": file_path,
-                    "line": line_num,
-                    "name": "AI Data Exfiltration: LLM Prompt Leakage",
-                    "severity": "HIGH",
-                    "message": f"Potential sensitive data exfiltration to LLM API call '{api_name}' detected via text scan.",
-                    "suggestion": "Sanitize prompts and remove sensitive environment variables, high-entropy keys, or credentials before invoking LLM APIs."
-                })
+            if args_content:
+                has_leak = False
+                if any(x in args_content for x in ['os.environ', 'process.env', 'os.getenv', 'environ.get']):
+                    has_leak = True
+                elif any(v in args_content for v in tainted_vars):
+                    has_leak = True
+                elif any(self._is_sensitive_name(token) for token in re.split(r'\W+', args_content)):
+                    has_leak = True
+                elif has_high_entropy_token(args_content):
+                    has_leak = True
+
+                if has_leak:
+                    findings.append({
+                        "file": file_path,
+                        "line": line_num,
+                        "name": "AI Data Exfiltration: LLM Prompt Leakage",
+                        "severity": "HIGH",
+                        "message": f"Potential sensitive data exfiltration to LLM API call '{api_name}' detected via text scan.",
+                        "suggestion": "Sanitize prompts and remove sensitive environment variables, high-entropy keys, or credentials before invoking LLM APIs."
+                    })
 
         # Pass 3: Simple line-level fallback for reading sensitive files in files that use MCP
         for i, line in enumerate(lines):
