@@ -780,7 +780,7 @@ class JsDataExfiltrationVisitor:
                     return
                 # Check for key-specific sub_taint
                 base_str = self._resolve_name(n.object)
-                prop_str = self._resolve_name(n.property)
+                prop_str = self._resolve_expression(n.property)
                 if base_str and prop_str:
                     for scope in reversed(self.scopes):
                         if base_str in scope:
@@ -886,7 +886,7 @@ class JsDataExfiltrationVisitor:
                 
                 if is_member:
                     base_str = self._resolve_name(node.left.object)
-                    prop_str = self._resolve_name(node.left.property)
+                    prop_str = self._resolve_expression(node.left.property)
                     if base_str and prop_str:
                         found = False
                         for scope in reversed(self.scopes):

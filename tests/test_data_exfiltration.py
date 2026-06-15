@@ -975,5 +975,25 @@ def test_entropy_empty_string():
     assert calculate_entropy("") == 0.0
 
 
+def test_js_dynamic_property_lookup(tmp_path):
+    """
+    Test dynamic variable-based property lookup and assignment in JS AST visitor.
+    測試 JS AST 走訪器中的動態變數屬性查找與賦值（對抗性防繞過加固）。
+    """
+    code = """
+    const key_name = "secret_key";
+    const config = {};
+    config[key_name] = process.env.API_KEY;
+    
+    completions.create({
+        prompt: config[key_name]
+    });
+    """
+    detector = DataExfiltrationDetector()
+    findings = run_scan(detector, tmp_path, "test_js_dynamic.js", code)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings)
+
+
+
 
 
