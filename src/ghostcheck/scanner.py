@@ -31,6 +31,7 @@ from .checks.shadow_ai import ShadowAIDetector
 from .checks.tamper_auditor import TamperAuditor
 from .checks.prompt_template_scanner import PromptTemplateScanner
 from .checks.ai_marker import AIMarker
+from .checks.data_exfiltration_detector import DataExfiltrationDetector
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher

@@ -25,6 +25,7 @@
   - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
   - `[prompt-template-scanner] docs/specs/prompt_template_scanner.md [Frozen] [Updated: 2026-06-09]`
   - `[ai-marker] docs/specs/ai_marker.md [Frozen] [Updated: 2026-06-09]`
+  - `[data-exfiltration] docs/specs/data-exfiltration.md [Frozen] [Updated: 2026-06-15]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -56,6 +57,8 @@
 > 3-5 high-value patterns max. Reviewed during /bootstrap.
 
 - [Global Memory]: Branch-local lessons are lost after archival. Use Global Lessons Registry for persistence.
+- [Shannon-Entropy-Refinement]: Refining key token extraction by using high-entropy checks only on regex-filtered key patterns avoids false alerts on natural languages (Chinese/Japanese).
+- [TS-Syntax-Fallback]: Graceful fallback to text scan on esprima parsing failures enables TS file checks even with complex annotations.
 - [Format Safety]: Do not copy line numbers from view tools; they break file edits.
 - [Path Rewrite Guard]: Namespace migrations should validate for accidental double-prefix replacements like `agentcortex/agentcortex/...` immediately after bulk path rewrites.
 - [Wrapper Validation]: Validation checks for wrapper files should assert behaviorally equivalent path construction patterns, not only one literal path string representation.
@@ -79,6 +82,19 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [port-cross-refs]: When porting a skill across repos, re-validate its `§X.Y` cross-refs and `runtime_anchor` paths against the TARGET repo's section numbering (agentic-os §12.5/§5.2a ≠ security-tools §2.1/§5.2).
 
 ## Ship History
+
+### Ship-feat/data-exfiltration-2026-06-15
+- Feature shipped: AI Data Exfiltration Detector checking LLM prompt leakage, MCP tool file leakage, and web public directory outputs.
+- Tests: Pass (247/247 passed, 92% module coverage).
+
+### Ship-fix/coverage-hardening-2026-06-15
+- Quick-win shipped: Hardened core security checkers against bypass vulnerabilities and systematically optimized project test coverage to 85%.
+  - Hardened `silent_installer.py` (fixed global comment bypass vulnerability and enabled text scan fallback for eval/getattr obfuscation).
+  - Hardened `killswitch_auditor.py` (added constant comparison loops `1 == 1` truthy checks).
+  - Hardened `git_diff_scanner.py` (isolated `GIT_EXTERNAL_DIFF` and `GIT_PAGER` environment variables to prevent RCE, added `decode_bytes` helper for robust decoding fallback).
+  - Added new test suites: `tests/test_json_reporter.py` (100% coverage) and `tests/test_vuln_scanner.py` (96% coverage).
+  - Expanded unit tests for docker scanner, git diff, kill-switch logic, silent installation edge cases, and CLI command branches.
+- Tests: Pass (219/219 tests passed, overall coverage reached 85%).
 
 ### Ship-fix/ci-failure-2026-06-12
 - Quick-win shipped: Resolved validation CI failures caused by missing/optimized canary phrases in README files.

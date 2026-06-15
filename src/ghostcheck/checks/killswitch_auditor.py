@@ -110,6 +110,26 @@ class KillSwitchVisitor(ast.NodeVisitor):
                     return test_node.operand.id == 'False'
             elif isinstance(test_node.op, ast.USub):
                 return self._is_truthy_test(test_node.operand)
+        elif isinstance(test_node, ast.Compare):
+            if len(test_node.ops) == 1 and len(test_node.comparators) == 1:
+                left = test_node.left
+                op = test_node.ops[0]
+                right = test_node.comparators[0]
+                if isinstance(left, ast.Constant) and isinstance(right, ast.Constant):
+                    lval = left.value
+                    rval = right.value
+                    if isinstance(op, ast.Eq):
+                        return lval == rval
+                    elif isinstance(op, ast.NotEq):
+                        return lval != rval
+                    elif isinstance(op, ast.Gt):
+                        return lval > rval
+                    elif isinstance(op, ast.GtE):
+                        return lval >= rval
+                    elif isinstance(op, ast.Lt):
+                        return lval < rval
+                    elif isinstance(op, ast.LtE):
+                        return lval <= rval
         return False
 
     def _is_limit_condition(self, test_node) -> bool:

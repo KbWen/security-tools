@@ -270,6 +270,73 @@ def test_git_diff_scanner(monkeypatch, tmp_path):
     diff_files = scanner.get_diff_files("HEAD~1")
     assert len(diff_files) == 3
 
+def test_git_diff_scanner_hardening(monkeypatch, tmp_path):
+    from ghostcheck.checks.git_diff_scanner import GitDiffScanner
+    import subprocess
+    import os
+    import shutil
+    
+    # 1. Test when git is completely missing
+    monkeypatch.setattr(shutil, "which", lambda cmd: None)
+    scanner = GitDiffScanner(str(tmp_path))
+    assert scanner.is_git_repo() is False
+    assert scanner.get_staged_files() == []
+    
+    # 2. Test secure git filter (git_path starts with cwd or project_abs)
+    local_git = tmp_path / "git.exe"
+    local_git.touch()
+    monkeypatch.setattr(shutil, "which", lambda cmd: str(local_git))
+    
+    safe_dir = tmp_path / "safe_bin"
+    safe_dir.mkdir()
+    system_git = safe_dir / "git.exe"
+    system_git.touch()
+    
+    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{safe_dir}")
+    
+    scanner = GitDiffScanner(str(tmp_path))
+    resolved_git = scanner._get_secure_git()
+    assert resolved_git == str(system_git)
+
+    # 3. Test git run error fallback (CalledProcessError)
+    def mock_run_error(*args, **kwargs):
+        raise subprocess.CalledProcessError(1, "git")
+    monkeypatch.setattr(subprocess, "run", mock_run_error)
+    assert scanner.get_staged_files() == []
+    
+    # 4. Test invalid git ref protection
+    assert scanner.get_diff_files("; rm -rf /") == []
+    assert scanner.get_diff_files("-a") == []
+    
+    # 5. Test file cwd input path resolution
+    dummy_file = tmp_path / "dummy.txt"
+    dummy_file.touch()
+    scanner_file = GitDiffScanner(str(dummy_file))
+    assert scanner_file.get_staged_files() == []
+    
+    # 6. Test locale fallback decode on UnicodeDecodeError
+    class MockProcessUnicode:
+        def __init__(self):
+            self.stdout = b"\xff\xfe\x00\x00"
+            self.returncode = 0
+            
+    called_envs = []
+    def mock_run_unicode(args, env=None, **kwargs):
+        if env:
+            called_envs.append(env)
+        return MockProcessUnicode()
+        
+    monkeypatch.setattr(shutil, "which", lambda cmd: "git")
+    monkeypatch.setattr(subprocess, "run", mock_run_unicode)
+    
+    scanner_unicode = GitDiffScanner(str(tmp_path))
+    res = scanner_unicode.get_staged_files()
+    assert res == []
+    assert len(called_envs) > 0
+    for env in called_envs:
+        assert "GIT_EXTERNAL_DIFF" not in env
+        assert "GIT_PAGER" not in env
+
 def test_hallucination_checker_filters(tmp_path, scanner):
     package_json = {
         "dependencies": {

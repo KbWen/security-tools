@@ -71,3 +71,103 @@ fi
     findings = auditor.scan([str(f)], None)
     # Excluded because hitl 'read -p' is present in the file
     assert not any(f["name"] == "Silent Package Installation" for f in findings)
+
+def test_hitl_comment_bypass_prevented(tmp_path):
+    # Security bypass: placing '# input()' should NOT disable scanning for npm install
+    code = """# input()
+npm install express
+"""
+    auditor = SilentInstaller()
+    f = tmp_path / "setup.sh"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings)
+
+def test_ast_eval_exec_install(tmp_path):
+    # Dynamic eval/exec installation: fallback text-based regex should catch it
+    code = """eval("pip install flask -y")
+"""
+    auditor = SilentInstaller()
+    f = tmp_path / "setup.py"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings)
+
+def test_ast_getattr_obfuscation(tmp_path):
+    # Reflection bypass: fallback text-based regex should catch it
+    code = """getattr(subprocess, "run")("pip install flask -y")
+"""
+    auditor = SilentInstaller()
+    f = tmp_path / "setup.py"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings)
+
+def test_python_complex_args_joined_str(tmp_path):
+    # ast.JoinedStr, ast.BinOp, ast.List
+    code = """import subprocess
+pkg = "flask"
+# BinOp
+subprocess.run("pip install " + pkg + " -y")
+# JoinedStr
+subprocess.run(f"pip install {pkg} -y")
+# List parameter
+subprocess.run(["pip", "install", pkg, "-y"])
+"""
+    auditor = SilentInstaller()
+    f = tmp_path / "setup.py"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert len(findings) >= 3
+
+def test_cargo_go_unpinned(tmp_path):
+    # Cargo install missing --version
+    code_cargo = "cargo install ripgrep"
+    # Go get missing @
+    code_go = "go get github.com/gin-gonic/gin"
+    # Grouped short flags
+    code_pip = "pip install -qy requests"
+    
+    auditor = SilentInstaller()
+    
+    f1 = tmp_path / "setup_cargo.sh"
+    f1.write_text(code_cargo, encoding="utf-8")
+    findings_cargo = auditor.scan([str(f1)], None)
+    assert any(f["name"] == "Silent Package Installation" and "pinned" in f["message"] for f in findings_cargo)
+    
+    f2 = tmp_path / "setup_go.sh"
+    f2.write_text(code_go, encoding="utf-8")
+    findings_go = auditor.scan([str(f2)], None)
+    assert any(f["name"] == "Silent Package Installation" and "pinned" in f["message"] for f in findings_go)
+    
+    f3 = tmp_path / "setup_pip.sh"
+    f3.write_text(code_pip, encoding="utf-8")
+    findings_pip = auditor.scan([str(f3)], None)
+    assert any(f["name"] == "Silent Package Installation" and "silent" in f["message"] for f in findings_pip)
+
+def test_python_syntax_error_fallback(tmp_path):
+    # Syntax error Python file should fallback to text-based regex scan
+    code = """import subprocess
+subprocess.run("pip install flask -y" # missing closing parenthesis
+"""
+    auditor = SilentInstaller()
+    f = tmp_path / "bad_syntax.py"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert any(f["name"] == "Silent Package Installation" for f in findings)
+
+def test_visitor_imports_and_assign(tmp_path):
+    # Test Import/ImportFrom aliases and variable assignments
+    code = """import subprocess as sub
+from subprocess import run as sub_run
+
+cmd = ["pip", "install", "flask", "-y"]
+sub.run(cmd)
+sub_run(cmd)
+"""
+    auditor = SilentInstaller()
+    f = tmp_path / "alias.py"
+    f.write_text(code, encoding="utf-8")
+    findings = auditor.scan([str(f)], None)
+    assert len(findings) >= 2
+

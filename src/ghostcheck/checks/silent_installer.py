@@ -51,7 +51,12 @@ class SilentInstaller(BaseScannerPlugin):
                         visitor.visit(tree)
                         findings.extend(visitor.findings)
                     except Exception:
-                        findings.extend(self._scan_text(content, file_path))
+                        pass
+                    # Ensure text regex check runs to capture obfuscated installation code (eval, getattr, etc.)
+                    text_findings = self._scan_text(content, file_path)
+                    for tf in text_findings:
+                        if not any(f['line'] == tf['line'] for f in findings):
+                            findings.append(tf)
                 else:
                     findings.extend(self._scan_text(content, file_path))
             except Exception:
@@ -61,9 +66,18 @@ class SilentInstaller(BaseScannerPlugin):
     def _scan_text(self, content: str, file_path: str) -> List[Dict[str, Any]]:
         findings = []
         
-        # 1. HITL Warning Check (Bypass scanner if human prompts are present anywhere in the file)
+        # 1. HITL Warning Check (Bypass scanner if human prompts are present in the non-comment lines of the file)
         hitl_indicators = ['read -p', 'Read-Host', 'input(', 'readline(', 'confirm(']
-        if any(indicator in content for indicator in hitl_indicators):
+        
+        # Filter out comment lines to prevent comment-based bypasses (e.g. # input())
+        clean_lines = []
+        for line in content.split('\n'):
+            trimmed = line.strip()
+            if not (trimmed.startswith('#') or trimmed.startswith('//')):
+                clean_lines.append(line)
+        clean_content = '\n'.join(clean_lines)
+        
+        if any(indicator in clean_content for indicator in hitl_indicators):
             return []
 
         lines = content.split('\n')

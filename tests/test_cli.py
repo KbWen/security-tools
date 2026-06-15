@@ -307,3 +307,40 @@ def test_scanner_single_file_scan_baseline_alignment(tmp_path):
     ]
     processed = scanner._post_process(findings)
     assert processed[0]['file'] == "src/app.py"
+
+def test_cli_stdout_reconfigure_fallback(capsys, monkeypatch):
+    # Mock sys.stdout to not support reconfigure (AttributeError) or throw TypeError
+    class BadStdout:
+        def reconfigure(self, *args, **kwargs):
+            raise TypeError("Not supported")
+        def write(self, data):
+            pass
+        def flush(self):
+            pass
+            
+    # We patch sys.stdout and run main with '--version'
+    monkeypatch.setattr(sys, "stdout", BadStdout())
+    with patch('sys.argv', ['ghostcheck', '--version']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+
+def test_cli_honeypot_missing_args():
+    # Calling honeypot subcommand without --url (or config) should exit with code 2 or print error
+    with patch('sys.argv', ['ghostcheck', 'honeypot']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        # ArgumentParser standard exit code for missing required args is 2
+        assert e.value.code == 2
+
+def test_cli_init_ci(tmp_path, monkeypatch):
+    # Mock project root path inside cli/init
+    monkeypatch.chdir(tmp_path)
+    # Run ghostcheck init with --ci and --force
+    with patch('sys.argv', ['ghostcheck', 'init', '--force', '--ci', 'github']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+    # verify github workflow dir created
+    assert os.path.exists(tmp_path / ".github" / "workflows")
+

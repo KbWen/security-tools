@@ -84,3 +84,44 @@ def test_directory_traversal_ignore(tmp_path):
     matcher = IgnoreMatcher(patterns=['/custom_dir/'])
     assert matcher.is_ignored('custom_dir/bad.py') == True
     assert matcher.is_ignored('src/custom_dir/bad.py') == False
+
+def test_plugin_loader_hardening(tmp_path, monkeypatch, capsys):
+    from ghostcheck.plugins.loader import PluginLoader
+    from ghostcheck.plugins.base import BasePlugin
+    
+    # 1. Test running plugins via run_all with a dummy plugin
+    class DummyPlugin(BasePlugin):
+        @property
+        def name(self) -> str: return "dummy"
+        @property
+        def description(self) -> str: return "desc"
+        def scan(self, file_path, content):
+            # Returns finding without name to trigger enrichment
+            return [{"severity": "HIGH", "message": "found"}]
+            
+    loader = PluginLoader(plugin_dirs=[])
+    loader.plugins = [DummyPlugin()]
+    findings = loader.run_all("test.py", "content")
+    assert len(findings) == 1
+    assert findings[0]["name"] == "dummy"
+    
+    # 2. Test running plugin throwing Exception
+    class BadPlugin(BasePlugin):
+        @property
+        def name(self) -> str: return "bad"
+        @property
+        def description(self) -> str: return "desc"
+        def scan(self, file_path, content):
+            raise ValueError("error")
+            
+    loader.plugins = [BadPlugin()]
+    monkeypatch.setenv("GHOSTCHECK_DEBUG", "1")
+    findings = loader.run_all("test.py", "content")
+    assert len(findings) == 0
+    captured = capsys.readouterr()
+    assert "Plugin execution failed" in captured.out
+    
+    # 3. Test load_from_file with bad file path (Exception)
+    loader = PluginLoader(plugin_dirs=[])
+    bad_spec = loader._load_from_file("invalid_file_path_xyz.py")
+    assert bad_spec is None

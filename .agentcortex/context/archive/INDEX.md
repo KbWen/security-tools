@@ -11,6 +11,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/checks/prompt_template_scanner.py` → `feat-older-issues-bundle.md` (Implemented Prompt Template Injection Scanner plugin)
 - `src/ghostcheck/checks/ai_marker.py` → `feat-older-issues-bundle.md` (Implemented AI-Generated Code Marker plugin)
 - `src/ghostcheck/checks/` → `fix-bug-bundle.md` (Resolved outstanding bugs in diff scanner, severity engine, mcp auditor, entropy scanner, and hallucination checker)
+- `src/ghostcheck/checks/data_exfiltration_detector.py` → `feat-data-exfiltration.md` (AI Data Exfiltration Detector checking LLM prompt, MCP tool leakage, and public writes)
 
 ## By Pattern
 
@@ -28,6 +29,9 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[prompt-template-injection]` → `feat-older-issues-bundle.md`
 - `[ai-code-marking]` → `feat-older-issues-bundle.md`
 - `[git-audit-hardening]` → `feat-older-issues-bundle.md`
+- `[data-exfiltration]` → `feat-data-exfiltration.md`
+- `[shannon-entropy-refinement]` → `feat-data-exfiltration.md`
+- `[ts-syntax-fallback]` → `feat-data-exfiltration.md`
 
 ## By Decision
 
@@ -44,4 +48,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[scanner-preset-registration]` → Automatically registered `supply_chain` module in Next.js, Django, FastAPI, and Flutter presets (`feat-older-issues-bundle.md`)
 - `[comment-evasion-preprocessor]` → Strip comments while preserving character offsets in APILinter and LogicAuditor to resolve false positives and prevent evasion (`feat-older-issues-bundle.md`)
 - `[dynamic-test-key-generation]` → Dynamically construct mock API keys at test runtime to prevent triggering GitHub Advanced Security Secret Scanning alerts (`feat-older-issues-bundle.md`)
+- `[shannon-entropy-key-token-filter]` → Run Shannon entropy checking only on regex-filtered key token matches to prevent false positives on CJK natural languages (`feat-data-exfiltration.md`)
+- `[typescript-syntax-fallback-scanning]` → Gracefully fallback to text-based scanning on typescript AST parsing failures (`feat-data-exfiltration.md`)
 

@@ -41,24 +41,38 @@ class GitDiffScanner:
             if not git_bin:
                 return []
 
+            # Clean sensitive git environment variables to prevent RCE
+            safe_env = os.environ.copy()
+            safe_env.pop("GIT_EXTERNAL_DIFF", None)
+            safe_env.pop("GIT_PAGER", None)
+
+            def decode_bytes(b):
+                try:
+                    return b.decode('utf-8')
+                except UnicodeDecodeError:
+                    import locale
+                    encoding = locale.getpreferredencoding()
+                    return b.decode(encoding, errors='replace')
+
             # AC-H1: 使用 Bytes 處理以避免 Windows 下的編碼崩潰
             # Get repo root to handle relative paths correctly
-            root_res = subprocess.run([git_bin, "-c", "core.quotePath=false", "rev-parse", "--show-toplevel"], cwd=cwd, capture_output=True, check=True)
-            repo_root = root_res.stdout.decode('utf-8').strip()
+            root_res = subprocess.run(
+                [git_bin, "-c", "core.quotePath=false", "rev-parse", "--show-toplevel"],
+                cwd=cwd,
+                capture_output=True,
+                check=True,
+                env=safe_env
+            )
+            repo_root = decode_bytes(root_res.stdout).strip()
             
             result = subprocess.run(
                 [git_bin, "-c", "core.quotePath=false"] + args,
                 cwd=cwd,
                 capture_output=True,
-                check=True
+                check=True,
+                env=safe_env
             )
-            # 優先嘗試 UTF-8
-            try:
-                output = result.stdout.decode('utf-8')
-            except UnicodeDecodeError:
-                import locale
-                encoding = locale.getpreferredencoding()
-                output = result.stdout.decode(encoding, errors='replace')
+            output = decode_bytes(result.stdout)
             
             files = output.splitlines()
             resolved_files = []
@@ -88,11 +102,15 @@ class GitDiffScanner:
             git_bin = self._get_secure_git()
             if not git_bin:
                 return False
+            safe_env = os.environ.copy()
+            safe_env.pop("GIT_EXTERNAL_DIFF", None)
+            safe_env.pop("GIT_PAGER", None)
             subprocess.run(
                 [git_bin, "rev-parse", "--is-inside-work-tree"],
                 cwd=self.project_root,
                 capture_output=True,
-                check=True
+                check=True,
+                env=safe_env
             )
             return True
         except (subprocess.CalledProcessError, FileNotFoundError, OSError):

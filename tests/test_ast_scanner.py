@@ -38,3 +38,39 @@ def test_ast_syntax_error():
     checker = AstSecretChecker([])
     findings = checker.scan_file("broken.py", "if True print('hi')")
     assert findings == []
+
+def test_ast_fstring_and_join():
+    patterns = [{"name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "severity": "HIGH"}]
+    checker = AstSecretChecker(patterns)
+    
+    # 1. f-strings
+    fstring_content = 'f"prefix {some_var} AKIA1234567890ABCDEF suffix"'
+    findings_f = checker.scan_file("test.py", fstring_content)
+    assert len(findings_f) == 2
+    
+    # 2. .join()
+    join_content = '"".join(["AKIA", "1234567890ABCDEF"])'
+    findings_j = checker.scan_file("test.py", join_content)
+    assert len(findings_j) == 1
+
+def test_ast_bytes_and_errors(tmp_path):
+    patterns = [{"name": "AWS Key", "pattern": "AKIA[0-9A-Z]{16}", "severity": "HIGH"}]
+    checker = AstSecretChecker(patterns)
+    
+    # 1. Bytes literal (e.g. b"AKIA...")
+    content_bytes = 'key = b"AKIA1234567890ABCDEF"'
+    findings_b = checker.scan_file("test.py", content_bytes)
+    assert len(findings_b) == 1
+    
+    # 2. File read exception handling in scan method
+    bad_file = tmp_path / "non_existent.py"
+    res = checker.scan([str(bad_file)], None)
+    assert res == []
+    
+    # 3. Recursion limit resolution depth exceeded
+    checker.MAX_RECURSION_DEPTH = 1
+    content_deep = '"a" + "b" + "c"'
+    # Should hit depth limit and return safely
+    findings_deep = checker.scan_file("test.py", content_deep)
+    assert findings_deep == []
+
