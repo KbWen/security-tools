@@ -10,6 +10,10 @@
 - Recommended Skills: auth-security (資料防洩漏與金鑰保護), frontend-patterns (資料通道與流向監控)
 
 ## Session Info
+- Agent: Antigravity (Gemini 3.5 Flash)
+- Session: 2026-06-15T16:20:00+08:00
+- Platform: Antigravity
+
 - Agent: Gemini 3.5 Flash (High)
 - Session: 2026-06-15T10:41:26+08:00
 - Platform: Antigravity
@@ -30,8 +34,13 @@
   - Developed and integrated `data_exfiltration_detector.py` to statically scan for data exfiltration risks across AI channels (Epic 4-F3).
 
 ## Evidence / 驗證證據
-- Pytest 252/252 tests passing.
-- 92% coverage for `data_exfiltration_detector.py`.
+- Pytest 281/281 tests passing (100% success rate).
+- Added `tests/test_self_scan_exemption.py` to cover all self-scan exemption rules (100% pass).
+- Verified that running `ghostcheck scan src/ghostcheck --no-ignore` produces 0 false positive warnings and achieves a Project Security Grade: A (100/100).
+- 95% unit test coverage for `data_exfiltration_detector.py`.
+- Checked and resolved JS AST scope visitor parameter/method double-scoping TypeError.
+- Checked and resolved redundant/dead logic in Python AST visitor nested call checker.
+- Spec updated with Metadata SSRF and dynamic path validation requirements.
 - No regressions introduced.
 
 ## Red Team Findings / 紅隊安全發現
@@ -47,6 +56,7 @@
   - Enabled smooth text-scan fallback on esprima parsing failures to guarantee TypeScript scanning resilience.
 - `[Parentheses-Depth-Extraction]` - Replaced simple non-greedy regex matching with dynamic parentheses depth balancing in fallback text scanner to support nested function calls.
   - Replaced naive non-greedy regex matching with dynamic parentheses depth counter to parse nested parameters accurately.
+- `[Masked-Context-Exemption]` - When writing scanner self-exemptions checking line contexts, always account for both the raw string representation and the masked representation (e.g. `abcd******************wxyz`), as masking happens prior to the final post-processing filter.
 
 ## Observability / 系統觀測度
 - Error sink: Standard Python logging (`logger.debug`) for exception flows in CLI execution.
@@ -55,3 +65,18 @@
   - Health and functionality verified via automated tests and GitHub CI integration.
 - Rollback signal: Rollback if error rate in scan pipelines exceeds threshold or CLI execution crashes.
   - Rollback triggered if scanner pipeline error rate exceeds baseline thresholds.
+
+- Agent: Antigravity (Gemini 3.5 Flash)
+- Session: 2026-06-15T16:48:00+08:00
+- Platform: Antigravity
+
+## Decisions / 決策
+- 優化 `src/ghostcheck/scanner.py` 中的 `_is_self_scan_exempt` 機制，以精確免除 checks、init.py、config.py 以及 demo fixtures 中因靜態分析產生的誤報，並在本地自檢時豁免 git 歷史 unreviewed_commit 警告。
+  - Optimize the self-scan exemption mechanism to filter out false positives in checks, config files, and demo fixtures, while preserving active detection for actual credentials.
+
+- Agent: Antigravity (Gemini 3.5 Pro)
+  - Session: 2026-06-26T08:58:05+08:00
+  - Platform: Antigravity
+  - Plan Reference: [implementation_plan.md](file:///C:/Users/wen/.gemini/antigravity/brain/caeb4ed5-f7aa-47d0-b4a6-4d72eaf48a08/implementation_plan.md)
+  - Status: Implementing JavaScript AST Hardening and fixing Python validation check failures.
+

@@ -25,7 +25,7 @@
   - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
   - `[prompt-template-scanner] docs/specs/prompt_template_scanner.md [Frozen] [Updated: 2026-06-09]`
   - `[ai-marker] docs/specs/ai_marker.md [Frozen] [Updated: 2026-06-09]`
-  - `[data-exfiltration] docs/specs/data-exfiltration.md [Frozen] [Updated: 2026-06-15]`
+  - `[data-exfiltration] docs/specs/data-exfiltration.md [Frozen] [Updated: 2026-06-26]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -80,12 +80,14 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [FP-Exemption]: Auto-ignore ghostcheck self-scans or lower their severity to avoid pre-commit blockages on self-code.
 - [auto-mode-vs-gate]: "自動模式" couples to the human-confirmation layer, not the safety-gate layer. Hardening unattended runs = native auto-confirm (not prompt string-matching) + an INDEPENDENT reviewer; player-and-referee self-review is the core autopilot hole.
 - [port-cross-refs]: When porting a skill across repos, re-validate its `§X.Y` cross-refs and `runtime_anchor` paths against the TARGET repo's section numbering (agentic-os §12.5/§5.2a ≠ security-tools §2.1/§5.2).
+- [Parentheses-Depth-Extraction]: Replaced simple non-greedy regex matching with dynamic parentheses depth balancing in fallback text scanner to support nested function calls.
+- [Masked-Context-Exemption]: When writing scanner self-exemptions checking line contexts, always account for both the raw string representation and the masked representation (e.g. `abcd******************wxyz`), as masking happens prior to the final post-processing filter.
 
 ## Ship History
 
 ### Ship-feat/data-exfiltration-hardening-2026-06-26
 - Feature shipped: Hardened AI Data Exfiltration Detector against static bypasses (decimal/hex IP SSRF, nested subscript taints, path construction, getattr resolution, and shutil.move) and implemented a fully hardened JS AST visitor and JS Validation Scanner.
-- Tests: Pass (278/278 tests passed, Grade A self-scan score 100/100).
+- Tests: Pass (281/281 tests passed, Grade A self-scan score 100/100).
 
 ### Ship-fix/self-scan-exemption-2026-06-15
 - Quick-win shipped: Optimized self-scan exemption engine to resolve 19+ false positives (including hardcoded identity bypass, missing recursive kill-switch, and wildcard CORS/CSRF) when scanning GhostCheck's own codebase with `--no-ignore`, achieving Project Security Grade A (100/100).
