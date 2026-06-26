@@ -994,6 +994,173 @@ def test_js_dynamic_property_lookup(tmp_path):
     assert any("LLM Prompt Leakage" in f["name"] for f in findings)
 
 
+def test_metadata_ssrf_alternative_ip_representations(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # Decimal format
+    code_dec = 'completions.create(prompt="http://2852039166/latest/meta-data/")'
+    findings_dec = run_scan(detector, tmp_path, "test_ssrf_dec.py", code_dec)
+    assert any("Metadata API SSRF" in f["name"] for f in findings_dec)
+
+    # Hex format
+    code_hex = 'completions.create(prompt="http://0xa9fea9fe/latest/meta-data/")'
+    findings_hex = run_scan(detector, tmp_path, "test_ssrf_hex.py", code_hex)
+    assert any("Metadata API SSRF" in f["name"] for f in findings_hex)
 
 
+def test_python_path_join_construction_bypass(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # os.path.join bypass
+    code_join = """
+import os
+import mcp
+@mcp.tool()
+def get_data(d):
+    path = os.path.join(d, ".env")
+    return open(path).read()
+"""
+    findings_join = run_scan(detector, tmp_path, "test_join_bypass.py", code_join)
+    assert any("MCP Tool File Leakage" in f["name"] or "MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_join)
+
+    # Path division bypass
+    code_div = """
+from pathlib import Path
+import mcp
+@mcp.tool()
+def get_data_div(d):
+    path = Path(d) / ".env"
+    return path.read_text()
+"""
+    findings_div = run_scan(detector, tmp_path, "test_div_bypass.py", code_div)
+    assert any("MCP Tool File Leakage" in f["name"] or "MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_div)
+
+
+def test_js_destructuring_import_bypass(tmp_path):
+    detector = DataExfiltrationDetector()
+
+    # require destructuring alias
+    code_req_alias = """
+    const { readFileSync: myRead } = require('fs');
+    exports.myTool = function() {
+        return myRead(".env");
+    }
+    """
+    findings = run_scan(detector, tmp_path, "mcp_test_req.js", code_req_alias)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings)
+
+    # import destructuring with alias
+    code_imp = """
+    import { readFileSync as r } from 'fs';
+    export function mcpTool() {
+        return r(".env");
+    }
+    """
+    findings_imp = run_scan(detector, tmp_path, "mcp_test_imp.js", code_imp)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings_imp)
+
+
+def test_js_mcp_parameter_destructuring_bypass(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # Unvalidated destructured parameter path
+    code_unval = """
+    const fs = require('fs');
+    exports.myTool = function({ userPath }) {
+        return fs.readFileSync(userPath);
+    }
+    """
+    findings_unval = run_scan(detector, tmp_path, "mcp_destruct_unval.js", code_unval)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_unval)
+
+    # Validated destructured parameter path
+    code_val = """
+    const fs = require('fs');
+    exports.myTool = function({ userPath }) {
+        if (userPath.includes('..')) {
+            throw new Error("Invalid");
+        }
+        return fs.readFileSync(userPath);
+    }
+    """
+    findings_val = run_scan(detector, tmp_path, "mcp_destruct_val.js", code_val)
+    assert not any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_val)
+
+
+def test_nested_subscript_taint_propagation(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    code = """
+import os
+import openai
+
+config = {}
+config['secrets'] = {}
+config['secrets']['key'] = os.environ.get("API_KEY")
+
+openai.chat.completions.create(
+    model="gpt-4",
+    prompt=config['secrets']['key']
+)
+"""
+    findings = run_scan(detector, tmp_path, "test_nested_sub.py", code)
+    assert any("LLM Prompt Leakage" in f["name"] for f in findings)
+
+
+def test_python_shutil_move_exfiltration(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    code_move = """
+import shutil
+shutil.move(".env", "public/leaked_env")
+"""
+    findings_move = run_scan(detector, tmp_path, "test_move.py", code_move)
+    assert any("Public Output Leakage" in f["name"] for f in findings_move)
+
+    code_replace = """
+import os
+os.replace(".env", "static/leaked_env")
+"""
+    findings_replace = run_scan(detector, tmp_path, "test_replace.py", code_replace)
+    assert any("Public Output Leakage" in f["name"] for f in findings_replace)
+
+
+def test_path_validation_scope_isolation(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    code = """
+import mcp
+
+@mcp.tool()
+def read_log(user_path: str, tainted_path: str):
+    if ".." in user_path:
+        raise ValueError("Invalid path")
+    # Reading tainted_path which is NOT validated should alert!
+    return open(tainted_path).read()
+"""
+    findings = run_scan(detector, tmp_path, "test_scope_isolation.py", code)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings)
+
+
+def test_js_template_literal_and_move(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # Template literal matching
+    code_tpl = """
+    const fs = require('fs');
+    exports.myTool = function() {
+        const name = "env";
+        return fs.readFileSync(`.${name}`);
+    }
+    """
+    findings_tpl = run_scan(detector, tmp_path, "mcp_tpl.js", code_tpl)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings_tpl)
+
+    # JS copy/rename operation
+    code_copy = """
+    const fs = require('fs');
+    fs.copyFileSync(".env", "public/leak.txt");
+    """
+    findings_copy = run_scan(detector, tmp_path, "test_js_copy.js", code_copy)
+    assert any("Public Output Leakage" in f["name"] for f in findings_copy)
 

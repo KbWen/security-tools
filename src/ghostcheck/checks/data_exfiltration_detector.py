@@ -33,6 +33,62 @@ def has_high_entropy_token(text: str) -> bool:
             return True
     return False
 
+from typing import Optional
+
+def parse_ipv4_to_int(host: str) -> Optional[int]:
+    host = host.strip("[]").lower()
+    if not host:
+        return None
+    if "::ffff:" in host:
+        suffix = host.split("::ffff:")[-1]
+        if "." in suffix:
+            val = parse_ipv4_to_int(suffix)
+            if val is not None:
+                return val
+        else:
+            parts = suffix.split(":")
+            if len(parts) == 2:
+                try:
+                    val1 = int(parts[0], 16)
+                    val2 = int(parts[1], 16)
+                    return (val1 << 16) + val2
+                except ValueError:
+                    pass
+        return None
+
+    parts = host.split('.')
+    if len(parts) > 4:
+        return None
+    try:
+        values = []
+        for p in parts:
+            p = p.strip()
+            if not p:
+                return None
+            if p.startswith('0x'):
+                values.append(int(p, 16))
+            elif p.startswith('0') and len(p) > 1 and all(c in '01234567' for c in p):
+                values.append(int(p, 8))
+            else:
+                values.append(int(p, 10))
+    except ValueError:
+        return None
+
+    num_parts = len(parts)
+    if num_parts == 4:
+        if all(0 <= v <= 255 for v in values):
+            return (values[0] << 24) + (values[1] << 16) + (values[2] << 8) + values[3]
+    elif num_parts == 3:
+        if 0 <= values[0] <= 255 and 0 <= values[1] <= 255 and 0 <= values[2] <= 65535:
+            return (values[0] << 24) + (values[1] << 16) + values[2]
+    elif num_parts == 2:
+        if 0 <= values[0] <= 255 and 0 <= values[1] <= 16777215:
+            return (values[0] << 24) + values[1]
+    elif num_parts == 1:
+        if 0 <= values[0] <= 4294967295:
+            return values[0]
+    return None
+
 def is_metadata_ip_or_host(text: str) -> bool:
     if not text:
         return False
@@ -48,14 +104,6 @@ def is_metadata_ip_or_host(text: str) -> bool:
         if not cand:
             continue
         cand_lower = cand.lower()
-        if "::ffff:" in cand_lower:
-            for hex_pair in ["a9fe:a9fe", "a83f:8110", "6464:64c8", "c000:00c0", "c000:c0"]:
-                if hex_pair in cand_lower:
-                    return True
-            for dotted_ip in ["169.254.169.254", "168.63.129.16", "100.100.100.200", "192.0.0.192"]:
-                if dotted_ip in cand_lower:
-                    return True
-            continue
         if cand_lower == "metadata" or cand_lower.startswith("metadata:") or cand_lower.endswith(".metadata"):
             return True
         host = cand
@@ -63,48 +111,14 @@ def is_metadata_ip_or_host(text: str) -> bool:
             parts = cand.split(":")
             if len(parts) == 2 and parts[1].isdigit():
                 host = parts[0]
-        if "." in host:
-            subparts = host.split(".")
-            if len(subparts) == 4:
-                try:
-                    octets = []
-                    for sp in subparts:
-                        sp = sp.strip()
-                        if not sp:
-                            break
-                        if sp.lower().startswith("0x"):
-                            val = int(sp, 16)
-                        elif sp.startswith("0") and len(sp) > 1 and all(c in "01234567" for c in sp):
-                            val = int(sp, 8)
-                        else:
-                            val = int(sp, 10)
-                        if 0 <= val <= 255:
-                            octets.append(val)
-                        else:
-                            break
-                    if len(octets) == 4:
-                        uint_val = (octets[0] << 24) + (octets[1] << 16) + (octets[2] << 8) + octets[3]
-                        if uint_val in target_uints:
-                            return True
-                except ValueError:
-                    pass
-        else:
-            try:
-                if host.lower().startswith("0x"):
-                    val = int(host, 16)
-                elif host.startswith("0") and len(host) > 1 and all(c in "01234567" for c in host):
-                    val = int(host, 8)
-                else:
-                    val = int(host, 10)
-                if val in target_uints:
-                    return True
-            except ValueError:
-                pass
+        ip_val = parse_ipv4_to_int(host)
+        if ip_val is not None and ip_val in target_uints:
+            return True
     return False
 
 class ValidationScanner(ast.NodeVisitor):
     def __init__(self):
-        self.validated = False
+        self.validated_names = set()
     def visit_Call(self, node: ast.Call):
         func_name = ""
         if isinstance(node.func, ast.Name):
@@ -112,16 +126,40 @@ class ValidationScanner(ast.NodeVisitor):
         elif isinstance(node.func, ast.Attribute):
             func_name = node.func.attr
         if func_name in ['is_relative_to', 'realpath', 'abspath', 'is_safe', 'validate_path']:
-            self.validated = True
+            # Find any variable name passed as argument to validate
+            for arg in node.args:
+                if isinstance(arg, ast.Name):
+                    self.validated_names.add(arg.id)
+                elif isinstance(arg, ast.Call):
+                    # path.resolve() etc
+                    if isinstance(arg.func, ast.Attribute) and isinstance(arg.func.value, ast.Name):
+                        self.validated_names.add(arg.func.value.id)
+            # Find any variable name in the caller object (node.func.value)
+            if isinstance(node.func, ast.Attribute):
+                class NameVisitor(ast.NodeVisitor):
+                    def __init__(self, names_set):
+                        self.names_set = names_set
+                    def visit_Name(self, n):
+                        self.names_set.add(n.id)
+                        self.generic_visit(n)
+                NameVisitor(self.validated_names).visit(node.func.value)
         self.generic_visit(node)
     def visit_Compare(self, node: ast.Compare):
+        # path == ".." or ".." in path
+        var_name = None
+        has_dots = False
         if isinstance(node.left, ast.Constant) and node.left.value == '..':
-            self.validated = True
+            has_dots = True
+        elif isinstance(node.left, ast.Name):
+            var_name = node.left.id
         for op in node.comparators:
             if isinstance(op, ast.Constant) and op.value == '..':
-                self.validated = True
+                has_dots = True
+            elif isinstance(op, ast.Name):
+                var_name = op.id
+        if has_dots and var_name:
+            self.validated_names.add(var_name)
         self.generic_visit(node)
-
 
 
 class WrapperHarvester(ast.NodeVisitor):
@@ -148,6 +186,11 @@ class WrapperHarvester(ast.NodeVisitor):
 
     def _resolve_name(self, node) -> str:
         if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id == 'getattr' and len(node.args) >= 2:
+                obj = self._resolve_name(node.args[0])
+                attr = self._resolve_expression(node.args[1])
+                if obj and isinstance(attr, str):
+                    return f"{obj}.{attr}"
             return self._resolve_name(node.func)
         elif isinstance(node, ast.Name):
             return self.aliases.get(node.id, node.id)
@@ -156,6 +199,11 @@ class WrapperHarvester(ast.NodeVisitor):
             if val_name:
                 return f"{val_name}.{node.attr}"
         return ""
+
+    def _resolve_expression(self, node) -> Any:
+        if isinstance(node, ast.Constant):
+            return node.value
+        return None
 
     def _is_llm_api(self, name: str) -> bool:
         parts = name.split('.')
@@ -168,11 +216,18 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         self.custom_wrappers = custom_wrappers
         self.aliases = aliases.copy()
         self.findings = []
-        self.scopes = [{}]  # global scope mapping var_name -> {"value": val, "taint": taint}
+        self.scopes = [{}]  # global scope mapping var_name -> {"value": val, "taint": taint, "sub_taints": {}}
         self.in_mcp_tool = False
+        self.validated_vars = set()
 
     def _resolve_name(self, node) -> str:
         if isinstance(node, ast.Call):
+            if isinstance(node.func, ast.Name) and node.func.id == 'getattr' and len(node.args) >= 2:
+                obj = self._resolve_name(node.args[0])
+                attr = self._resolve_expression(node.args[1])
+                if obj and isinstance(attr, str):
+                    resolved = f"{obj}.{attr}"
+                    return resolved
             return self._resolve_name(node.func)
         elif isinstance(node, ast.Name):
             for scope in reversed(self.scopes):
@@ -206,6 +261,14 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
             right = self._resolve_expression(node.right)
             if isinstance(left, str) and isinstance(right, str):
                 return left + right
+        elif isinstance(node, ast.JoinedStr):
+            parts = []
+            for val in node.values:
+                if isinstance(val, ast.Constant):
+                    parts.append(str(val.value))
+                else:
+                    parts.append("{}")
+            return "".join(parts)
         elif isinstance(node, ast.Call):
             func_name = self._resolve_name(node.func)
             if func_name in ['Path', 'pathlib.Path'] and node.args:
@@ -219,7 +282,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
     def _is_sensitive_path(self, path: str) -> bool:
         normalized = path.replace('\\', '/')
         parts = normalized.split('/')
-        sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials']
+        sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials', 'passwd', 'shadow', 'sam']
         for p in parts:
             if any(s in p for s in sensitive_parts):
                 if any(x in p for x in ['.example', '.template', '.dist', '.pub']):
@@ -232,6 +295,92 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         public_dirs = ['public/', 'dist/', 'static/', 'assets/', 'web/']
         return any(pub in normalized for pub in public_dirs) or normalized.startswith('public/') or normalized.startswith('dist/') or normalized.startswith('static/') or normalized.startswith('assets/') or normalized.startswith('web/')
 
+    def _get_access_path(self, node) -> List[Any]:
+        if isinstance(node, ast.Name):
+            return [self.aliases.get(node.id, node.id)]
+        elif isinstance(node, ast.Attribute):
+            parent_path = self._get_access_path(node.value)
+            if parent_path:
+                return parent_path + [node.attr]
+        elif isinstance(node, ast.Subscript):
+            parent_path = self._get_access_path(node.value)
+            if parent_path:
+                slice_val = self._resolve_expression(node.slice)
+                if slice_val is not None:
+                    return parent_path + [slice_val]
+        return []
+
+    def _get_path_taint(self, path: List[Any]) -> Optional[str]:
+        if not path:
+            return None
+        # Fast-track environment variables
+        if len(path) >= 2 and path[0] == 'os' and (path[1] == 'environ' or path[1] == 'getenv'):
+            return 'env'
+        if len(path) >= 3 and path[0] == 'os' and path[1] == 'environ' and path[2] == 'get':
+            return 'env'
+        if path[0] in ['environ', 'environ.get', 'os.environ.get']:
+            return 'env'
+            
+        root = path[0]
+        for scope in reversed(self.scopes):
+            if root in scope:
+                current = scope[root]
+                for part in path[1:]:
+                    parent_taint = current.get("taint")
+                    if parent_taint and parent_taint not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
+                        return parent_taint
+                    
+                    sub_taints = current.get("sub_taints", {})
+                    if part in sub_taints:
+                        val = sub_taints[part]
+                        if isinstance(val, dict):
+                            current = val
+                        else:
+                            return val
+                    else:
+                        return parent_taint
+                return current.get("taint")
+        return None
+
+    def _set_path_taint(self, path: List[Any], taint: Optional[str], value: Any = None):
+        if not path:
+            return
+        root = path[0]
+        target_scope = None
+        for scope in reversed(self.scopes):
+            if root in scope:
+                target_scope = scope
+                break
+        if target_scope is None:
+            target_scope = self.scopes[-1]
+            target_scope[root] = {"value": None, "taint": None, "sub_taints": {}}
+            
+        current = target_scope[root]
+        for part in path[1:]:
+            if "sub_taints" not in current:
+                current["sub_taints"] = {}
+            if part not in current["sub_taints"]:
+                current["sub_taints"][part] = {"value": None, "taint": None, "sub_taints": {}}
+            elif isinstance(current["sub_taints"][part], str):
+                current["sub_taints"][part] = {"value": None, "taint": current["sub_taints"][part], "sub_taints": {}}
+            current = current["sub_taints"][part]
+        
+        current["taint"] = taint
+        if value is not None:
+            current["value"] = value
+
+    def _contains_sensitive_constant(self, node) -> bool:
+        class ConstantFinder(ast.NodeVisitor):
+            def __init__(self, parent):
+                self.parent = parent
+                self.found = False
+            def visit_Constant(self, c_node):
+                if isinstance(c_node.value, str) and self.parent._is_sensitive_path(c_node.value):
+                    self.found = True
+        finder = ConstantFinder(self)
+        finder.visit(node)
+        return finder.found
+
     def _check_expression_for_taint(self, node) -> str:
         class TaintChecker(ast.NodeVisitor):
             def __init__(self, visitor_parent):
@@ -239,12 +388,11 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                 self.taint_found = None
                 
             def visit_Name(self, name_node: ast.Name):
-                for scope in reversed(self.parent.scopes):
-                    if name_node.id in scope:
-                        t = scope[name_node.id].get("taint")
-                        if t and t not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
-                            self.taint_found = t
-                            return
+                access_path = self.parent._get_access_path(name_node)
+                t = self.parent._get_path_taint(access_path)
+                if t and t not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
+                    self.taint_found = t
+                    return
                 if name_node.id in self.parent.aliases:
                     resolved = self.parent.aliases[name_node.id]
                     if resolved in ['os.environ', 'environ']:
@@ -255,42 +403,28 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                     return
 
             def visit_Subscript(self, subscript_node: ast.Subscript):
-                base_name = self.parent._resolve_name(subscript_node.value)
-                slice_val = self.parent._resolve_expression(subscript_node.slice)
-                if base_name:
-                    for scope in reversed(self.parent.scopes):
-                        if base_name in scope:
-                            if isinstance(slice_val, str) and scope[base_name].get("sub_taints", {}).get(slice_val):
-                                self.taint_found = scope[base_name]["sub_taints"][slice_val]
-                                return
-                            base_taint = scope[base_name].get("taint")
-                            if base_taint and base_taint not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
-                                self.taint_found = base_taint
-                                return
+                access_path = self.parent._get_access_path(subscript_node)
+                t = self.parent._get_path_taint(access_path)
+                if t and t not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
+                    self.taint_found = t
+                    return
                 self.generic_visit(subscript_node)
 
             def visit_Attribute(self, attr_node: ast.Attribute):
                 resolved = self.parent._resolve_name(attr_node)
-                if resolved in ['os.environ', 'os.getenv', 'environ']:
+                if resolved in ['os.environ', 'os.getenv', 'environ'] or resolved.startswith('os.environ.') or resolved.startswith('environ.'):
                     self.taint_found = 'env'
                     return
-                base_name = self.parent._resolve_name(attr_node.value)
-                attr_name = attr_node.attr
-                if base_name:
-                    for scope in reversed(self.parent.scopes):
-                        if base_name in scope:
-                            if scope[base_name].get("sub_taints", {}).get(attr_name):
-                                self.taint_found = scope[base_name]["sub_taints"][attr_name]
-                                return
-                            base_taint = scope[base_name].get("taint")
-                            if base_taint and base_taint not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
-                                self.taint_found = base_taint
-                                return
+                access_path = self.parent._get_access_path(attr_node)
+                t = self.parent._get_path_taint(access_path)
+                if t and t not in ['mcp_sensitive_leak', 'mcp_param_leak', 'public_write_handle']:
+                    self.taint_found = t
+                    return
                 self.generic_visit(attr_node)
                 
             def visit_Call(self, call_node: ast.Call):
                 func_resolved = self.parent._resolve_name(call_node.func)
-                if func_resolved in ['os.getenv', 'os.environ.get', 'environ.get']:
+                if func_resolved in ['os.getenv', 'os.environ.get', 'environ.get'] or func_resolved.startswith('os.environ.') or func_resolved.startswith('environ.'):
                     self.taint_found = 'env'
                     return
                 self.generic_visit(call_node)
@@ -312,7 +446,24 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         return checker.taint_found
 
     def _is_path_validated(self, node) -> bool:
-        return getattr(self, 'current_function_validated', False)
+        if not node:
+            return False
+        class NameCollector(ast.NodeVisitor):
+            def __init__(self):
+                self.names = []
+            def visit_Call(self, c_node):
+                for arg in c_node.args:
+                    self.visit(arg)
+                for kw in c_node.keywords:
+                    self.visit(kw.value)
+            def visit_Name(self, n):
+                self.names.append(n.id)
+                self.generic_visit(n)
+        collector = NameCollector()
+        collector.visit(node)
+        if not collector.names:
+            return False
+        return all(name in self.validated_vars for name in collector.names)
 
     def _check_mcp_sensitive_read(self, node) -> str:
         if not isinstance(node, ast.Call):
@@ -322,14 +473,18 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
             path_val = self._resolve_expression(node.args[0])
             if isinstance(path_val, str) and self._is_sensitive_path(path_val):
                 return 'mcp_sensitive_leak'
+            if self._contains_sensitive_constant(node.args[0]):
+                return 'mcp_sensitive_leak'
             path_taint = self._check_expression_for_taint(node.args[0])
             if path_taint == 'mcp_param':
                 if not self._is_path_validated(node.args[0]):
                     return 'mcp_param_leak'
-        elif func_name.endswith('.read') or func_name.endswith('.read_text') or func_name.endswith('.read_bytes'):
+        elif func_name.endswith('.read') or func_name.endswith('.read_text') or func_name.endswith('.read_bytes') or '.open().read' in func_name:
             if isinstance(node.func, ast.Attribute):
                 caller_val = self._resolve_expression(node.func.value)
                 if isinstance(caller_val, str) and self._is_sensitive_path(caller_val):
+                    return 'mcp_sensitive_leak'
+                if self._contains_sensitive_constant(node.func.value):
                     return 'mcp_sensitive_leak'
                 path_taint = self._check_expression_for_taint(node.func.value)
                 if path_taint == 'mcp_param':
@@ -340,6 +495,8 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                     if sub_func in ['open', 'Path', 'pathlib.Path'] and node.func.value.args:
                         sub_path = self._resolve_expression(node.func.value.args[0])
                         if isinstance(sub_path, str) and self._is_sensitive_path(sub_path):
+                            return 'mcp_sensitive_leak'
+                        if self._contains_sensitive_constant(node.func.value.args[0]):
                             return 'mcp_sensitive_leak'
         return None
 
@@ -375,12 +532,11 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                 self.leak_found = None
                 
             def visit_Name(self, name_node: ast.Name):
-                for scope in reversed(self.parent.scopes):
-                    if name_node.id in scope:
-                        t = scope[name_node.id].get("taint")
-                        if t in ['mcp_sensitive_leak', 'mcp_param_leak']:
-                            self.leak_found = t
-                            return
+                access_path = self.parent._get_access_path(name_node)
+                t = self.parent._get_path_taint(access_path)
+                if t in ['mcp_sensitive_leak', 'mcp_param_leak']:
+                    self.leak_found = t
+                    return
                         
             def visit_Call(self, call_node: ast.Call):
                 read_type = self.parent._check_mcp_sensitive_read(call_node)
@@ -395,11 +551,10 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
 
     def _is_public_write_handle_var(self, node) -> bool:
         if isinstance(node, ast.Name):
-            for scope in reversed(self.scopes):
-                if node.id in scope:
-                    t = scope[node.id].get("taint")
-                    if t == 'public_write_handle':
-                        return True
+            access_path = self._get_access_path(node)
+            t = self._get_path_taint(access_path)
+            if t == 'public_write_handle':
+                return True
         return False
 
     def visit_Import(self, node: ast.Import):
@@ -436,8 +591,8 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         
         scanner = ValidationScanner()
         scanner.visit(node)
-        old_validated = getattr(self, 'current_function_validated', False)
-        self.current_function_validated = scanner.validated
+        old_validated = self.validated_vars.copy()
+        self.validated_vars.update(scanner.validated_names)
         
         if self.in_mcp_tool:
             for arg in node.args.args:
@@ -446,7 +601,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.scopes.pop()
         self.in_mcp_tool = old_mcp
-        self.current_function_validated = old_validated
+        self.validated_vars = old_validated
 
     def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef):
         self.visit_FunctionDef(node)
@@ -476,7 +631,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
             taint = mcp_expr_taint
         else:
             if isinstance(val, str):
-                if val in ['os.environ', 'os.getenv', 'environ']:
+                if val in ['os.environ', 'os.getenv', 'environ'] or val.startswith('os.environ.') or val.startswith('environ.'):
                     taint = 'env'
                 elif self._is_sensitive_name(val):
                     taint = 'sensitive'
@@ -489,40 +644,9 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                 taint = self._check_expression_for_taint(node.value)
 
         for target in node.targets:
-            if isinstance(target, ast.Name):
-                self.scopes[-1][target.id] = {"value": val, "taint": taint, "sub_taints": {}}
-            elif isinstance(target, (ast.Tuple, ast.List)):
-                for elt in target.elts:
-                    if isinstance(elt, ast.Name):
-                        self.scopes[-1][elt.id] = {"value": val, "taint": taint, "sub_taints": {}}
-            elif isinstance(target, ast.Subscript):
-                base_name = self._resolve_name(target.value)
-                slice_val = self._resolve_expression(target.slice)
-                if base_name and isinstance(slice_val, str):
-                    found = False
-                    for scope in reversed(self.scopes):
-                        if base_name in scope:
-                            if "sub_taints" not in scope[base_name]:
-                                scope[base_name]["sub_taints"] = {}
-                            scope[base_name]["sub_taints"][slice_val] = taint
-                            found = True
-                            break
-                    if not found:
-                        self.scopes[-1][base_name] = {"value": {}, "taint": None, "sub_taints": {slice_val: taint}}
-            elif isinstance(target, ast.Attribute):
-                base_name = self._resolve_name(target.value)
-                attr_name = target.attr
-                if base_name:
-                    found = False
-                    for scope in reversed(self.scopes):
-                        if base_name in scope:
-                            if "sub_taints" not in scope[base_name]:
-                                scope[base_name]["sub_taints"] = {}
-                            scope[base_name]["sub_taints"][attr_name] = taint
-                            found = True
-                            break
-                    if not found:
-                        self.scopes[-1][base_name] = {"value": {}, "taint": None, "sub_taints": {attr_name: taint}}
+            access_path = self._get_access_path(target)
+            if access_path:
+                self._set_path_taint(access_path, taint, val)
         self.generic_visit(node)
 
     def visit_Return(self, node: ast.Return):
@@ -632,8 +756,8 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                             "suggestion": "Avoid writing sensitive user data, API keys, or environment variables to public web directories like static/ or public/."
                         })
 
-        # Shutil copyfile / copy
-        elif func_name in ['shutil.copy', 'shutil.copyfile', 'copy', 'copyfile'] and len(node.args) >= 2:
+        # Shutil copyfile / copy / move / copy2 / copytree
+        elif func_name in ['shutil.copy', 'shutil.copyfile', 'shutil.move', 'shutil.copy2', 'shutil.copytree', 'copy', 'copyfile', 'move'] and len(node.args) >= 2:
             src_val = self._resolve_expression(node.args[0])
             dst_val = self._resolve_expression(node.args[1])
             if isinstance(src_val, str) and self._is_sensitive_path(src_val):
@@ -645,6 +769,21 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
                         "severity": "MEDIUM",
                         "message": "Potential sensitive file copied to a public web directory.",
                         "suggestion": "Avoid copying sensitive files like .env or id_rsa to public web directories."
+                    })
+
+        # OS rename / replace
+        elif func_name in ['os.rename', 'os.replace', 'rename', 'replace'] and len(node.args) >= 2:
+            src_val = self._resolve_expression(node.args[0])
+            dst_val = self._resolve_expression(node.args[1])
+            if isinstance(src_val, str) and self._is_sensitive_path(src_val):
+                if isinstance(dst_val, str) and self._is_public_directory(dst_val):
+                    self.findings.append({
+                        "file": self.file_path,
+                        "line": line,
+                        "name": "AI Data Exfiltration: Public Output Leakage",
+                        "severity": "MEDIUM",
+                        "message": "Potential sensitive file moved to a public web directory.",
+                        "suggestion": "Avoid moving sensitive files like .env or id_rsa to public web directories."
                     })
 
         # Symlink Creation
@@ -669,12 +808,68 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         self.generic_visit(node)
 
 
+class JsValidationScanner:
+    def __init__(self):
+        self.validated_names = set()
+
+    def walk(self, node):
+        if not node:
+            return
+        node_type = getattr(node, 'type', '')
+        
+        # Check CallExpression: path.includes('..') or path.indexOf('..')
+        if node_type == 'CallExpression':
+            callee = getattr(node, 'callee', None)
+            arguments = getattr(node, 'arguments', [])
+            if callee and getattr(callee, 'type', '') == 'MemberExpression':
+                obj = getattr(callee, 'object', None)
+                prop = getattr(callee, 'property', None)
+                if obj and prop and getattr(obj, 'type', '') == 'Identifier' and getattr(prop, 'type', '') == 'Identifier':
+                    var_name = getattr(obj, 'name', '')
+                    method_name = getattr(prop, 'name', '')
+                    if method_name in ['includes', 'indexOf'] and arguments:
+                        arg0 = arguments[0]
+                        if getattr(arg0, 'type', '') == 'Literal' and getattr(arg0, 'value', '') == '..':
+                            self.validated_names.add(var_name)
+                            
+        # Check BinaryExpression: path === '..' or '..' === path
+        elif node_type == 'BinaryExpression':
+            operator = getattr(node, 'operator', '')
+            if operator in ['==', '===', '!=', '!==']:
+                left = getattr(node, 'left', None)
+                right = getattr(node, 'right', None)
+                var_name = None
+                has_dots = False
+                if left and getattr(left, 'type', '') == 'Identifier':
+                    var_name = getattr(left, 'name', '')
+                elif left and getattr(left, 'type', '') == 'Literal' and getattr(left, 'value', '') == '..':
+                    has_dots = True
+                
+                if right and getattr(right, 'type', '') == 'Identifier':
+                    var_name = getattr(right, 'name', '')
+                elif right and getattr(right, 'type', '') == 'Literal' and getattr(right, 'value', '') == '..':
+                    has_dots = True
+                    
+                if has_dots and var_name:
+                    self.validated_names.add(var_name)
+
+        # Recursively walk child nodes
+        for key, value in getattr(node, '__dict__', {}).items():
+            if isinstance(value, list):
+                for item in value:
+                    if hasattr(item, 'type'):
+                        self.walk(item)
+            elif hasattr(value, 'type'):
+                self.walk(value)
+
+
 class JsDataExfiltrationVisitor:
     def __init__(self, file_path: str):
         self.file_path = file_path
         self.findings = []
         self.scopes = [{}]
         self.in_mcp_tool = False
+        self.validated_vars = set()
         file_lower = os.path.basename(file_path).lower()
         self.has_mcp = 'mcp' in file_lower or 'tool' in file_lower
 
@@ -710,6 +905,21 @@ class JsDataExfiltrationVisitor:
         elif n_type == 'Literal':
             val = getattr(node, 'value', None)
             return str(val) if val is not None else ""
+        elif n_type == 'TemplateLiteral':
+            parts = []
+            quasis = getattr(node, 'quasis', [])
+            exprs = getattr(node, 'expressions', [])
+            for i, quasi in enumerate(quasis):
+                val_obj = getattr(quasi, 'value', None)
+                cooked = getattr(val_obj, 'cooked', '') if val_obj else ''
+                parts.append(cooked)
+                if i < len(exprs):
+                    resolved_expr = self._resolve_expression(exprs[i])
+                    if resolved_expr:
+                        parts.append(resolved_expr)
+                    else:
+                        parts.append("{}")
+            return "".join(parts)
         elif n_type == 'MemberExpression':
             obj_str = self._resolve_expression(node.object)
             prop_str = self._resolve_expression(node.property)
@@ -720,6 +930,12 @@ class JsDataExfiltrationVisitor:
             left = self._resolve_expression(node.left)
             right = self._resolve_expression(node.right)
             return left + right
+        elif n_type == 'CallExpression':
+            callee = getattr(node, 'callee', None)
+            if callee and getattr(callee, 'type', '') == 'Identifier' and getattr(callee, 'name', '') == 'require':
+                args = getattr(node, 'arguments', [])
+                if args and getattr(args[0], 'type', '') == 'Literal':
+                    return getattr(args[0], 'value', '')
         return ""
 
     def _resolve_name(self, node) -> str:
@@ -733,6 +949,9 @@ class JsDataExfiltrationVisitor:
                     t = scope[var_name].get("taint")
                     if t:
                         return t
+                    val = scope[var_name].get("value")
+                    if val is not None:
+                        return val
             return var_name
         elif n_type == 'MemberExpression':
             obj_str = self._resolve_name(node.object)
@@ -740,6 +959,14 @@ class JsDataExfiltrationVisitor:
             if obj_str and prop_str:
                 return f"{obj_str}.{prop_str}"
             return prop_str or obj_str
+        elif n_type == 'TemplateLiteral':
+            return self._resolve_expression(node)
+        elif n_type == 'CallExpression':
+            callee = getattr(node, 'callee', None)
+            if callee and getattr(callee, 'type', '') == 'Identifier' and getattr(callee, 'name', '') == 'require':
+                args = getattr(node, 'arguments', [])
+                if args and getattr(args[0], 'type', '') == 'Literal':
+                    return getattr(args[0], 'value', '')
         return ""
 
     def _is_sensitive_path(self, path: str) -> bool:
@@ -757,6 +984,28 @@ class JsDataExfiltrationVisitor:
         normalized = path.replace('\\', '/')
         public_dirs = ['public/', 'dist/', 'static/', 'assets/', 'web/']
         return any(pub in normalized for pub in public_dirs) or normalized.startswith('public/') or normalized.startswith('dist/') or normalized.startswith('static/') or normalized.startswith('assets/') or normalized.startswith('web/')
+
+    def _is_path_validated(self, node) -> bool:
+        if not node:
+            return False
+        names = []
+        def collect(n):
+            if not n:
+                return
+            n_type = getattr(n, 'type', '')
+            if n_type == 'Identifier':
+                names.append(getattr(n, 'name', ''))
+            for key, value in getattr(n, '__dict__', {}).items():
+                if isinstance(value, list):
+                    for item in value:
+                        if hasattr(item, 'type'):
+                            collect(item)
+                elif hasattr(value, 'type'):
+                    collect(value)
+        collect(node)
+        if not names:
+            return False
+        return all(name in self.validated_vars for name in names)
 
     def _check_expression_for_taint(self, node) -> str:
         found_taint = [None]
@@ -778,7 +1027,6 @@ class JsDataExfiltrationVisitor:
                 if expr_str.startswith('process.env'):
                     found_taint[0] = 'env'
                     return
-                # Check for key-specific sub_taint
                 base_str = self._resolve_name(n.object)
                 prop_str = self._resolve_expression(n.property)
                 if base_str and prop_str:
@@ -793,15 +1041,23 @@ class JsDataExfiltrationVisitor:
                                 return
             elif n_type == 'CallExpression':
                 callee_str = self._resolve_expression(n)
-                if callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] and getattr(n, 'arguments', None):
+                resolved_callee = self._resolve_name(n.callee)
+                if (resolved_callee in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] or 
+                    callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile']) and getattr(n, 'arguments', None):
                     path_val = self._resolve_expression(n.arguments[0])
                     if isinstance(path_val, str) and self._is_sensitive_path(path_val):
                         found_taint[0] = 'mcp_sensitive_leak'
                         return
                     path_taint = self._check_expression_for_taint(n.arguments[0])
                     if path_taint == 'mcp_param':
-                        found_taint[0] = 'mcp_param_leak'
-                        return
+                        if not self._is_path_validated(n.arguments[0]):
+                            found_taint[0] = 'mcp_param_leak'
+                            return
+            elif n_type == 'TemplateLiteral':
+                for quasi in getattr(n, 'quasis', []) or []:
+                    walk_node(quasi)
+                for expr in getattr(n, 'expressions', []) or []:
+                    walk_node(expr)
             elif n_type == 'Literal':
                 val = getattr(n, 'value', None)
                 if isinstance(val, str):
@@ -815,7 +1071,7 @@ class JsDataExfiltrationVisitor:
                         found_taint[0] = 'sensitive'
                         return
 
-            for key, value in n.__dict__.items():
+            for key, value in getattr(n, '__dict__', {}).items():
                 if found_taint[0]:
                     return
                 if isinstance(value, list):
@@ -843,30 +1099,61 @@ class JsDataExfiltrationVisitor:
             if self.has_mcp:
                 self.in_mcp_tool = True
             self.push_scope()
+            
+            # Scan validation within the function body
+            scanner = JsValidationScanner()
+            body = getattr(node, 'body', None)
+            if body:
+                scanner.walk(body)
+            old_validated = self.validated_vars.copy()
+            self.validated_vars.update(scanner.validated_names)
+            
             if self.in_mcp_tool:
                 for param in getattr(node, 'params', []) or []:
-                    p_name = getattr(param, 'name', '')
-                    if p_name:
-                        self.scopes[-1][p_name] = {"value": None, "taint": 'mcp_param', "sub_taints": {}}
+                    p_type = getattr(param, 'type', '')
+                    if p_type == 'Identifier':
+                        p_name = getattr(param, 'name', '')
+                        if p_name:
+                            self.scopes[-1][p_name] = {"value": None, "taint": 'mcp_param', "sub_taints": {}}
+                    elif p_type == 'ObjectPattern':
+                        for prop in getattr(param, 'properties', []) or []:
+                            prop_val = getattr(prop, 'value', None)
+                            if prop_val and getattr(prop_val, 'type', '') == 'Identifier':
+                                p_name = getattr(prop_val, 'name', '')
+                                if p_name:
+                                    self.scopes[-1][p_name] = {"value": None, "taint": 'mcp_param', "sub_taints": {}}
         elif is_class:
             self.push_scope()
 
         if node_type == 'VariableDeclarator':
             init_val = getattr(node, 'init', None)
-            id_name = getattr(getattr(node, 'id', None), 'name', '')
-            if id_name and init_val:
+            id_node = getattr(node, 'id', None)
+            id_type = getattr(id_node, 'type', '') if id_node else ''
+            
+            if init_val:
                 val = self._resolve_expression(init_val)
                 taint = None
                 init_str = self._resolve_expression(init_val)
-                if init_str.startswith('process.env'):
+                if isinstance(init_str, str) and init_str.startswith('process.env'):
                     taint = 'env'
-                elif self._is_sensitive_path(init_str):
+                elif isinstance(init_str, str) and self._is_sensitive_path(init_str):
                     taint = 'mcp_sensitive_leak'
-                elif is_metadata_ip_or_host(init_str):
+                elif isinstance(init_str, str) and is_metadata_ip_or_host(init_str):
                     taint = 'metadata_ssrf'
                 else:
                     taint = self._check_expression_for_taint(init_val)
-                self.scopes[-1][id_name] = {"value": val, "taint": taint, "sub_taints": {}}
+                
+                # Check for require('fs') destructuring
+                if init_str == 'fs' and id_type == 'ObjectPattern':
+                    for prop in getattr(id_node, 'properties', []) or []:
+                        prop_key = getattr(getattr(prop, 'key', None), 'name', '')
+                        prop_val = getattr(getattr(prop, 'value', None), 'name', '')
+                        if prop_key and prop_val:
+                            self.scopes[-1][prop_val] = {"value": f"fs.{prop_key}", "taint": None, "sub_taints": {}}
+                elif id_type == 'Identifier':
+                    id_name = getattr(id_node, 'name', '')
+                    if id_name:
+                        self.scopes[-1][id_name] = {"value": val, "taint": taint, "sub_taints": {}}
 
         elif node_type == 'AssignmentExpression':
             left_str = self._resolve_name(node.left)
@@ -875,11 +1162,11 @@ class JsDataExfiltrationVisitor:
                 val = self._resolve_expression(node.right)
                 taint = None
                 right_str = self._resolve_expression(node.right)
-                if right_str.startswith('process.env'):
+                if isinstance(right_str, str) and right_str.startswith('process.env'):
                     taint = 'env'
-                elif self._is_sensitive_path(right_str):
+                elif isinstance(right_str, str) and self._is_sensitive_path(right_str):
                     taint = 'mcp_sensitive_leak'
-                elif is_metadata_ip_or_host(right_str):
+                elif isinstance(right_str, str) and is_metadata_ip_or_host(right_str):
                     taint = 'metadata_ssrf'
                 else:
                     taint = self._check_expression_for_taint(node.right)
@@ -905,16 +1192,30 @@ class JsDataExfiltrationVisitor:
             source = getattr(getattr(node, 'source', None), 'value', '')
             if 'mcp' in source or 'fastmcp' in source:
                 self.has_mcp = True
+            
+            # Map imports
+            for spec in getattr(node, 'specifiers', []) or []:
+                spec_type = getattr(spec, 'type', '')
+                local_name = getattr(getattr(spec, 'local', None), 'name', '')
+                if spec_type in ['ImportDefaultSpecifier', 'ImportNamespaceSpecifier']:
+                    if source == 'fs':
+                        self.scopes[-1][local_name] = {"value": "fs", "taint": None, "sub_taints": {}}
+                elif spec_type == 'ImportSpecifier':
+                    imported_name = getattr(getattr(spec, 'imported', None), 'name', '')
+                    if source == 'fs' and local_name and imported_name:
+                        self.scopes[-1][local_name] = {"value": f"fs.{imported_name}", "taint": None, "sub_taints": {}}
 
         elif node_type == 'CallExpression':
             callee_str = self._resolve_expression(node.callee)
+            resolved_callee = self._resolve_name(node.callee)
+            
             if callee_str == 'require' and node.arguments:
                 arg_val = self._resolve_expression(node.arguments[0])
-                if 'mcp' in arg_val or 'fastmcp' in arg_val:
+                if isinstance(arg_val, str) and ('mcp' in arg_val or 'fastmcp' in arg_val):
                     self.has_mcp = True
             
             is_llm = False
-            if any(x in callee_str for x in ['completions', 'messages', 'invoke', 'generateContent']):
+            if any(x in callee_str or x in resolved_callee for x in ['completions', 'messages', 'invoke', 'generateContent']):
                 is_llm = True
             
             if is_llm:
@@ -934,12 +1235,14 @@ class JsDataExfiltrationVisitor:
                         })
 
             is_sensitive_read = False
-            if callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] and node.arguments:
+            if (resolved_callee in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] or 
+                callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile']) and node.arguments:
                 path_val = self._resolve_expression(node.arguments[0])
                 if isinstance(path_val, str) and self._is_sensitive_path(path_val):
                     is_sensitive_read = True
 
-            if callee_str in ['fs.writeFileSync', 'fs.writeFile', 'fs.createWriteStream'] and node.arguments:
+            if (resolved_callee in ['fs.writeFileSync', 'fs.writeFile', 'fs.createWriteStream'] or 
+                callee_str in ['fs.writeFileSync', 'fs.writeFile', 'fs.createWriteStream']) and node.arguments:
                 path_val = self._resolve_expression(node.arguments[0])
                 if isinstance(path_val, str) and self._is_public_directory(path_val):
                     if len(node.arguments) > 1:
@@ -953,6 +1256,31 @@ class JsDataExfiltrationVisitor:
                                 "message": "Potential sensitive data written to a public web directory.",
                                 "suggestion": "Avoid writing sensitive user data, API keys, or environment variables to public web directories like static/ or public/."
                             })
+
+            # Copy and move checks for JS
+            if (resolved_callee in [
+                'fs.copyFileSync', 'fs.copyFile', 'fs.promises.copyFile',
+                'fs.renameSync', 'fs.rename', 'fs.promises.rename'
+            ] or callee_str in [
+                'fs.copyFileSync', 'fs.copyFile', 'fs.promises.copyFile',
+                'fs.renameSync', 'fs.rename', 'fs.promises.rename'
+            ]) and len(node.arguments) >= 2:
+                src_val = self._resolve_expression(node.arguments[0])
+                dst_val = self._resolve_expression(node.arguments[1])
+                if isinstance(src_val, str) and self._is_sensitive_path(src_val):
+                    if isinstance(dst_val, str) and self._is_public_directory(dst_val):
+                        is_rename = 'rename' in (resolved_callee or callee_str)
+                        name = "AI Data Exfiltration: Public Output Leakage"
+                        msg = ("Potential sensitive file moved to a public web directory." if is_rename 
+                               else "Potential sensitive file copied to a public web directory.")
+                        self.findings.append({
+                            "file": self.file_path,
+                            "line": line,
+                            "name": name,
+                            "severity": "MEDIUM",
+                            "message": msg,
+                            "suggestion": "Avoid copying or moving sensitive files like .env or id_rsa to public web directories."
+                        })
 
         elif node_type == 'ReturnStatement' and node.argument:
             if self.in_mcp_tool:
@@ -976,14 +1304,17 @@ class JsDataExfiltrationVisitor:
                     arg_type = getattr(node.argument, 'type', '')
                     if arg_type == 'CallExpression':
                         callee_str = self._resolve_expression(node.argument.callee)
-                        if callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] and getattr(node.argument, 'arguments', None):
+                        resolved_callee = self._resolve_name(node.argument.callee)
+                        if (resolved_callee in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile'] or 
+                            callee_str in ['fs.readFileSync', 'fs.readFile', 'fs.promises.readFile']) and getattr(node.argument, 'arguments', None):
                             path_val = self._resolve_expression(node.argument.arguments[0])
                             if isinstance(path_val, str) and self._is_sensitive_path(path_val):
                                 is_leak = True
                             else:
                                 path_taint = self._check_expression_for_taint(node.argument.arguments[0])
                                 if path_taint == 'mcp_param':
-                                    is_param_leak = True
+                                    if not self._is_path_validated(node.argument.arguments[0]):
+                                        is_param_leak = True
                 
                 if is_leak:
                     self.findings.append({
@@ -1004,7 +1335,7 @@ class JsDataExfiltrationVisitor:
                         "suggestion": "Validate the parameter path before reading. Ensure it does not escape the workspace directory."
                     })
 
-        for key, value in node.__dict__.items():
+        for key, value in getattr(node, '__dict__', {}).items():
             if isinstance(value, list):
                 for item in value:
                     if hasattr(item, 'type'):
@@ -1016,6 +1347,7 @@ class JsDataExfiltrationVisitor:
             self.pop_scope()
             if is_function:
                 self.in_mcp_tool = old_mcp
+                self.validated_vars = old_validated
 
 
 class DataExfiltrationDetector(BaseScannerPlugin):
