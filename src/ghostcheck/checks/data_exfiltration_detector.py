@@ -15,7 +15,7 @@ except ImportError:
     esprima = None
 
 # Match potential key/token candidates (base64, hex, or typical high-density strings)
-TOKEN_CANDIDATE_PAT = re.compile(r'\b[a-zA-Z0-9+/=_-]{23,256}\b')
+TOKEN_CANDIDATE_PAT = re.compile(r'\b[a-zA-Z0-9+/=_-]{20,512}\b')
 
 def calculate_entropy(text: str) -> float:
     if not text:
@@ -34,6 +34,22 @@ def has_high_entropy_token(text: str) -> bool:
     return False
 
 from typing import Optional
+
+def strip_port_and_brackets(host: str) -> str:
+    host = host.strip().lower()
+    if "://" in host:
+        host = host.split("://", 1)[1]
+    if "/" in host:
+        host = host.split("/", 1)[0]
+    
+    if "]" in host:
+        parts = host.split("]")
+        ipv6_part = parts[0].strip("[]")
+        return ipv6_part
+    else:
+        if host.count(":") == 1:
+            return host.split(":")[0]
+    return host.strip("[]")
 
 def parse_ipv4_to_int(host: str) -> Optional[int]:
     host = host.strip("[]").lower()
@@ -85,33 +101,40 @@ def parse_ipv4_to_int(host: str) -> Optional[int]:
         if 0 <= values[0] <= 255 and 0 <= values[1] <= 16777215:
             return (values[0] << 24) + values[1]
     elif num_parts == 1:
-        if 0 <= values[0] <= 4294967295:
-            return values[0]
+        # Convert to unsigned 32-bit integer (supports signed wrapping)
+        try:
+            val = values[0]
+            val_u32 = val & 0xFFFFFFFF
+            return val_u32
+        except Exception:
+            pass
     return None
 
 def is_metadata_ip_or_host(text: str) -> bool:
     if not text:
         return False
-    text_lower = text.lower()
-    if "metadata.google.internal" in text_lower or "instance-data" in text_lower:
+    text = text.lower()
+    if "metadata.google.internal" in text or "instance-data" in text:
         return True
+    if "fd00:ec2::254" in text or "fd00:ec2:0:0:0:0:0:254" in text:
+        return True
+        
     url_hosts = re.findall(r'https?://([a-zA-Z0-9_\.\-\:\[\]]+)', text)
     dotted_patterns = re.findall(r'\b[a-zA-Z0-9_\.\-\:\[\]]+\b', text)
     candidates = list(set(url_hosts + dotted_patterns))
     target_uints = {2852039166, 2822734096, 1684301000, 3221225664}
     for cand in candidates:
-        cand = cand.strip("[]")
         if not cand:
             continue
-        cand_lower = cand.lower()
-        if cand_lower == "metadata" or cand_lower.startswith("metadata:") or cand_lower.endswith(".metadata"):
+        cleaned = strip_port_and_brackets(cand)
+        if not cleaned:
+            continue
+        if cleaned == "metadata" or cleaned.startswith("metadata:") or cleaned.endswith(".metadata"):
             return True
-        host = cand
-        if ":" in cand:
-            parts = cand.split(":")
-            if len(parts) == 2 and parts[1].isdigit():
-                host = parts[0]
-        ip_val = parse_ipv4_to_int(host)
+        if cleaned == "fd00:ec2::254" or cleaned == "fd00:ec2:0:0:0:0:0:254":
+            return True
+            
+        ip_val = parse_ipv4_to_int(cleaned)
         if ip_val is not None and ip_val in target_uints:
             return True
     return False
@@ -219,6 +242,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         self.scopes = [{}]  # global scope mapping var_name -> {"value": val, "taint": taint, "sub_taints": {}}
         self.in_mcp_tool = False
         self.validated_vars = set()
+        self.in_validation_context = False
 
     def _resolve_name(self, node) -> str:
         if isinstance(node, ast.Call):
@@ -280,6 +304,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         return any(k in name_lower for k in ['api_key', 'secret', 'password', 'token', 'private_key', 'passphrase', 'credentials'])
 
     def _is_sensitive_path(self, path: str) -> bool:
+        path = path.lower()
         normalized = path.replace('\\', '/')
         parts = normalized.split('/')
         sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials', 'passwd', 'shadow', 'sam']
@@ -291,6 +316,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         return False
 
     def _is_public_directory(self, path: str) -> bool:
+        path = path.lower()
         normalized = path.replace('\\', '/')
         public_dirs = ['public/', 'dist/', 'static/', 'assets/', 'web/']
         return any(pub in normalized for pub in public_dirs) or normalized.startswith('public/') or normalized.startswith('dist/') or normalized.startswith('static/') or normalized.startswith('assets/') or normalized.startswith('web/')
@@ -589,10 +615,7 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         self.in_mcp_tool = is_mcp
         self.scopes.append({})
         
-        scanner = ValidationScanner()
-        scanner.visit(node)
         old_validated = self.validated_vars.copy()
-        self.validated_vars.update(scanner.validated_names)
         
         if self.in_mcp_tool:
             for arg in node.args.args:
@@ -607,6 +630,13 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         self.visit_FunctionDef(node)
 
     def visit_With(self, node: ast.With):
+        class NameCollector(ast.NodeVisitor):
+            def __init__(self):
+                self.names = []
+            def visit_Name(self, n):
+                self.names.append(n.id)
+                self.generic_visit(n)
+        collector = NameCollector()
         for item in node.items:
             mcp_read = self._check_mcp_sensitive_read(item.context_expr)
             if mcp_read:
@@ -615,6 +645,11 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
             elif self._check_public_write_handle(item.context_expr):
                 if isinstance(item.optional_vars, ast.Name):
                     self.scopes[-1][item.optional_vars.id] = {"value": None, "taint": 'public_write_handle', "sub_taints": {}}
+            if item.optional_vars:
+                collector.visit(item.optional_vars)
+        for name in collector.names:
+            if name in self.validated_vars:
+                self.validated_vars.remove(name)
         self.generic_visit(node)
 
     def visit_Assign(self, node: ast.Assign):
@@ -643,10 +678,44 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
             if not taint:
                 taint = self._check_expression_for_taint(node.value)
 
+        # Clear validation status for assigned targets (TOCTOU mitigation)
+        class NameCollector(ast.NodeVisitor):
+            def __init__(self):
+                self.names = []
+            def visit_Name(self, n):
+                self.names.append(n.id)
+                self.generic_visit(n)
+        collector = NameCollector()
+        for target in node.targets:
+            collector.visit(target)
+        for name in collector.names:
+            if name in self.validated_vars:
+                self.validated_vars.remove(name)
+
         for target in node.targets:
             access_path = self._get_access_path(target)
             if access_path:
                 self._set_path_taint(access_path, taint, val)
+        self.generic_visit(node)
+
+    def visit_AugAssign(self, node: ast.AugAssign):
+        if isinstance(node.target, ast.Name):
+            if node.target.id in self.validated_vars:
+                self.validated_vars.remove(node.target.id)
+        self.generic_visit(node)
+
+    def visit_For(self, node: ast.For):
+        class NameCollector(ast.NodeVisitor):
+            def __init__(self):
+                self.names = []
+            def visit_Name(self, n):
+                self.names.append(n.id)
+                self.generic_visit(n)
+        collector = NameCollector()
+        collector.visit(node.target)
+        for name in collector.names:
+            if name in self.validated_vars:
+                self.validated_vars.remove(name)
         self.generic_visit(node)
 
     def visit_Return(self, node: ast.Return):
@@ -689,7 +758,92 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
         parts = name.split('.')
         return any(x in parts for x in ['completions', 'messages', 'invoke', 'generateContent'])
 
+    def visit_If(self, node: ast.If):
+        old_val = self.in_validation_context
+        self.in_validation_context = True
+        self.visit(node.test)
+        self.in_validation_context = False
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        self.in_validation_context = old_val
+
+    def visit_While(self, node: ast.While):
+        old_val = self.in_validation_context
+        self.in_validation_context = True
+        self.visit(node.test)
+        self.in_validation_context = False
+        for stmt in node.body:
+            self.visit(stmt)
+        for stmt in node.orelse:
+            self.visit(stmt)
+        self.in_validation_context = old_val
+
+    def visit_Assert(self, node: ast.Assert):
+        old_val = self.in_validation_context
+        self.in_validation_context = True
+        self.visit(node.test)
+        self.in_validation_context = False
+        if node.msg:
+            self.visit(node.msg)
+        self.in_validation_context = old_val
+
+    def visit_Expr(self, node: ast.Expr):
+        if isinstance(node.value, ast.Call):
+            func_name_short = ""
+            if isinstance(node.value.func, ast.Name):
+                func_name_short = node.value.func.id
+            elif isinstance(node.value.func, ast.Attribute):
+                func_name_short = node.value.func.attr
+            if func_name_short == 'validate_path':
+                old_val = self.in_validation_context
+                self.in_validation_context = True
+                self.visit(node.value)
+                self.in_validation_context = old_val
+                return
+        self.generic_visit(node)
+
+    def visit_Compare(self, node: ast.Compare):
+        if self.in_validation_context:
+            var_name = None
+            has_dots = False
+            if isinstance(node.left, ast.Constant) and node.left.value == '..':
+                has_dots = True
+            elif isinstance(node.left, ast.Name):
+                var_name = node.left.id
+            for op in node.comparators:
+                if isinstance(op, ast.Constant) and op.value == '..':
+                    has_dots = True
+                elif isinstance(op, ast.Name):
+                    var_name = op.id
+            if has_dots and var_name:
+                self.validated_vars.add(var_name)
+        self.generic_visit(node)
+
     def visit_Call(self, node: ast.Call):
+        if self.in_validation_context:
+            func_name_short = ""
+            if isinstance(node.func, ast.Name):
+                func_name_short = node.func.id
+            elif isinstance(node.func, ast.Attribute):
+                func_name_short = node.func.attr
+            if func_name_short in ['is_relative_to', 'is_safe', 'validate_path']:
+                for arg in node.args:
+                    if isinstance(arg, ast.Name):
+                        self.validated_vars.add(arg.id)
+                    elif isinstance(arg, ast.Call):
+                        if isinstance(arg.func, ast.Attribute) and isinstance(arg.func.value, ast.Name):
+                            self.validated_vars.add(arg.func.value.id)
+                if isinstance(node.func, ast.Attribute):
+                    class NameVisitor(ast.NodeVisitor):
+                        def __init__(self, names_set):
+                            self.names_set = names_set
+                        def visit_Name(self, n):
+                            self.names_set.add(n.id)
+                            self.generic_visit(n)
+                    NameVisitor(self.validated_vars).visit(node.func.value)
+
         func_name = self._resolve_name(node.func)
         line = node.lineno
 
@@ -870,6 +1024,7 @@ class JsDataExfiltrationVisitor:
         self.scopes = [{}]
         self.in_mcp_tool = False
         self.validated_vars = set()
+        self.in_validation_context = False
         file_lower = os.path.basename(file_path).lower()
         self.has_mcp = 'mcp' in file_lower or 'tool' in file_lower
 
@@ -970,6 +1125,7 @@ class JsDataExfiltrationVisitor:
         return ""
 
     def _is_sensitive_path(self, path: str) -> bool:
+        path = path.lower()
         normalized = path.replace('\\', '/')
         parts = normalized.split('/')
         sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials']
@@ -981,6 +1137,7 @@ class JsDataExfiltrationVisitor:
         return False
 
     def _is_public_directory(self, path: str) -> bool:
+        path = path.lower()
         normalized = path.replace('\\', '/')
         public_dirs = ['public/', 'dist/', 'static/', 'assets/', 'web/']
         return any(pub in normalized for pub in public_dirs) or normalized.startswith('public/') or normalized.startswith('dist/') or normalized.startswith('static/') or normalized.startswith('assets/') or normalized.startswith('web/')
@@ -1090,6 +1247,49 @@ class JsDataExfiltrationVisitor:
         
         node_type = getattr(node, 'type', '')
         line = self._get_line(node)
+
+        # Handle validation context control flow
+        if node_type == 'IfStatement':
+            old_val = self.in_validation_context
+            self.in_validation_context = True
+            self.walk(getattr(node, 'test', None))
+            self.in_validation_context = False
+            self.walk(getattr(node, 'consequent', None))
+            self.walk(getattr(node, 'alternate', None))
+            self.in_validation_context = old_val
+            return
+            
+        if node_type in ['WhileStatement', 'DoWhileStatement']:
+            old_val = self.in_validation_context
+            self.in_validation_context = True
+            self.walk(getattr(node, 'test', None))
+            self.in_validation_context = False
+            self.walk(getattr(node, 'body', None))
+            self.in_validation_context = old_val
+            return
+            
+        if node_type == 'ConditionalExpression':
+            old_val = self.in_validation_context
+            self.in_validation_context = True
+            self.walk(getattr(node, 'test', None))
+            self.in_validation_context = False
+            self.walk(getattr(node, 'consequent', None))
+            self.walk(getattr(node, 'alternate', None))
+            self.in_validation_context = old_val
+            return
+            
+        if node_type == 'ExpressionStatement':
+            expr = getattr(node, 'expression', None)
+            if expr and getattr(expr, 'type', '') == 'CallExpression':
+                callee = getattr(expr, 'callee', None)
+                if callee and getattr(callee, 'type', '') == 'Identifier':
+                    func_name = getattr(callee, 'name', '')
+                    if func_name == 'validate_path':
+                        old_val = self.in_validation_context
+                        self.in_validation_context = True
+                        self.walk(expr)
+                        self.in_validation_context = old_val
+                        return
         
         is_function = node_type in ['FunctionDeclaration', 'FunctionExpression', 'ArrowFunctionExpression']
         is_class = node_type in ['ClassDeclaration', 'ClassExpression']
@@ -1100,13 +1300,7 @@ class JsDataExfiltrationVisitor:
                 self.in_mcp_tool = True
             self.push_scope()
             
-            # Scan validation within the function body
-            scanner = JsValidationScanner()
-            body = getattr(node, 'body', None)
-            if body:
-                scanner.walk(body)
             old_validated = self.validated_vars.copy()
-            self.validated_vars.update(scanner.validated_names)
             
             if self.in_mcp_tool:
                 for param in getattr(node, 'params', []) or []:
@@ -1129,6 +1323,20 @@ class JsDataExfiltrationVisitor:
             init_val = getattr(node, 'init', None)
             id_node = getattr(node, 'id', None)
             id_type = getattr(id_node, 'type', '') if id_node else ''
+            
+            # Clear validation (TOCTOU mitigation)
+            if id_node:
+                if id_type == 'Identifier':
+                    name = getattr(id_node, 'name', '')
+                    if name in self.validated_vars:
+                        self.validated_vars.remove(name)
+                elif id_type == 'ObjectPattern':
+                    for prop in getattr(id_node, 'properties', []) or []:
+                        prop_val = getattr(prop, 'value', None)
+                        if prop_val and getattr(prop_val, 'type', '') == 'Identifier':
+                            name = getattr(prop_val, 'name', '')
+                            if name in self.validated_vars:
+                                self.validated_vars.remove(name)
             
             if init_val:
                 val = self._resolve_expression(init_val)
@@ -1156,6 +1364,20 @@ class JsDataExfiltrationVisitor:
                         self.scopes[-1][id_name] = {"value": val, "taint": taint, "sub_taints": {}}
 
         elif node_type == 'AssignmentExpression':
+            left = getattr(node, 'left', None)
+            if left:
+                left_type = getattr(left, 'type', '')
+                if left_type == 'Identifier':
+                    name = getattr(left, 'name', '')
+                    if name in self.validated_vars:
+                        self.validated_vars.remove(name)
+                elif left_type == 'MemberExpression':
+                    obj = getattr(left, 'object', None)
+                    if obj and getattr(obj, 'type', '') == 'Identifier':
+                        name = getattr(obj, 'name', '')
+                        if name in self.validated_vars:
+                            self.validated_vars.remove(name)
+
             left_str = self._resolve_name(node.left)
             is_member = getattr(node.left, 'type', '') == 'MemberExpression'
             if left_str:
@@ -1205,7 +1427,48 @@ class JsDataExfiltrationVisitor:
                     if source == 'fs' and local_name and imported_name:
                         self.scopes[-1][local_name] = {"value": f"fs.{imported_name}", "taint": None, "sub_taints": {}}
 
+        elif node_type == 'BinaryExpression':
+            if self.in_validation_context:
+                operator = getattr(node, 'operator', '')
+                if operator in ['==', '===', '!=', '!==']:
+                    left = getattr(node, 'left', None)
+                    right = getattr(node, 'right', None)
+                    var_name = None
+                    has_dots = False
+                    if left and getattr(left, 'type', '') == 'Identifier':
+                        var_name = getattr(left, 'name', '')
+                    elif left and getattr(left, 'type', '') == 'Literal' and getattr(left, 'value', '') == '..':
+                        has_dots = True
+                    
+                    if right and getattr(right, 'type', '') == 'Identifier':
+                        var_name = getattr(right, 'name', '')
+                    elif right and getattr(right, 'type', '') == 'Literal' and getattr(right, 'value', '') == '..':
+                        has_dots = True
+                        
+                    if has_dots and var_name:
+                        self.validated_vars.add(var_name)
+
         elif node_type == 'CallExpression':
+            if self.in_validation_context:
+                callee = getattr(node, 'callee', None)
+                arguments = getattr(node, 'arguments', [])
+                if callee and getattr(callee, 'type', '') == 'MemberExpression':
+                    obj = getattr(callee, 'object', None)
+                    prop = getattr(callee, 'property', None)
+                    if obj and prop and getattr(obj, 'type', '') == 'Identifier' and getattr(prop, 'type', '') == 'Identifier':
+                        var_name = getattr(obj, 'name', '')
+                        method_name = getattr(prop, 'name', '')
+                        if method_name in ['includes', 'indexOf'] and arguments:
+                            arg0 = arguments[0]
+                            if getattr(arg0, 'type', '') == 'Literal' and getattr(arg0, 'value', '') == '..':
+                                self.validated_vars.add(var_name)
+                elif callee and getattr(callee, 'type', '') == 'Identifier':
+                    func_name = getattr(callee, 'name', '')
+                    if func_name in ['is_safe', 'validate_path', 'is_relative_to']:
+                        for arg in arguments:
+                            if getattr(arg, 'type', '') == 'Identifier':
+                                self.validated_vars.add(getattr(arg, 'name', ''))
+
             callee_str = self._resolve_expression(node.callee)
             resolved_callee = self._resolve_name(node.callee)
             
@@ -1426,6 +1689,7 @@ class DataExfiltrationDetector(BaseScannerPlugin):
         return any(k in name_lower for k in ['api_key', 'secret', 'password', 'token', 'private_key'])
 
     def _is_sensitive_path(self, path: str) -> bool:
+        path = path.lower()
         normalized = path.replace('\\', '/')
         parts = normalized.split('/')
         sensitive_parts = ['.env', '.ssh', '.aws', 'id_rsa', 'credentials']
@@ -1437,6 +1701,7 @@ class DataExfiltrationDetector(BaseScannerPlugin):
         return False
 
     def _is_public_directory(self, path: str) -> bool:
+        path = path.lower()
         normalized = path.replace('\\', '/')
         public_dirs = ['public/', 'dist/', 'static/', 'assets/', 'web/']
         return any(pub in normalized for pub in public_dirs) or normalized.startswith('public/') or normalized.startswith('dist/') or normalized.startswith('static/') or normalized.startswith('assets/') or normalized.startswith('web/')

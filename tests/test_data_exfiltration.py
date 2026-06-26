@@ -1164,3 +1164,93 @@ def test_js_template_literal_and_move(tmp_path):
     findings_copy = run_scan(detector, tmp_path, "test_js_copy.js", code_copy)
     assert any("Public Output Leakage" in f["name"] for f in findings_copy)
 
+
+def test_path_validation_toctou_bypass(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # Python TOCTOU
+    code_py = """
+import mcp
+@mcp.tool()
+def read_log(user_path: str):
+    if ".." in user_path:
+        raise ValueError("Invalid path")
+    # TOCTOU reassignment!
+    user_path = "/etc/passwd"
+    return open(user_path).read()
+"""
+    findings_py = run_scan(detector, tmp_path, "test_toctou.py", code_py)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] or "MCP Tool File Leakage" in f["name"] for f in findings_py)
+
+    # JS TOCTOU
+    code_js = """
+    const fs = require('fs');
+    exports.myTool = function(userPath) {
+        if (userPath.includes('..')) {
+            throw new Error("Invalid");
+        }
+        userPath = ".env";
+        return fs.readFileSync(userPath);
+    }
+"""
+    findings_js = run_scan(detector, tmp_path, "mcp_toctou.js", code_js)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] or "MCP Tool File Leakage" in f["name"] for f in findings_js)
+
+
+def test_path_validation_dummy_bypass(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # Python Dummy Validation (not in a condition, just returns bool which is ignored)
+    code_py = """
+import mcp
+@mcp.tool()
+def read_log(user_path: str):
+    # Dummy validation: is_safe(user_path) returns false but code continues!
+    is_safe(user_path)
+    return open(user_path).read()
+"""
+    findings_py = run_scan(detector, tmp_path, "test_dummy.py", code_py)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_py)
+
+    # JS Dummy Validation
+    code_js = """
+    const fs = require('fs');
+    exports.myTool = function(userPath) {
+        // Dummy check, result ignored!
+        userPath.includes('..');
+        return fs.readFileSync(userPath);
+    }
+"""
+    findings_js = run_scan(detector, tmp_path, "mcp_dummy.js", code_js)
+    assert any("MCP Tool Parameter Arbitrary File Leakage" in f["name"] for f in findings_js)
+
+
+def test_path_case_normalization_bypass(tmp_path):
+    detector = DataExfiltrationDetector()
+    
+    # Uppercase sensitive path `.ENV` in Python MCP
+    code_py_path = """
+import mcp
+@mcp.tool()
+def get_config():
+    return open(".ENV").read()
+"""
+    findings_py_path = run_scan(detector, tmp_path, "test_case_path.py", code_py_path)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings_py_path)
+
+    # Uppercase sensitive path `.AWS/CREDENTIALS` in JS MCP
+    code_js_path = """
+    const fs = require('fs');
+    exports.myTool = function() {
+        return fs.readFileSync(".AWS/CREDENTIALS");
+    }
+"""
+    findings_js_path = run_scan(detector, tmp_path, "mcp_case_path.js", code_js_path)
+    assert any("MCP Tool File Leakage" in f["name"] for f in findings_js_path)
+
+    # Case-insensitive Metadata SSRF in LLM Call
+    code_ssrf = 'completions.create(prompt="HTTP://2852039166/latest/meta-data/")'
+    findings_ssrf = run_scan(detector, tmp_path, "test_case_ssrf.py", code_ssrf)
+    assert any("Metadata API SSRF" in f["name"] for f in findings_ssrf)
+
+
