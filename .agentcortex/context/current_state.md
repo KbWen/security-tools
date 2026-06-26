@@ -83,6 +83,10 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-feat/data-exfiltration-hardening-2026-06-26
+- Feature shipped: Hardened AI Data Exfiltration Detector against static bypasses (decimal/hex IP SSRF, nested subscript taints, path construction, getattr resolution, and shutil.move) and implemented a fully hardened JS AST visitor and JS Validation Scanner.
+- Tests: Pass (278/278 tests passed, Grade A self-scan score 100/100).
+
 ### Ship-fix/self-scan-exemption-2026-06-15
 - Quick-win shipped: Optimized self-scan exemption engine to resolve 19+ false positives (including hardcoded identity bypass, missing recursive kill-switch, and wildcard CORS/CSRF) when scanning GhostCheck's own codebase with `--no-ignore`, achieving Project Security Grade A (100/100).
   - Added new test suite `tests/test_self_scan_exemption.py` (100% coverage).
