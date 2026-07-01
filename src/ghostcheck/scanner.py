@@ -32,6 +32,7 @@ from .checks.tamper_auditor import TamperAuditor
 from .checks.prompt_template_scanner import PromptTemplateScanner
 from .checks.ai_marker import AIMarker
 from .checks.data_exfiltration_detector import DataExfiltrationDetector
+from .checks.context_inflation_detector import ContextInflationDetector
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -207,12 +208,15 @@ class Scanner:
             # AC-S9: Quick binary check
             with open(file_path, 'rb') as f:
                 chunk = f.read(1024)
-                if b'\x00' in chunk:
+                if len(chunk) > 0 and b'\x00' in chunk:
                     # Likely binary (unless UTF-16, but we primarily target UTF-8 codebases)
                     if not chunk.startswith(b'\xff\xfe') and not chunk.startswith(b'\xfe\xff'):
-                        if os.getenv("GHOSTCHECK_DEBUG") == "1":
-                            print(f"[DEBUG] Skipping {file_path} as it appears to be binary.")
-                        return None
+                        # Check control character density ratio (excludes tabs, newlines, CR)
+                        control_chars = sum(1 for b in chunk if b < 32 and b not in (9, 10, 13))
+                        if control_chars > 0.02 * len(chunk):
+                            if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                                print(f"[DEBUG] Skipping {file_path} as it appears to be binary (control character density: {control_chars/len(chunk):.2%}).")
+                            return None
                         
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
@@ -456,7 +460,8 @@ class Scanner:
                 'public output leakage', 'lethal_trifecta', 'agent rules', 
                 'elevated agent privilege', 'hardcoded_identity_bypass',
                 'api_csrf_disabled', 'api_cors_wildcard', 'missing recursive kill-switch',
-                'client_side_only_entitlement', 'generic secret key', 'evasion: excessive ignores'
+                'client_side_only_entitlement', 'generic secret key', 'evasion: excessive ignores',
+                'context_inflation'
             ]
             if any(x in fnd_id.lower() for x in exempt_rules):
                 return True
@@ -608,7 +613,8 @@ class Scanner:
             enabled_modules = [
                 "hallucination", "secrets", "env", "rules", "docker", 
                 "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", 
-                "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper"
+                "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper",
+                "context_inflation"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -635,14 +641,28 @@ class Scanner:
 
         # Run dynamic plugins
         for plugin in self.scanners:
+            # Config-level check filtering (only filter if user has explicitly customized it)
+            default_enabled = ["hallucination", "secrets", "rules", "docker"]
+            enabled_checks = self.config.get("enabled_checks", []) if self.config else []
+            if enabled_checks and set(enabled_checks) != set(default_enabled):
+                def _matches_config(plugin, checks):
+                    pname_lower = getattr(plugin, 'name', '').lower()
+                    for c in checks:
+                        c_clean = c.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                        if c_clean in pname_lower:
+                            return True
+                    return False
+                if not _matches_config(plugin, enabled_checks):
+                    continue
+
             # Module filtering
             if enabled_modules:
                 # Basic matching: if any enabled module string is in the plugin name
                 def _matches(plugin, modules):
-                    pname = getattr(plugin, 'name', '').lower()
+                    pname_lower = getattr(plugin, 'name', '').lower()
                     for m in modules:
                         m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
-                        if m_clean in pname:
+                        if m_clean in pname_lower:
                             return True
                     return False
                     

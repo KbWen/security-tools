@@ -26,6 +26,7 @@
   - `[prompt-template-scanner] docs/specs/prompt_template_scanner.md [Frozen] [Updated: 2026-06-09]`
   - `[ai-marker] docs/specs/ai_marker.md [Frozen] [Updated: 2026-06-09]`
   - `[data-exfiltration] docs/specs/data-exfiltration.md [Frozen] [Updated: 2026-06-26]`
+  - `[context-inflation] docs/specs/context-inflation-detector.md [Frozen] [Updated: 2026-07-01]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -82,8 +83,15 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [port-cross-refs]: When porting a skill across repos, re-validate its `§X.Y` cross-refs and `runtime_anchor` paths against the TARGET repo's section numbering (agentic-os §12.5/§5.2a ≠ security-tools §2.1/§5.2).
 - [Parentheses-Depth-Extraction]: Replaced simple non-greedy regex matching with dynamic parentheses depth balancing in fallback text scanner to support nested function calls.
 - [Masked-Context-Exemption]: When writing scanner self-exemptions checking line contexts, always account for both the raw string representation and the masked representation (e.g. `abcd******************wxyz`), as masking happens prior to the final post-processing filter.
+- [context-inflation-performance]: Use index-based sliding comparisons for n-gram checks instead of full list comprehension tuple allocations to ensure O(1) memory overhead on large files.
+- [context-inflation-unicode]: Ensure zero-width scanning includes the full set of Unicode directional isolates (\u2066–\u2069), Mongolian vowel separators, and word joiners to prevent Trojan Source-style prompt injection bypasses.
+- [context-inflation-divider-fp]: Exclude common code and structured file extensions from divider spam checks to eliminate false positives on header banners and comment blocks.
 
 ## Ship History
+
+### Ship-feat/context-inflation-detector-2026-07-01
+- Feature shipped: Context Inflation and Prompt Flooding Detector checking invisible characters (including bidirectional isolates and formatting overrides), whitespace padding, n-gram repetitions (up to 10-grams), consecutive line repetitions (threshold 15), and padding token spams (including LLM-specific tokens). Aligned and integrated across all framework presets (Next.js, Flutter, Django, FastAPI, Terraform).
+- Tests: Pass (19/19 module tests passed, 305/305 total tests passed, Grade A pre-commit score).
 
 ### Ship-feat/data-exfiltration-hardening-2026-06-26
 - Feature shipped: Hardened AI Data Exfiltration Detector against static bypasses (decimal/hex IP SSRF, nested subscript taints, path construction, getattr resolution, and shutil.move) and implemented a fully hardened JS AST visitor and JS Validation Scanner.

@@ -144,7 +144,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 |---|---------|------|------|------|------|
 | E8-F1 | **Memory Poisoning Audit** | P1 | v1.2.0 | 🟡 | 掃描 Agent 的持久化記憶系統（Vector DB / JSON Profile），偵測潛伏中的惡意指令或偏見。 |
 | E8-F2 | **Swarm Cascading Risk Analysis** | P2 | v1.3.0 | 🟡 | 分析 Multi-agent 工作流中的通訊拓補，找出單點 Agent 被劫持後可能導致的級聯失效點。 |
-| E8-F3 | **Lethal Trifecta Detector** | P0 | v1.2.0 | 🟡 | 自動偵測「私有資料存取+不受信輸入+工具執行」的危險組合，強制調高安全等級與審核要求。 |
+| E8-F3 | **Lethal Trifecta Detector** | P0 | v1.2.0 | ✅ | 自動偵測「私有資料存取+不受信輸入+工具執行」的危險組合，強制調高安全等級與審核要求。 |
 | E8-F4 | **Tool Metadata Poisoning Linter** | P1 | v1.2.0 | 🟡 | 深度掃描 MCP Server 或 Plugin 的 Metadata/Description，防止 Hidden Prompt 注入至 LLM 推理過程。 |
 | E8-F5 | **Agentic Kill-Switch Compliance** | P0 | v1.3.0 | 🟡 | 審核專案中是否實作了實體的斷路器機制（Token Cap/File Limit/Human-Confirm），防止 Autonomous 跑飛。 |
 | E8-F6 | **MCP Registry & Provenance Guard** | P2 | v1.3.0 | 🟡 | 建立 MCP Server 信任鏈驗證，檢查第三方工具的數位簽署、來源聲譽與已知惡意黑名單。 |
@@ -157,7 +157,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E9-F1 | **Silent Package Installation Detector** | P0 | v1.2.0 | 🟡 | 偵測 AI Agent 是否在背景靜默執行套件安裝（如 `pip install` / `npm install` 且未鎖定版本），防範相依性劫持。 |
+| E9-F1 | **Silent Package Installation Detector** | P0 | v1.2.0 | ✅ | 偵測 AI Agent 是否在背景靜默執行套件安裝（如 `pip install` / `npm install` 且未鎖定版本），防範相依性劫持。 |
 | E9-F2 | **LLM Egress Firewall Auditor** | P1 | v1.2.0 | 🟡 | 審計專案是否設定了出站流量限制（Egress Firewall），防範 Agent 透過未授權的 HTTP 請求外洩資料。 |
 | E9-F3 | **Shadow AI Env Leakage Scanner** | P1 | v1.3.0 | 🟡 | 掃描環境變數，偵測是否有敏感的 LLM API Keys 在子程序中被意外匯出或暴露給非特權指令。 |
 
@@ -170,7 +170,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
 | E10-F1 | **Vector DB Metadata Poisoning Auditor** | P1 | v1.2.0 | 🟡 | 偵測匯入向量資料庫（如 Chroma, Pinecone）的 metadata 中是否夾帶 Prompt Injection 指令。 |
-| E10-F2 | **Context Inflation / Prompt Flooding Detector** | P0 | v1.2.0 | 🟡 | 偵測利用重複大量垃圾字元意圖撐滿上下文視窗（Context Window），以使模型遺忘 System Prompt 的攻擊。 |
+| E10-F2 | **Context Inflation / Prompt Flooding Detector** | P0 | v1.2.0 | ✅ | 偵測利用重複大量垃圾字元意圖撐滿上下文視窗（Context Window），以使模型遺忘 System Prompt 的攻擊。 |
 
 ---
 
