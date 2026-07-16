@@ -215,11 +215,18 @@ class Scanner:
                                 print(f"[DEBUG] Skipping {file_path} as it appears to be binary (control character density: {control_chars/len(chunk):.2%}).")
                             return None
             
-            # If the file is extremely large, read only the first MAX_FILE_SIZE bytes to prevent OOM
-            # while still scanning it (closes the >10MB file bypass vector)
-            if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    return f.read(self.MAX_FILE_SIZE)
+            # If the file is extremely large, read the first 5MB and the last 5MB to prevent OOM
+            # while still scanning the most common exploit injection points (beginning and end)
+            size = os.path.getsize(file_path)
+            if size > self.MAX_FILE_SIZE:
+                half_size = self.MAX_FILE_SIZE // 2
+                with open(file_path, 'rb') as f:
+                    head_bytes = f.read(half_size)
+                    f.seek(size - half_size)
+                    tail_bytes = f.read(half_size)
+                head = head_bytes.decode('utf-8', errors='ignore')
+                tail = tail_bytes.decode('utf-8', errors='ignore')
+                return head + "\n[...TRUNCATED FILE MIDDLE...]\n" + tail
                         
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()

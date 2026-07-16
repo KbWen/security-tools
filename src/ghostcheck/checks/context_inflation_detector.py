@@ -19,12 +19,6 @@ class ContextInflationDetector(BaseScannerPlugin):
             if not os.path.exists(file_path):
                 return ""
             size = os.path.getsize(file_path)
-            if size < 50:  # Skip empty or tiny files
-                return ""
-            
-            # Cap reading size to prevent Out of Memory (OOM)
-            read_ceiling = min(size, max_size)
-
             # Read first block for binary detection
             with open(file_path, 'rb') as f:
                 chunk = f.read(1024)
@@ -34,10 +28,20 @@ class ContextInflationDetector(BaseScannerPlugin):
                 control_chars = sum(1 for b in chunk if b < 32 and b not in (9, 10, 13))
                 if control_chars > 0.02 * len(chunk):
                     return ""
-
-            # Read content up to ceiling
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                content = f.read(read_ceiling)
+            
+            # Read content up to ceiling, reading first 5MB and last 5MB if exceeding limit to prevent trailing-end bypasses
+            if size > max_size:
+                half_size = max_size // 2
+                with open(file_path, 'rb') as f:
+                    head_bytes = f.read(half_size)
+                    f.seek(size - half_size)
+                    tail_bytes = f.read(half_size)
+                head = head_bytes.decode('utf-8', errors='ignore')
+                tail = tail_bytes.decode('utf-8', errors='ignore')
+                content = head + "\n[...TRUNCATED FILE MIDDLE...]\n" + tail
+            else:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    content = f.read()
 
             # Chaos Protection: Split long lines (>10,000 chars) to prevent ReDoS via regex replace
             content = re.sub(r'([^\n]{10000})', r'\1\n', content)
@@ -63,10 +67,16 @@ class ContextInflationDetector(BaseScannerPlugin):
 
             # Determine if this file should only run partial scans (only check ZW and padding tokens, skip word/line repetitions)
             partial_scan = False
-            if ext == '.json' and filename != 'package.json':
+            is_lock_file = ext == '.lock' or filename in ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'composer.lock', 'poetry.lock', 'cargo.lock']
+            is_prompt_template = 'prompt' in filename or 'template' in filename or 'prompt' in file_path.lower()
+            
+            if ext == '.json' and not is_lock_file and filename != 'package.json':
                 partial_scan = True
             elif ext in excluded_extensions:
-                partial_scan = True
+                if ext in ['.yaml', '.yml', '.toml', '.xml', '.ini'] and is_prompt_template:
+                    partial_scan = False
+                else:
+                    partial_scan = True
             elif 'tokenizer' in filename or 'vocab' in filename:
                 partial_scan = True
 
@@ -98,18 +108,22 @@ class ContextInflationDetector(BaseScannerPlugin):
                 "context": content[max(0, idx-20):idx] + "[ZW_CHARS_FLOOD]" + content[idx+len(consecutive_zw_match.group(0)):idx+len(consecutive_zw_match.group(0))+20]
             })
         else:
-            # Optimize: only run findall if we know there is at least one ZW character!
+            # Optimize: only run count if we know there is at least one ZW character!
             if re.search(zw_chars_class, content):
-                all_zw = re.findall(zw_chars_class, content)
-                if len(all_zw) > 200:
-                    findings.append({
-                        "file": file_path,
-                        "line": 1,
-                        "name": "context_inflation_invisible_chars",
-                        "severity": "CRITICAL",
-                        "message": f"Context Inflation: Detected excessive total zero-width/invisible characters ({len(all_zw)}) in file.",
-                        "suggestion": "Remove zero-width/invisible characters used for prompt obfuscation or context padding."
-                    })
+                # Count matches using finditer to avoid list memory allocation, breaking early on threshold
+                zw_count = 0
+                for _ in re.finditer(zw_chars_class, content):
+                    zw_count += 1
+                    if zw_count > 200:
+                        findings.append({
+                            "file": file_path,
+                            "line": 1,
+                            "name": "context_inflation_invisible_chars",
+                            "severity": "CRITICAL",
+                            "message": "Context Inflation: Detected excessive total zero-width/invisible characters (>200) in file.",
+                            "suggestion": "Remove zero-width/invisible characters used for prompt obfuscation or context padding."
+                        })
+                        break
 
         if not partial_scan:
             # 2. Whitespace Padding / Large Gap Detection
@@ -130,20 +144,53 @@ class ContextInflationDetector(BaseScannerPlugin):
             # 3. Word/Phrase Repetition Flooding Detection (Zero Allocations, CJK support, lazy tokenization)
             words = []
             cjk_regex = re.compile(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]')
-            token_iter = re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', content.lower())
             
-            for m in token_iter:
-                raw_token = m.group(0)
-                if cjk_regex.match(raw_token):
-                    for char in raw_token:
-                        words.append(char)
-                        if len(words) >= 50000:
-                            break
-                else:
-                    if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
-                        words.append(raw_token)
-                if len(words) >= 50000:
-                    break
+            # If the content contains the truncation placeholder, split it to process head and tail separately
+            truncation_placeholder = "\n[...TRUNCATED FILE MIDDLE...]\n"
+            if truncation_placeholder in content:
+                parts = content.split(truncation_placeholder, 1)
+                head_part, tail_part = parts[0], parts[1]
+                
+                # Tokenize head up to 25,000 words
+                head_words = []
+                for m in re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', head_part.lower()):
+                    raw_token = m.group(0)
+                    if cjk_regex.match(raw_token):
+                        for char in raw_token:
+                            head_words.append(char)
+                    else:
+                        if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
+                            head_words.append(raw_token)
+                    if len(head_words) >= 25000:
+                        break
+                
+                # Tokenize tail from the very end of the file (last 150KB of tail_part)
+                tail_words = []
+                tail_segment = tail_part[-150000:]
+                for m in re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', tail_segment.lower()):
+                    raw_token = m.group(0)
+                    if cjk_regex.match(raw_token):
+                        for char in raw_token:
+                            tail_words.append(char)
+                    else:
+                        if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
+                            tail_words.append(raw_token)
+                
+                words = head_words + tail_words
+            else:
+                token_iter = re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', content.lower())
+                for m in token_iter:
+                    raw_token = m.group(0)
+                    if cjk_regex.match(raw_token):
+                        for char in raw_token:
+                            words.append(char)
+                            if len(words) >= 50000:
+                                break
+                    else:
+                        if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
+                            words.append(raw_token)
+                    if len(words) >= 50000:
+                        break
 
             words_len = len(words)
 
