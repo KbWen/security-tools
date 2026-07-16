@@ -90,8 +90,8 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 ## Ship History
 
 ### Ship-feat/usability-and-dx-hardening-2026-07-03
-- Usability and DX hardening shipped: Added two-stage parent parsing to allow global flags anywhere on CLI, implemented `--fail-on` exit threshold configuration, restricted JS/Python AST scanners using file extension boundaries, added post-scan deduplication, enabled inline ignores for AST findings, warned on ignored target scans, and configured pre-commit hook to scan staged files. Corrected entropy checks to evaluate raw values before masking. Mitigated downstream false positives ("很容易誤判") by fixing GPA-06 command arg placeholder bypasses and excluding config/lock extensions (`.lock`, `.yaml`, `.yml`, `.toml`, `.ini`, `.xml`) from ContextInflationDetector.
-- Tests: Pass (318/318 tests passed).
+- Usability and DX hardening shipped: Added two-stage parent parsing to allow global flags anywhere on CLI, implemented `--fail-on` exit threshold configuration, restricted JS/Python AST scanners using file extension boundaries, added post-scan deduplication, enabled inline ignores for AST findings, warned on ignored target scans, and configured pre-commit hook to scan staged files. Corrected entropy checks to evaluate raw values before masking. Mitigated downstream false positives ("很容易誤判") by fixing GPA-06 command arg placeholder bypasses and excluding config/lock extensions (`.lock`, `.yaml`, `.yml`, `.toml`, `.ini`, `.xml`) from ContextInflationDetector. Hardened AST scanners against non-string input types and secured dynamic context fetching by masking raw secrets.
+- Tests: Pass (320/320 tests passed).
 
 ### Ship-feat/context-inflation-detector-2026-07-01
 - Feature shipped: Context Inflation and Prompt Flooding Detector checking invisible characters (including bidirectional isolates and formatting overrides), whitespace padding, n-gram repetitions (up to 10-grams), consecutive line repetitions (threshold 15), and padding token spams (including LLM-specific tokens). Aligned and integrated across all framework presets (Next.js, Flutter, Django, FastAPI, Terraform).
