@@ -12,6 +12,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/checks/ai_marker.py` → `feat-older-issues-bundle.md` (Implemented AI-Generated Code Marker plugin)
 - `src/ghostcheck/checks/` → `fix-bug-bundle.md` (Resolved outstanding bugs in diff scanner, severity engine, mcp auditor, entropy scanner, and hallucination checker)
 - `src/ghostcheck/checks/data_exfiltration_detector.py` → `feat-data-exfiltration.md` (AI Data Exfiltration Detector checking LLM prompt, MCP tool leakage, and public writes)
+- `src/ghostcheck/checks/context_inflation_detector.py` → `feat-context-inflation-20260701.md` (Context Inflation / Prompt Flooding Detector scanner plugin)
+- `src/ghostcheck/presets/manager.py` → `feat-context-inflation-20260701.md` (Integrated context_inflation into Next.js, Flutter, Django, FastAPI, Terraform presets)
 
 ## By Pattern
 
@@ -32,6 +34,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[data-exfiltration]` → `feat-data-exfiltration.md`
 - `[shannon-entropy-refinement]` → `feat-data-exfiltration.md`
 - `[ts-syntax-fallback]` → `feat-data-exfiltration.md`
+- `[context-inflation]` → `feat-context-inflation-20260701.md`
+- `[n-gram-performance]` → `feat-context-inflation-20260701.md`
 
 ## By Decision
 
@@ -50,4 +54,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[dynamic-test-key-generation]` → Dynamically construct mock API keys at test runtime to prevent triggering GitHub Advanced Security Secret Scanning alerts (`feat-older-issues-bundle.md`)
 - `[shannon-entropy-key-token-filter]` → Run Shannon entropy checking only on regex-filtered key token matches to prevent false positives on CJK natural languages (`feat-data-exfiltration.md`)
 - `[typescript-syntax-fallback-scanning]` → Gracefully fallback to text-based scanning on typescript AST parsing failures (`feat-data-exfiltration.md`)
+- `[ngram-repetition-optimized-comparison]` → Use index-based sliding comparisons for n-gram checks instead of full list comprehension tuple allocations to ensure O(1) memory complexity (`feat-context-inflation-20260701.md`)
+- `[zw-unicode-isolates-expansion]` → Include bidirectional isolates (\u2066–\u2069), word joiners, and Mongolian vowel separators to prevent Trojan Source-style prompt injection bypasses (`feat-context-inflation-20260701.md`)
 

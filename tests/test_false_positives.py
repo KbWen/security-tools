@@ -106,3 +106,148 @@ def test_ci_auditor_ignores_commented_actions():
     """
     findings = scanner.scan_file(".github/workflows/test.yml", content)
     assert len(findings) == 0
+
+
+def test_gpa06_sk_placeholder_ignored():
+    from ghostcheck.checks.privilege_auditor import PrivilegeAuditor
+    scanner = PrivilegeAuditor()
+    # 1. Placeholder sk-12345 in variable assignment should not trigger api_key_command_arg
+    content_placeholder = "const api_key = 'sk-12345';"
+    findings_placeholder = scanner.scan_file("app.js", content_placeholder)
+    assert len(findings_placeholder) == 0
+
+    # 2. A real API key (valid format & length) SHOULD trigger api_key_command_arg
+    content_real = "const api_key = 'sk-proj-1234567890123456789012345678901234567890';"
+    findings_real = scanner.scan_file("app.js", content_real)
+    assert len(findings_real) == 2
+    names = {f["name"] for f in findings_real}
+    assert "api_key_command_arg" in names
+    assert "api_key_hardcoded" in names
+
+
+def test_context_inflation_excludes_config_and_lock_files(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # Highly repetitive content that would normally trigger line repetition check (e.g. 20 consecutive identical lines)
+    repetitive_content = "some_dependency_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" * 20
+    
+    file_yaml = tmp_path / "pnpm-lock.yaml"
+    file_yaml.write_text(repetitive_content, encoding="utf-8")
+    
+    file_lock = tmp_path / "package.lock"
+    file_lock.write_text(repetitive_content, encoding="utf-8")
+    
+    file_toml = tmp_path / "ghostcheck.toml"
+    file_toml.write_text(repetitive_content, encoding="utf-8")
+    
+    # Control Group: A regular python file with repetitive content SHOULD trigger a finding
+    file_py = tmp_path / "app.py"
+    file_py.write_text(repetitive_content, encoding="utf-8")
+    
+    # Scanning a YAML file or lock file should return 0 findings because the extension is excluded
+    findings_yaml = scanner.scan([str(file_yaml)], {})
+    findings_lock = scanner.scan([str(file_lock)], {})
+    findings_toml = scanner.scan([str(file_toml)], {})
+    findings_py = scanner.scan([str(file_py)], {})
+    
+    assert len(findings_yaml) == 0
+    assert len(findings_lock) == 0
+    assert len(findings_toml) == 0
+    assert len(findings_py) > 0  # Control group must actively trigger the finding
+
+
+def test_ast_scanners_robustness_on_invalid_types():
+    from ghostcheck.checks.ast_scanner import AstSecretChecker
+    from ghostcheck.checks.ast_js_scanner import JsAstSecretChecker
+    
+    py_scanner = AstSecretChecker([])
+    js_scanner = JsAstSecretChecker([])
+    
+    # Passing None and non-string types in files list should not raise TypeError or crash
+    py_res = py_scanner.scan([None, 1234, {"path": "test.py"}], {})
+    js_res = js_scanner.scan([None, 1234, {"path": "test.js"}], {})
+    
+    assert py_res == []
+    assert js_res == []
+
+
+def test_dynamic_context_fetching_masks_ast_secrets(tmp_path):
+    from ghostcheck.scanner import Scanner
+    
+    file_py = tmp_path / "app.py"
+    # A line with a real critical secret
+    file_py.write_text("MY_SECRET = 'sk-proj-1234567890123456789012345678901234567890'\n", encoding="utf-8")
+    
+    scanner = Scanner(str(tmp_path))
+    findings = scanner.scan_secrets([str(file_py)])
+    
+    # Verify the finding was detected
+    assert len(findings) > 0
+    fnd = findings[0]
+    
+    # The context should have been dynamically populated AND properly masked to prevent secret leakage in reports
+    assert "sk-proj-1234567890123456789012345678901234567890" not in fnd["context"]
+    assert "sk-p" + "*" * 40 + "7890" in fnd["context"]
+
+
+def test_context_inflation_hangul_filler(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # \u3164 is Hangul Filler, which renders as invisible. 60 consecutive fillers should trigger context_inflation_invisible_chars
+    file_py = tmp_path / "app.py"
+    file_py.write_text("\u3164" * 60, encoding="utf-8")
+    
+    findings = scanner.scan([str(file_py)], {})
+    assert len(findings) > 0
+    assert findings[0]["name"] == "context_inflation_invisible_chars"
+
+
+def test_context_inflation_partial_scan_on_yaml(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # Creating a YAML file with ZW chars (which should still be scanned even though it's excluded from line repetition)
+    file_yaml = tmp_path / "config.yaml"
+    file_yaml.write_text("key: " + "\u200b" * 60, encoding="utf-8")
+    
+    findings = scanner.scan([str(file_yaml)], {})
+    assert len(findings) > 0
+    assert findings[0]["name"] == "context_inflation_invisible_chars"
+
+
+def test_scanner_large_file_truncation_instead_of_skip(tmp_path):
+    from ghostcheck.scanner import Scanner
+    
+    # Setup a file that exceeds MAX_FILE_SIZE (e.g. 10MB + 1KB)
+    file_py = tmp_path / "large_file.py"
+    # Put a real secret in the first 1KB, followed by 10.5MB of padding comments to exceed 10MB limit
+    secret_line = "API_KEY = 'sk-proj-1234567890123456789012345678901234567890'\n"
+    padding = "# padding comments\n" * 600000 # ~11MB of text
+    file_py.write_text(secret_line + padding, encoding="utf-8")
+    
+    scanner = Scanner(str(tmp_path))
+    findings = scanner.scan_secrets([str(file_py)])
+    
+    # The file should NOT be skipped; the secret in the first 10MB should still be detected
+    assert len(findings) > 0
+    assert findings[0]["value_preview"].startswith("sk-p")
+
+
+def test_short_phrase_repetition_not_skipped(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # 2-3 letter English words repeated consecutively.
+    # Previously, because all words are < 4 chars, this would be ignored.
+    # Now it should be detected since it's a multi-word phrase (n > 1) and words are not < 2 chars.
+    repetitive_content = "do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it\n"
+    
+    file_py = tmp_path / "app.py"
+    file_py.write_text(repetitive_content, encoding="utf-8")
+    
+    findings = scanner.scan([str(file_py)], {})
+    assert len(findings) > 0
+    assert findings[0]["name"] == "context_inflation_word_repetition"
+

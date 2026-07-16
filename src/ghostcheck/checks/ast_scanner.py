@@ -14,8 +14,14 @@ class AstSecretChecker(BaseScannerPlugin):
         return "Scanner plugin for AstSecretChecker"
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
+        import os
         findings = []
         for file_path in files:
+            if not file_path or not isinstance(file_path, str):
+                continue
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext not in ('.py', '.pyw', '.pyi'):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
@@ -131,6 +137,7 @@ class AstSecretChecker(BaseScannerPlugin):
                         "pattern_name": f"{p['name']}{' (AST Concat)' if is_concat else ''}",
                         "severity": p['severity'],
                         "value_preview": masked,
+                        "_raw_value": val,
                         "suggestion": p.get('remediation', "Rotate or revoke this secret.")
                     })
             except Exception:

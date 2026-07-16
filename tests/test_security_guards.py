@@ -27,4 +27,6 @@ def test_file_size_limit(tmp_path):
         f.write(b"0" * (Scanner.MAX_FILE_SIZE + 1024))
     
     scanner = Scanner(str(tmp_path))
-    assert scanner._read_file_safe(str(large_file)) is None
+    content = scanner._read_file_safe(str(large_file))
+    assert content is not None
+    assert len(content) == Scanner.MAX_FILE_SIZE

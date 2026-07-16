@@ -19,8 +19,12 @@ class SeverityEngine:
 
     def adjust_finding(self, finding):
         # 1. Entropy-based adjustment (High entropy -> High severity/priority)
-        if "value_preview" in finding:
-            entropy = self._calculate_entropy(finding["value_preview"])
+        entropy_source = finding.get("_raw_value")
+        if not entropy_source and "value_preview" in finding:
+            entropy_source = finding["value_preview"].replace("*", "")
+            
+        if entropy_source:
+            entropy = self._calculate_entropy(entropy_source)
             if entropy < 3.0:
                 # Likely false positive or very common string
                 self._downgrade(finding, "low entropy")

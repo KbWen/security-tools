@@ -3,6 +3,7 @@ try:
 except ImportError:
     esprima = None
 import re
+import os
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
@@ -19,6 +20,11 @@ class JsAstSecretChecker(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            if not file_path or not isinstance(file_path, str):
+                continue
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext not in ('.js', '.jsx', '.ts', '.tsx', '.html', '.vue', '.svelte', '.json'):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
@@ -136,6 +142,7 @@ class JsAstSecretChecker(BaseScannerPlugin):
                         "pattern_name": f"{p['name']}{' (JS AST)' if is_ast else ''}",
                         "severity": p['severity'],
                         "value_preview": masked,
+                        "_raw_value": val,
                         "suggestion": p.get('remediation', "Rotate or revoke this secret.")
                     })
             except Exception:

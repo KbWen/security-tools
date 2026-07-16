@@ -226,7 +226,6 @@ class PrivilegeAuditor(BaseScannerPlugin):
                 # GPA-06: api_key_command_arg
                 if self.cmd_arg_regex.search(line):
                     api_key_match = self.api_key_regex.search(line)
-                    is_placeholder = False
                     if api_key_match:
                         raw_key = api_key_match.group(1)
                         check_key = raw_key
@@ -234,17 +233,15 @@ class PrivilegeAuditor(BaseScannerPlugin):
                             if check_key.startswith(prefix):
                                 check_key = check_key[len(prefix):]
                                 break
-                        if _is_placeholder_value(check_key) or _is_placeholder_value(raw_key):
-                            is_placeholder = True
-                    if not is_placeholder:
-                        findings.append({
-                            "file": file_path,
-                            "line": i + 1,
-                            "name": "api_key_command_arg",
-                            "severity": "HIGH",
-                            "suggestion": "API key passed as a command-line argument. Pass API keys through environment variables instead.",
-                            "context": line.strip()
-                        })
+                        if not (_is_placeholder_value(check_key) or _is_placeholder_value(raw_key)):
+                            findings.append({
+                                "file": file_path,
+                                "line": i + 1,
+                                "name": "api_key_command_arg",
+                                "severity": "HIGH",
+                                "suggestion": "API key passed as a command-line argument. Pass API keys through environment variables instead.",
+                                "context": line.strip()
+                            })
 
                 # GPA-07: api_key_hardcoded
                 match = self.api_key_regex.search(line)

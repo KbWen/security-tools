@@ -344,3 +344,121 @@ def test_cli_init_ci(tmp_path, monkeypatch):
     # verify github workflow dir created
     assert os.path.exists(tmp_path / ".github" / "workflows")
 
+
+def test_cli_flexible_option_order(capsys):
+    # Placing global options before subcommand
+    with patch('sys.argv', ['ghostcheck', '--severity', 'HIGH', 'version']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+    out, err = capsys.readouterr()
+    assert "GhostCheck version:" in out
+
+    # Placing global options after subcommand
+    with patch('sys.argv', ['ghostcheck', 'version', '--severity', 'HIGH']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+
+
+def test_cli_fail_on_threshold(capsys):
+    from ghostcheck.scanner import Scanner
+    with patch('sys.argv', ['ghostcheck', 'scan', '--fail-on', 'HIGH']), \
+         patch('ghostcheck.scanner.Scanner.scan') as mock_scan:
+        mock_scan.return_value = [
+            {"name": "info_issue", "severity": "INFO", "file": "app.py", "line": 1, "context": "print(1)"}
+        ]
+        with pytest.raises(SystemExit) as e:
+            main()
+        # Since minimum fail-on is HIGH, but finding is INFO, it should exit with 0
+        assert e.value.code == 0
+
+    with patch('sys.argv', ['ghostcheck', 'scan', '--fail-on', 'HIGH']), \
+         patch('ghostcheck.scanner.Scanner.scan') as mock_scan:
+        mock_scan.return_value = [
+            {"name": "high_issue", "severity": "HIGH", "file": "app.py", "line": 1, "context": "print(1)"}
+        ]
+        with pytest.raises(SystemExit) as e:
+            main()
+        # Since finding is HIGH, it should exit with 1
+        assert e.value.code == 1
+
+
+def test_ast_ignore_suppression_and_context_population(tmp_path):
+    from ghostcheck.scanner import Scanner
+    file_path = tmp_path / "test.py"
+    # An AST finding that has ghostcheck-ignore on the line (use generic secret, as CRITICAL secrets cannot be ignored)
+    file_path.write_text("API_KEY = 'secret_key_1234567890' # ghostcheck-ignore secrets", encoding="utf-8")
+    
+    scanner = Scanner(str(tmp_path))
+    findings = scanner.scan_secrets([str(file_path)])
+    
+    # Since it is ignored, findings should be empty
+    assert len(findings) == 0
+
+
+def test_ast_boundaries(tmp_path):
+    from ghostcheck.checks.ast_scanner import AstSecretChecker
+    from ghostcheck.checks.ast_js_scanner import JsAstSecretChecker
+    
+    python_file = tmp_path / "test.py"
+    python_file.write_text("x = 1", encoding="utf-8")
+    
+    js_file = tmp_path / "test.js"
+    js_file.write_text("var x = 1;", encoding="utf-8")
+    
+    py_checker = AstSecretChecker([])
+    js_checker = JsAstSecretChecker([])
+    
+    # python checker should only scan test.py
+    py_scanned = py_checker.scan([str(python_file), str(js_file)], {})
+    # js checker should only scan test.js
+    js_scanned = js_checker.scan([str(python_file), str(js_file)], {})
+    
+    # (they will return empty findings but we verify they filter files without crashing)
+    assert isinstance(py_scanned, list)
+    assert isinstance(js_scanned, list)
+
+
+def test_config_preserves_custom_keys():
+    from ghostcheck.config import GhostCheckConfig
+    config = GhostCheckConfig(".")
+    config._merge_config({"honeypot": {"canary_url": "http://my-canary"}})
+    # Custom config key should be preserved
+    assert config.get("honeypot") == {"canary_url": "http://my-canary"}
+
+
+def test_severity_engine_raw_entropy():
+    from ghostcheck.checks.severity_engine import SeverityEngine
+    engine = SeverityEngine(".")
+    
+    finding = {
+        "name": "high_entropy_secret",
+        "severity": "CRITICAL",
+        "value_preview": "AKIA************3456",
+        "_raw_value": "AKIAXYZ12345ABCDE987" # High entropy raw secret
+    }
+    engine.adjust_finding(finding)
+    # The severity should NOT be downgraded because raw value has high entropy
+    assert finding["severity"] == "CRITICAL"
+
+
+def test_warning_on_ignored_target(tmp_path, capsys):
+    from ghostcheck.scanner import Scanner
+    
+    # Setup ignore file and target file
+    ignore_file = tmp_path / ".ghostcheckignore"
+    ignore_file.write_text("ignored.py\n", encoding="utf-8")
+    
+    target_file = tmp_path / "ignored.py"
+    target_file.write_text("x = 1", encoding="utf-8")
+    
+    scanner = Scanner(str(tmp_path))
+    findings = scanner.scan([str(target_file)])
+    
+    # It should print warning to stderr
+    captured = capsys.readouterr()
+    assert "ignored.py" in captured.err
+    assert "is ignored" in captured.err
+
+

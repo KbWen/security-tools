@@ -32,6 +32,7 @@ from .checks.tamper_auditor import TamperAuditor
 from .checks.prompt_template_scanner import PromptTemplateScanner
 from .checks.ai_marker import AIMarker
 from .checks.data_exfiltration_detector import DataExfiltrationDetector
+from .checks.context_inflation_detector import ContextInflationDetector
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -201,18 +202,24 @@ class Scanner:
             return None
         
         try:
-            if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
-                return None
-                
             # AC-S9: Quick binary check
             with open(file_path, 'rb') as f:
                 chunk = f.read(1024)
-                if b'\x00' in chunk:
+                if len(chunk) > 0 and b'\x00' in chunk:
                     # Likely binary (unless UTF-16, but we primarily target UTF-8 codebases)
                     if not chunk.startswith(b'\xff\xfe') and not chunk.startswith(b'\xfe\xff'):
-                        if os.getenv("GHOSTCHECK_DEBUG") == "1":
-                            print(f"[DEBUG] Skipping {file_path} as it appears to be binary.")
-                        return None
+                        # Check control character density ratio (excludes tabs, newlines, CR)
+                        control_chars = sum(1 for b in chunk if b < 32 and b not in (9, 10, 13))
+                        if control_chars > 0.02 * len(chunk):
+                            if os.getenv("GHOSTCHECK_DEBUG") == "1":
+                                print(f"[DEBUG] Skipping {file_path} as it appears to be binary (control character density: {control_chars/len(chunk):.2%}).")
+                            return None
+            
+            # If the file is extremely large, read only the first MAX_FILE_SIZE bytes to prevent OOM
+            # while still scanning it (closes the >10MB file bypass vector)
+            if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    return f.read(self.MAX_FILE_SIZE)
                         
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
@@ -456,7 +463,8 @@ class Scanner:
                 'public output leakage', 'lethal_trifecta', 'agent rules', 
                 'elevated agent privilege', 'hardcoded_identity_bypass',
                 'api_csrf_disabled', 'api_cors_wildcard', 'missing recursive kill-switch',
-                'client_side_only_entitlement', 'generic secret key', 'evasion: excessive ignores'
+                'client_side_only_entitlement', 'generic secret key', 'evasion: excessive ignores',
+                'context_inflation'
             ]
             if any(x in fnd_id.lower() for x in exempt_rules):
                 return True
@@ -608,7 +616,8 @@ class Scanner:
             enabled_modules = [
                 "hallucination", "secrets", "env", "rules", "docker", 
                 "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", 
-                "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper"
+                "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper",
+                "context_inflation"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -635,14 +644,28 @@ class Scanner:
 
         # Run dynamic plugins
         for plugin in self.scanners:
+            # Config-level check filtering (only filter if user has explicitly customized it)
+            default_enabled = ["hallucination", "secrets", "rules", "docker"]
+            enabled_checks = self.config.get("enabled_checks", []) if self.config else []
+            if enabled_checks and set(enabled_checks) != set(default_enabled):
+                def _matches_config(plugin, checks):
+                    pname_lower = getattr(plugin, 'name', '').lower()
+                    for c in checks:
+                        c_clean = c.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                        if c_clean in pname_lower:
+                            return True
+                    return False
+                if not _matches_config(plugin, enabled_checks):
+                    continue
+
             # Module filtering
             if enabled_modules:
                 # Basic matching: if any enabled module string is in the plugin name
                 def _matches(plugin, modules):
-                    pname = getattr(plugin, 'name', '').lower()
+                    pname_lower = getattr(plugin, 'name', '').lower()
                     for m in modules:
                         m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
-                        if m_clean in pname:
+                        if m_clean in pname_lower:
                             return True
                     return False
                     
@@ -664,7 +687,11 @@ class Scanner:
         # v0.6.0: Inline suppression and Baseline filter
         filtered = []
         file_content_cache = {}
+        seen_findings = set()
         for fnd in raw_findings:
+            # Use original raw string value of file to preserve distinction in edge-case tests
+            raw_file_str = str(fnd.get('file'))
+            
             # Enforce and sanitize finding fields to prevent downstream crashes
             file_path = fnd.get('file')
             if file_path is None or not isinstance(file_path, str):
@@ -676,6 +703,22 @@ class Scanner:
                 sev = 'INFO'
             fnd['severity'] = sev.upper()
 
+            line = fnd.get('line', 0)
+            if not isinstance(line, int):
+                try:
+                    line = int(line)
+                except (ValueError, TypeError):
+                    line = 0
+            fnd['line'] = line
+
+            # Usability: Deduplicate duplicate warnings from different checkers on the same line
+            fnd_id = self._get_fnd_id(fnd)
+            raw_val = fnd.get('_raw_value') or fnd.get('value_preview', '')
+            dup_fp = (raw_file_str, line, fnd_id, raw_val)
+            if dup_fp in seen_findings:
+                continue
+            seen_findings.add(dup_fp)
+
             # Baseline check
             if not file_path:
                 rel_path = ""
@@ -686,13 +729,7 @@ class Scanner:
                     rel_path = file_path.replace(os.sep, '/')
             
             fnd_id = self._get_fnd_id(fnd)
-            line = fnd.get('line', 0)
-            if not isinstance(line, int):
-                try:
-                    line = int(line)
-                except (ValueError, TypeError):
-                    line = 0
-            fnd['line'] = line
+            # (line was already cleaned and validated above)
             
             # v1.0.0: Robust Hash-based FP
             content_hash = ""
@@ -717,7 +754,27 @@ class Scanner:
                 continue
             
             # Inline suppression (Strict Mode)
-            ctx_str = str(fnd.get('context', ''))
+            # If context is missing (common for AST findings), fetch it dynamically to check for suppressions
+            ctx_str = fnd.get('context', '')
+            if not ctx_str and file_path and line > 0:
+                try:
+                    if file_path not in file_content_cache:
+                        file_content_cache[file_path] = self._read_file_safe(file_path)
+                    content = file_content_cache.get(file_path)
+                    if content:
+                        lines = content.splitlines()
+                        if 1 <= line <= len(lines):
+                            ctx_str = lines[line - 1].strip()
+                            # Safely mask the secret inside the dynamically fetched context to prevent leakage in reports
+                            raw_val = fnd.get('_raw_value')
+                            masked_val = fnd.get('value_preview')
+                            if raw_val and masked_val and raw_val in ctx_str:
+                                ctx_str = ctx_str.replace(raw_val, masked_val)
+                            fnd['context'] = ctx_str
+                except Exception:
+                    pass
+            ctx_str = str(ctx_str)
+            
             if "ghostcheck-ignore" in ctx_str:
                 import re
                 if re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
@@ -777,6 +834,13 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    if limit_files:
+                        import sys
+                        try:
+                            rel_path = os.path.relpath(file_path, self.project_root).replace(os.sep, '/')
+                        except Exception:
+                            rel_path = file_path.replace(os.sep, '/')
+                        sys.stderr.write(f"Warning: Target path '{rel_path}' is ignored in .ghostcheckignore. Use --no-ignore to force scan.\n")
                     continue
                 
                 # Check cache
