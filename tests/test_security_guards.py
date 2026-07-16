@@ -29,4 +29,4 @@ def test_file_size_limit(tmp_path):
     scanner = Scanner(str(tmp_path))
     content = scanner._read_file_safe(str(large_file))
     assert content is not None
-    assert len(content) == Scanner.MAX_FILE_SIZE + 31
+    assert len(content) == Scanner.MAX_FILE_SIZE

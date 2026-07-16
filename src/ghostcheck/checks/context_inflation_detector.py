@@ -29,19 +29,10 @@ class ContextInflationDetector(BaseScannerPlugin):
                 if control_chars > 0.02 * len(chunk):
                     return ""
             
-            # Read content up to ceiling, reading first 5MB and last 5MB if exceeding limit to prevent trailing-end bypasses
-            if size > max_size:
-                half_size = max_size // 2
-                with open(file_path, 'rb') as f:
-                    head_bytes = f.read(half_size)
-                    f.seek(size - half_size)
-                    tail_bytes = f.read(half_size)
-                head = head_bytes.decode('utf-8', errors='ignore')
-                tail = tail_bytes.decode('utf-8', errors='ignore')
-                content = head + "\n[...TRUNCATED FILE MIDDLE...]\n" + tail
-            else:
-                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                    content = f.read()
+            # Read content up to ceiling
+            read_ceiling = min(size, max_size)
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                content = f.read(read_ceiling)
 
             # Chaos Protection: Split long lines (>10,000 chars) to prevent ReDoS via regex replace
             content = re.sub(r'([^\n]{10000})', r'\1\n', content)
@@ -67,16 +58,10 @@ class ContextInflationDetector(BaseScannerPlugin):
 
             # Determine if this file should only run partial scans (only check ZW and padding tokens, skip word/line repetitions)
             partial_scan = False
-            is_lock_file = ext == '.lock' or filename in ['pnpm-lock.yaml', 'yarn.lock', 'package-lock.json', 'composer.lock', 'poetry.lock', 'cargo.lock']
-            is_prompt_template = 'prompt' in filename or 'template' in filename or 'prompt' in file_path.lower()
-            
-            if ext == '.json' and not is_lock_file and filename != 'package.json':
+            if ext == '.json' and filename != 'package.json':
                 partial_scan = True
             elif ext in excluded_extensions:
-                if ext in ['.yaml', '.yml', '.toml', '.xml', '.ini'] and is_prompt_template:
-                    partial_scan = False
-                else:
-                    partial_scan = True
+                partial_scan = True
             elif 'tokenizer' in filename or 'vocab' in filename:
                 partial_scan = True
 
@@ -145,52 +130,19 @@ class ContextInflationDetector(BaseScannerPlugin):
             words = []
             cjk_regex = re.compile(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]')
             
-            # If the content contains the truncation placeholder, split it to process head and tail separately
-            truncation_placeholder = "\n[...TRUNCATED FILE MIDDLE...]\n"
-            if truncation_placeholder in content:
-                parts = content.split(truncation_placeholder, 1)
-                head_part, tail_part = parts[0], parts[1]
-                
-                # Tokenize head up to 25,000 words
-                head_words = []
-                for m in re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', head_part.lower()):
-                    raw_token = m.group(0)
-                    if cjk_regex.match(raw_token):
-                        for char in raw_token:
-                            head_words.append(char)
-                    else:
-                        if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
-                            head_words.append(raw_token)
-                    if len(head_words) >= 25000:
-                        break
-                
-                # Tokenize tail from the very end of the file (last 150KB of tail_part)
-                tail_words = []
-                tail_segment = tail_part[-150000:]
-                for m in re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', tail_segment.lower()):
-                    raw_token = m.group(0)
-                    if cjk_regex.match(raw_token):
-                        for char in raw_token:
-                            tail_words.append(char)
-                    else:
-                        if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
-                            tail_words.append(raw_token)
-                
-                words = head_words + tail_words
-            else:
-                token_iter = re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', content.lower())
-                for m in token_iter:
-                    raw_token = m.group(0)
-                    if cjk_regex.match(raw_token):
-                        for char in raw_token:
-                            words.append(char)
-                            if len(words) >= 50000:
-                                break
-                    else:
-                        if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
-                            words.append(raw_token)
-                    if len(words) >= 50000:
-                        break
+            token_iter = re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', content.lower())
+            for m in token_iter:
+                raw_token = m.group(0)
+                if cjk_regex.match(raw_token):
+                    for char in raw_token:
+                        words.append(char)
+                        if len(words) >= 50000:
+                            break
+                else:
+                    if not (raw_token.isdigit() or raw_token in ('true', 'false', 'null', '0', '1')):
+                        words.append(raw_token)
+                if len(words) >= 50000:
+                    break
 
             words_len = len(words)
 
