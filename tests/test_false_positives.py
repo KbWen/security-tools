@@ -142,3 +142,36 @@ def test_context_inflation_excludes_config_and_lock_files(tmp_path):
     assert len(findings_lock) == 0
     assert len(findings_toml) == 0
 
+
+def test_ast_scanners_robustness_on_invalid_types():
+    from ghostcheck.checks.ast_scanner import AstSecretChecker
+    from ghostcheck.checks.ast_js_scanner import JsAstSecretChecker
+    
+    py_scanner = AstSecretChecker([])
+    js_scanner = JsAstSecretChecker([])
+    
+    # Passing None and non-string types in files list should not raise TypeError or crash
+    py_res = py_scanner.scan([None, 1234, {"path": "test.py"}], {})
+    js_res = js_scanner.scan([None, 1234, {"path": "test.js"}], {})
+    
+    assert py_res == []
+    assert js_res == []
+
+
+def test_dynamic_context_fetching_masks_ast_secrets(tmp_path):
+    from ghostcheck.scanner import Scanner
+    
+    file_py = tmp_path / "app.py"
+    # A line with a real critical secret
+    file_py.write_text("MY_SECRET = 'sk-proj-1234567890123456789012345678901234567890'\n", encoding="utf-8")
+    
+    scanner = Scanner(str(tmp_path))
+    findings = scanner.scan_secrets([str(file_py)])
+    
+    # Verify the finding was detected
+    assert len(findings) > 0
+    fnd = findings[0]
+    
+    # The context should have been dynamically populated AND properly masked to prevent secret leakage in reports
+    assert "sk-proj-1234567890123456789012345678901234567890" not in fnd["context"]
+    assert "sk-p" + "*" * 40 + "7890" in fnd["context"]

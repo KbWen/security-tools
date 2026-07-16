@@ -762,6 +762,11 @@ class Scanner:
                         lines = content.splitlines()
                         if 1 <= line <= len(lines):
                             ctx_str = lines[line - 1].strip()
+                            # Safely mask the secret inside the dynamically fetched context to prevent leakage in reports
+                            raw_val = fnd.get('_raw_value')
+                            masked_val = fnd.get('value_preview')
+                            if raw_val and masked_val and raw_val in ctx_str:
+                                ctx_str = ctx_str.replace(raw_val, masked_val)
                             fnd['context'] = ctx_str
                 except Exception:
                     pass
