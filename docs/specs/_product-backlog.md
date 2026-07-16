@@ -30,6 +30,10 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v0.7.0 | IaC + CI/CD Audit + Firebase + Plugin | ✅ |
 | v0.8.0 | AI Agent Security Foundation | ✅ |
 | v0.9.0 | High Performance & Red Team Hardening | ✅ |
+| v1.0.0 | Presets & Robust Baseline Framework | ✅ |
+| v1.1.0 | AST Suppressions & Ignore Hardening | ✅ |
+| v1.2.0 | Agent Rule Auditing & Prompt Template Protection | ✅ |
+| v1.2.1 | Usability, DX, and Context Inflation Hardening | ✅ |
 
 ---
 
