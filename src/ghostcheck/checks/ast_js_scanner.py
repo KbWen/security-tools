@@ -3,6 +3,7 @@ try:
 except ImportError:
     esprima = None
 import re
+import os
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
@@ -19,6 +20,9 @@ class JsAstSecretChecker(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext not in ('.js', '.jsx', '.ts', '.tsx', '.html', '.vue', '.svelte', '.json'):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()

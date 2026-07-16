@@ -14,8 +14,12 @@ class AstSecretChecker(BaseScannerPlugin):
         return "Scanner plugin for AstSecretChecker"
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
+        import os
         findings = []
         for file_path in files:
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext not in ('.py', '.pyw', '.pyi'):
+                continue
             try:
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()

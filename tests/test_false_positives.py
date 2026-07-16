@@ -106,3 +106,39 @@ def test_ci_auditor_ignores_commented_actions():
     """
     findings = scanner.scan_file(".github/workflows/test.yml", content)
     assert len(findings) == 0
+
+
+def test_gpa06_sk_placeholder_ignored():
+    from ghostcheck.checks.privilege_auditor import PrivilegeAuditor
+    scanner = PrivilegeAuditor()
+    # Placeholder sk-12345 in variable assignment should not trigger api_key_command_arg
+    content = "const api_key = 'sk-12345';"
+    findings = scanner.scan_file("app.js", content)
+    assert len(findings) == 0
+
+
+def test_context_inflation_excludes_config_and_lock_files(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # Highly repetitive content that would normally trigger line repetition check (e.g. 20 consecutive identical lines)
+    repetitive_content = "some_dependency_hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n" * 20
+    
+    file_yaml = tmp_path / "pnpm-lock.yaml"
+    file_yaml.write_text(repetitive_content, encoding="utf-8")
+    
+    file_lock = tmp_path / "package.lock"
+    file_lock.write_text(repetitive_content, encoding="utf-8")
+    
+    file_toml = tmp_path / "ghostcheck.toml"
+    file_toml.write_text(repetitive_content, encoding="utf-8")
+    
+    # Scanning a YAML file or lock file should return 0 findings because the extension is excluded
+    findings_yaml = scanner.scan([str(file_yaml)], {})
+    findings_lock = scanner.scan([str(file_lock)], {})
+    findings_toml = scanner.scan([str(file_toml)], {})
+    
+    assert len(findings_yaml) == 0
+    assert len(findings_lock) == 0
+    assert len(findings_toml) == 0
+

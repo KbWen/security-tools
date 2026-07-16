@@ -684,7 +684,11 @@ class Scanner:
         # v0.6.0: Inline suppression and Baseline filter
         filtered = []
         file_content_cache = {}
+        seen_findings = set()
         for fnd in raw_findings:
+            # Use original raw string value of file to preserve distinction in edge-case tests
+            raw_file_str = str(fnd.get('file'))
+            
             # Enforce and sanitize finding fields to prevent downstream crashes
             file_path = fnd.get('file')
             if file_path is None or not isinstance(file_path, str):
@@ -696,6 +700,22 @@ class Scanner:
                 sev = 'INFO'
             fnd['severity'] = sev.upper()
 
+            line = fnd.get('line', 0)
+            if not isinstance(line, int):
+                try:
+                    line = int(line)
+                except (ValueError, TypeError):
+                    line = 0
+            fnd['line'] = line
+
+            # Usability: Deduplicate duplicate warnings from different checkers on the same line
+            fnd_id = self._get_fnd_id(fnd)
+            raw_val = fnd.get('_raw_value') or fnd.get('value_preview', '')
+            dup_fp = (raw_file_str, line, fnd_id, raw_val)
+            if dup_fp in seen_findings:
+                continue
+            seen_findings.add(dup_fp)
+
             # Baseline check
             if not file_path:
                 rel_path = ""
@@ -706,13 +726,7 @@ class Scanner:
                     rel_path = file_path.replace(os.sep, '/')
             
             fnd_id = self._get_fnd_id(fnd)
-            line = fnd.get('line', 0)
-            if not isinstance(line, int):
-                try:
-                    line = int(line)
-                except (ValueError, TypeError):
-                    line = 0
-            fnd['line'] = line
+            # (line was already cleaned and validated above)
             
             # v1.0.0: Robust Hash-based FP
             content_hash = ""
@@ -737,7 +751,22 @@ class Scanner:
                 continue
             
             # Inline suppression (Strict Mode)
-            ctx_str = str(fnd.get('context', ''))
+            # If context is missing (common for AST findings), fetch it dynamically to check for suppressions
+            ctx_str = fnd.get('context', '')
+            if not ctx_str and file_path and line > 0:
+                try:
+                    if file_path not in file_content_cache:
+                        file_content_cache[file_path] = self._read_file_safe(file_path)
+                    content = file_content_cache.get(file_path)
+                    if content:
+                        lines = content.splitlines()
+                        if 1 <= line <= len(lines):
+                            ctx_str = lines[line - 1].strip()
+                            fnd['context'] = ctx_str
+                except Exception:
+                    pass
+            ctx_str = str(ctx_str)
+            
             if "ghostcheck-ignore" in ctx_str:
                 import re
                 if re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
@@ -797,6 +826,13 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    if limit_files:
+                        import sys
+                        try:
+                            rel_path = os.path.relpath(file_path, self.project_root).replace(os.sep, '/')
+                        except Exception:
+                            rel_path = file_path.replace(os.sep, '/')
+                        sys.stderr.write(f"Warning: Target path '{rel_path}' is ignored in .ghostcheckignore. Use --no-ignore to force scan.\n")
                     continue
                 
                 # Check cache

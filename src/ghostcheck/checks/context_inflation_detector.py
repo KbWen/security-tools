@@ -48,7 +48,7 @@ class ContextInflationDetector(BaseScannerPlugin):
     def scan(self, files: List[str], config: Any) -> List[Dict[str, Any]]:
         findings = []
         # Exclude common large structured/tokenizer files to prevent false positives
-        excluded_extensions = ['.csv', '.tsv', '.log', '.vocab', '.model']
+        excluded_extensions = ['.csv', '.tsv', '.log', '.vocab', '.model', '.lock', '.yaml', '.yml', '.toml', '.ini', '.xml']
         for file_path in files:
             filename = os.path.basename(file_path).lower()
             ext = os.path.splitext(filename)[1]

@@ -40,15 +40,11 @@ def main():
         except Exception:
             pass
 
-    parser = argparse.ArgumentParser(
-        description="GhostCheck: AI-Era Security Scanner",
-        epilog="Addressing the unique risks of AI-assisted development."
-    )
-    
     # parent parser for common scan arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--format", choices=["console", "json", "sarif", "html", "owasp-llm"], default="console", help="Output format")
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
+    parent_parser.add_argument("--fail-on", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="INFO", help="Minimum severity threshold to trigger non-zero exit code (default: INFO)")
     parent_parser.add_argument("--preset", help="Use a framework-specific scan preset (e.g., next.js, flutter)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
@@ -61,6 +57,12 @@ def main():
     parent_parser.add_argument("--debug", action="store_true", help="Enable verbose debug logging")
     parent_parser.add_argument("--insecure", action="store_true", help="Skip SSL certificate verification")
     parent_parser.add_argument("--timeout", type=int, default=None, help="Network timeout in seconds (default: 10)")
+
+    parser = argparse.ArgumentParser(
+        description="GhostCheck: AI-Era Security Scanner",
+        epilog="Addressing the unique risks of AI-assisted development.",
+        parents=[parent_parser]
+    )
 
     subparsers = parser.add_subparsers(dest="command", help="Commands")
     
@@ -109,7 +111,14 @@ def main():
     # Version flag
     parser.add_argument("--version", action="version", version=f"GhostCheck {__version__}")
     
-    args = parser.parse_args()
+    # Two-stage parsing to allow global arguments to be placed anywhere (before or after subcommand)
+    global_args, remaining_argv = parent_parser.parse_known_args()
+    args = parser.parse_args(remaining_argv)
+    
+    # Merge global arguments into the main args namespace
+    for k, v in vars(global_args).items():
+        if v is not None or getattr(args, k, None) is None:
+            setattr(args, k, v)
     
     # Determine encoding/unicode support
     stdout_encoding = 'ascii'
@@ -298,7 +307,20 @@ def main():
                 print(f"{get_icon('info', use_unicode)} Total findings: {len(findings)}")
 
             if findings and not args.soft_fail:
-                sys.exit(1)
+                # Severity order mapping
+                severity_order = {"CRITICAL": 5, "HIGH": 4, "MEDIUM": 3, "LOW": 2, "INFO": 1}
+                fail_threshold = severity_order.get((args.fail_on or "INFO").upper(), 1)
+                
+                # Check if any finding meets or exceeds the fail-on threshold
+                should_fail = False
+                for fnd in findings:
+                    fnd_sev = (fnd.get('severity') or "INFO").upper()
+                    if severity_order.get(fnd_sev, 1) >= fail_threshold:
+                        should_fail = True
+                        break
+                
+                if should_fail:
+                    sys.exit(1)
             sys.exit(0)
         finally:
             if output_file:
