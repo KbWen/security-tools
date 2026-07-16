@@ -130,9 +130,9 @@ class ContextInflationDetector(BaseScannerPlugin):
             words = []
             cjk_regex = re.compile(r'[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]')
             
-            token_iter = re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', content.lower())
+            token_iter = re.finditer(r'\b\w+\b|[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff\uac00-\ud7af]', content)
             for m in token_iter:
-                raw_token = m.group(0)
+                raw_token = m.group(0).lower()
                 if cjk_regex.match(raw_token):
                     for char in raw_token:
                         words.append(char)
