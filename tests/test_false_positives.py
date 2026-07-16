@@ -111,10 +111,18 @@ def test_ci_auditor_ignores_commented_actions():
 def test_gpa06_sk_placeholder_ignored():
     from ghostcheck.checks.privilege_auditor import PrivilegeAuditor
     scanner = PrivilegeAuditor()
-    # Placeholder sk-12345 in variable assignment should not trigger api_key_command_arg
-    content = "const api_key = 'sk-12345';"
-    findings = scanner.scan_file("app.js", content)
-    assert len(findings) == 0
+    # 1. Placeholder sk-12345 in variable assignment should not trigger api_key_command_arg
+    content_placeholder = "const api_key = 'sk-12345';"
+    findings_placeholder = scanner.scan_file("app.js", content_placeholder)
+    assert len(findings_placeholder) == 0
+
+    # 2. A real API key (valid format & length) SHOULD trigger api_key_command_arg
+    content_real = "const api_key = 'sk-proj-1234567890123456789012345678901234567890';"
+    findings_real = scanner.scan_file("app.js", content_real)
+    assert len(findings_real) == 2
+    names = {f["name"] for f in findings_real}
+    assert "api_key_command_arg" in names
+    assert "api_key_hardcoded" in names
 
 
 def test_context_inflation_excludes_config_and_lock_files(tmp_path):
@@ -133,14 +141,20 @@ def test_context_inflation_excludes_config_and_lock_files(tmp_path):
     file_toml = tmp_path / "ghostcheck.toml"
     file_toml.write_text(repetitive_content, encoding="utf-8")
     
+    # Control Group: A regular python file with repetitive content SHOULD trigger a finding
+    file_py = tmp_path / "app.py"
+    file_py.write_text(repetitive_content, encoding="utf-8")
+    
     # Scanning a YAML file or lock file should return 0 findings because the extension is excluded
     findings_yaml = scanner.scan([str(file_yaml)], {})
     findings_lock = scanner.scan([str(file_lock)], {})
     findings_toml = scanner.scan([str(file_toml)], {})
+    findings_py = scanner.scan([str(file_py)], {})
     
     assert len(findings_yaml) == 0
     assert len(findings_lock) == 0
     assert len(findings_toml) == 0
+    assert len(findings_py) > 0  # Control group must actively trigger the finding
 
 
 def test_ast_scanners_robustness_on_invalid_types():
