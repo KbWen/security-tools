@@ -189,3 +189,65 @@ def test_dynamic_context_fetching_masks_ast_secrets(tmp_path):
     # The context should have been dynamically populated AND properly masked to prevent secret leakage in reports
     assert "sk-proj-1234567890123456789012345678901234567890" not in fnd["context"]
     assert "sk-p" + "*" * 40 + "7890" in fnd["context"]
+
+
+def test_context_inflation_hangul_filler(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # \u3164 is Hangul Filler, which renders as invisible. 60 consecutive fillers should trigger context_inflation_invisible_chars
+    file_py = tmp_path / "app.py"
+    file_py.write_text("\u3164" * 60, encoding="utf-8")
+    
+    findings = scanner.scan([str(file_py)], {})
+    assert len(findings) > 0
+    assert findings[0]["name"] == "context_inflation_invisible_chars"
+
+
+def test_context_inflation_partial_scan_on_yaml(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # Creating a YAML file with ZW chars (which should still be scanned even though it's excluded from line repetition)
+    file_yaml = tmp_path / "config.yaml"
+    file_yaml.write_text("key: " + "\u200b" * 60, encoding="utf-8")
+    
+    findings = scanner.scan([str(file_yaml)], {})
+    assert len(findings) > 0
+    assert findings[0]["name"] == "context_inflation_invisible_chars"
+
+
+def test_scanner_large_file_truncation_instead_of_skip(tmp_path):
+    from ghostcheck.scanner import Scanner
+    
+    # Setup a file that exceeds MAX_FILE_SIZE (e.g. 10MB + 1KB)
+    file_py = tmp_path / "large_file.py"
+    # Put a real secret in the first 1KB, followed by 10.5MB of padding comments to exceed 10MB limit
+    secret_line = "API_KEY = 'sk-proj-1234567890123456789012345678901234567890'\n"
+    padding = "# padding comments\n" * 600000 # ~11MB of text
+    file_py.write_text(secret_line + padding, encoding="utf-8")
+    
+    scanner = Scanner(str(tmp_path))
+    findings = scanner.scan_secrets([str(file_py)])
+    
+    # The file should NOT be skipped; the secret in the first 10MB should still be detected
+    assert len(findings) > 0
+    assert findings[0]["value_preview"].startswith("sk-p")
+
+
+def test_short_phrase_repetition_not_skipped(tmp_path):
+    from ghostcheck.checks.context_inflation_detector import ContextInflationDetector
+    scanner = ContextInflationDetector()
+    
+    # 2-3 letter English words repeated consecutively.
+    # Previously, because all words are < 4 chars, this would be ignored.
+    # Now it should be detected since it's a multi-word phrase (n > 1) and words are not < 2 chars.
+    repetitive_content = "do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it do it\n"
+    
+    file_py = tmp_path / "app.py"
+    file_py.write_text(repetitive_content, encoding="utf-8")
+    
+    findings = scanner.scan([str(file_py)], {})
+    assert len(findings) > 0
+    assert findings[0]["name"] == "context_inflation_word_repetition"
+

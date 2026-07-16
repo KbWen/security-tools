@@ -202,9 +202,6 @@ class Scanner:
             return None
         
         try:
-            if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
-                return None
-                
             # AC-S9: Quick binary check
             with open(file_path, 'rb') as f:
                 chunk = f.read(1024)
@@ -217,6 +214,12 @@ class Scanner:
                             if os.getenv("GHOSTCHECK_DEBUG") == "1":
                                 print(f"[DEBUG] Skipping {file_path} as it appears to be binary (control character density: {control_chars/len(chunk):.2%}).")
                             return None
+            
+            # If the file is extremely large, read only the first MAX_FILE_SIZE bytes to prevent OOM
+            # while still scanning it (closes the >10MB file bypass vector)
+            if os.path.getsize(file_path) > self.MAX_FILE_SIZE:
+                with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                    return f.read(self.MAX_FILE_SIZE)
                         
             with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                 return f.read()
