@@ -44,7 +44,7 @@ def main():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--format", choices=["console", "json", "sarif", "html", "owasp-llm"], default="console", help="Output format")
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
-    parent_parser.add_argument("--fail-on", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="LOW", help="Minimum severity threshold to trigger non-zero exit code (default: LOW)")
+    parent_parser.add_argument("--fail-on", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="MEDIUM", help="Minimum severity threshold to trigger non-zero exit code (default: MEDIUM)")
     parent_parser.add_argument("--preset", help="Use a framework-specific scan preset (e.g., next.js, flutter)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
