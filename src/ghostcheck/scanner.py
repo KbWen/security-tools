@@ -1,6 +1,7 @@
 import os
 import json
 import hashlib
+import threading
 from .plugin_manager import PluginManager
 from .checks.hallucination import HallucinationChecker
 from .checks.secrets import SecretScanner
@@ -104,6 +105,7 @@ class Scanner:
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.results_cache_file = os.path.join(self.cache_dir, "results_cache.json")
         self.results_cache = self._load_results_cache()
+        self._cache_lock = threading.Lock()
         self.cache_hits = 0
         self.secret_patterns_path = os.path.join(base_dir, 'data', 'secret_patterns.json')
         self.risky_rules_path = os.path.join(base_dir, 'data', 'risky_rules.json')
@@ -871,7 +873,8 @@ class Scanner:
                         # Update cache entry for this file
                         fp = self._get_file_fingerprint(f_path)
                         if fp:
-                            self.results_cache[fp] = result or []
+                            with self._cache_lock:
+                                self.results_cache[fp] = result or []
                     except Exception as e:
                         print(f"Error scanning {f_path}: {e}")
             

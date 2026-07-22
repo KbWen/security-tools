@@ -37,9 +37,8 @@ class GoASTScanner(BaseScannerPlugin):
         if not file_path.endswith('.go'):
             return findings
 
-        # Matches assignments: key := "value" or var key = `value`
-        # Handles both := and = assignments, and supports " and ` quotes
-        assignment_pattern = re.compile(rf'(\w+)\s*(?::=|=)\s*(["`])([^"`]+)\2')
+        # Matches assignments: key := "value", var key = `value`, or struct fields / map keys: Key: "value"
+        assignment_pattern = re.compile(rf'(\w+)\s*(?::=|=|:)\s*(["`])([^"`]+)\2')
         
         for match in assignment_pattern.finditer(content):
             var_name = match.group(1)

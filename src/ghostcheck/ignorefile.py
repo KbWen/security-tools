@@ -16,7 +16,7 @@ class IgnoreMatcher:
             if p not in self.patterns:
                 self.patterns.append(p)
                 
-        self.base_path = os.path.realpath(base_path) if base_path else None
+        self.base_path = os.path.normcase(os.path.realpath(base_path)) if base_path else None
         if ignore_file_path and os.path.exists(ignore_file_path):
             with open(ignore_file_path, 'r', encoding='utf-8') as f:
                 for line in f:
@@ -26,8 +26,8 @@ class IgnoreMatcher:
                             self.patterns.append(line)
 
     def is_ignored(self, path):
-        # 標準化路徑
-        abs_path = os.path.realpath(path)
+        # 標準化路徑（normcase 解決 Windows 磁碟機代號大小寫差異）
+        abs_path = os.path.normcase(os.path.realpath(path))
         try:
             if self.base_path and os.path.commonpath([self.base_path, abs_path]) == self.base_path:
                 path = os.path.relpath(abs_path, self.base_path)

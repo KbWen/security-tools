@@ -47,7 +47,7 @@ class JsAstSecretChecker(BaseScannerPlugin):
     def scan_file(self, file_path, content):
         findings = []
         if esprima is None:
-            return findings
+            return self._fallback_text_scan(file_path, content)
         
         try:
             try:
@@ -55,9 +55,18 @@ class JsAstSecretChecker(BaseScannerPlugin):
             except Exception:
                 tree = esprima.parseScript(content, loc=True)
         except Exception:
-            return findings
+            return self._fallback_text_scan(file_path, content)
 
         self._walk_and_check(tree, file_path, findings)
+        return findings
+
+    def _fallback_text_scan(self, file_path, content):
+        findings = []
+        if not content or not self.patterns:
+            return findings
+        lines = content.splitlines()
+        for idx, line in enumerate(lines, 1):
+            self._check_string(line, idx, file_path, findings, is_ast=False)
         return findings
 
     def _walk_and_check(self, node, file_path, findings, depth=0):

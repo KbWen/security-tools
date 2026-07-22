@@ -37,9 +37,8 @@ class JavaASTScanner(BaseScannerPlugin):
         if not (file_path.endswith('.java') or file_path.endswith('.kt')):
             return findings
 
-        # Matches: String key = "value" or val key = "value" or @Value("value")
-        # Standard assignments
-        assignment_pattern = re.compile(rf'(?:String|val|var)\s+(\w+)\s*=\s*["\']([^"\']+)["\']')
+        # Matches: String key = "value" or val key = "value" or private final String key = "value" or key: "value"
+        assignment_pattern = re.compile(rf'(?:(?:private|protected|public|static|final|String|val|var)\s+)*(\w+)\s*[:=]\s*["\']([^"\']+)["\']')
         
         for match in assignment_pattern.finditer(content):
             var_name = match.group(1)

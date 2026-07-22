@@ -26,3 +26,14 @@ def test_js_ast_malformed():
     # Should not crash on malformed JS
     findings = checker.scan_file("broken.js", "const x = ;")
     assert findings == []
+
+def test_js_ast_fallback_on_syntax_error():
+    patterns = [{"name": "OpenAIKey", "pattern": "sk-[a-zA-Z0-9]{20,}", "severity": "HIGH"}]
+    checker = JsAstSecretChecker(patterns)
+    
+    # TypeScript or JSX syntax that esprima fails to parse
+    ts_code = "type Token = string;\nconst key = 'sk-12345678901234567890';"
+    findings = checker.scan_file("app.ts", ts_code)
+    # Should NOT return empty (Fail-Open), should hit fallback text scan
+    assert len(findings) == 1
+    assert findings[0]["line"] == 2

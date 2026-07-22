@@ -37,8 +37,8 @@ class DartASTScanner(BaseScannerPlugin):
         if not file_path.endswith('.dart'):
             return findings
 
-        # Matches: const key = "value" or String key = "value" or var key = 'value'
-        assignment_pattern = re.compile(rf'(?:const|final|String|var)\s+(\w+)\s*=\s*["\']([^"\']+)["\']')
+        # Matches: const key = "value" or String key = "value" or var key = 'value' or key: "value"
+        assignment_pattern = re.compile(rf'(?:(?:const|final|String\??|var|late)\s+)*(\w+)\s*[:=]\s*["\']([^"\']+)["\']')
         
         for match in assignment_pattern.finditer(content):
             var_name = match.group(1)

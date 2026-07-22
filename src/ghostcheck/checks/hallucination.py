@@ -77,12 +77,14 @@ class HallucinationChecker(BaseScannerPlugin):
                     data = json.loads(content)
                     # Verify integrity if hash exists
                     if 'integrity' in data:
-                        stored_hash = data.pop('integrity')
-                        current_hash = hashlib.sha256(json.dumps(data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                        clean_data = data.copy()
+                        stored_hash = clean_data.pop('integrity')
+                        current_hash = hashlib.sha256(json.dumps(clean_data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
                         if stored_hash != current_hash:
                             if self.logger: self.logger.warning("Cache integrity check failed. Involving new cache.")
                             self.cache = {}
                             return
+                        data = clean_data
                     self.cache = data
             except (json.JSONDecodeError, IOError):
                 pass
