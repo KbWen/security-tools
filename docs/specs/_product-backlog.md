@@ -34,6 +34,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.1.0 | AST Suppressions & Ignore Hardening | ✅ |
 | v1.2.0 | Agent Rule Auditing & Prompt Template Protection | ✅ |
 | v1.2.1 | Usability, DX, and Context Inflation Hardening | ✅ |
+| v1.2.2 | P0/P1/P2 Security & Quality Hardening | ✅ |
 
 ---
 
