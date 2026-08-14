@@ -25,21 +25,21 @@ def _get_secret_value_part(match_str: str) -> str:
 def _is_placeholder_value(val: str) -> bool:
     val_lower = val.lower().strip()
     
-    # 1. Exact or substring match for common placeholder keywords
+    # 1. Exact or delimited token match for common placeholder keywords
     placeholders = [
         "your-key-here", "your_key_here", "your-token-here", "your_token_here",
-        "insert-key-here", "insert_key_here", "your-api-key", "your_api_key",
+        "insert-key-here", "insert_key_here", "your-api-key", "your_api_key", "your-api-key-here", "your_api_key_here",
         "dummy-value", "dummy_value", "mock-value", "mock_value",
         "placeholder-value", "placeholder_value", "insert-secret-here", "insert_secret_here",
-        "your-password", "your_password", "mypassword", "my-password", "my_password",
-        "your-secret", "your_secret", "your-client-secret", "your_client_secret",
+        "your-password", "your_password", "your-password-here", "your_password_here", "mypassword", "my-password", "my_password",
+        "your-secret", "your_secret", "your-secret-here", "your_secret_here", "your-client-secret", "your_client_secret",
         "your-hash-key", "your_hash_key"
     ]
-    if any(p in val_lower for p in placeholders):
+    if val_lower in placeholders or any(val_lower == f"<{p}>" or val_lower == f"{{{p}}}" for p in placeholders):
         return True
         
-    # 2. Check if the value is a trivial template placeholder (e.g. <your-api-key>, {YOUR_TOKEN})
-    if re.match(r'^[\{\<\[\(]?your[_-]?[a-z0-9_-]+[\}\>\]\)]?$', val_lower):
+    # 2. Check if the value is a trivial template placeholder (e.g. <your-api-key>, {YOUR_TOKEN}, your-password-here)
+    if re.match(r'^[\{\<\[\(]?(your|insert|dummy)[_-]?(key|token|api[_-]?key|secret|password|client[_-]?secret|hash[_-]?key)[_-]?(here|value|token|key)?[\}\>\]\)]?$', val_lower):
         return True
         
     # 3. Check if the value is mostly repeated dummy chars (e.g., "xxxxxxxx", "00000000", "*******")
@@ -63,8 +63,9 @@ def _calculate_entropy(text: str) -> float:
 def _is_likely_generic_false_positive(val: str) -> bool:
     val_lower = val.lower().strip()
     
-    # 1. Skip filenames and paths
-    if any(ext in val_lower for ext in ['.json', '.txt', '.py', '.env', '.yml', '.yaml', '.ini', '.conf', '.cfg', '.md', '.properties', '.html', '.css', '.js', '.ts']):
+    # 1. Skip filenames and paths (check exact extension suffix)
+    known_exts = ['.json', '.txt', '.py', '.env', '.yml', '.yaml', '.ini', '.conf', '.cfg', '.md', '.properties', '.html', '.css', '.js', '.ts', '.tsx', '.jsx', '.toml', '.tf', '.tfvars']
+    if any(val_lower.endswith(ext) for ext in known_exts):
         return True
     if '/' in val_lower or '\\' in val_lower or val_lower.startswith('http://') or val_lower.startswith('https://'):
         return True
@@ -111,7 +112,12 @@ class SecretScanner(BaseScannerPlugin):
 
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
-        allowed_exts = ['.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart', '.env']
+        allowed_exts = [
+            '.md', '.json', '.txt', '.log', '.yaml', '.yml', '.py', '.js', '.ts',
+            '.tsx', '.jsx', '.sh', '.bash', '.ps1', '.go', '.java', '.kt', '.dart',
+            '.env', '.toml', '.tf', '.tfvars', '.ini', '.cfg', '.conf', '.properties',
+            '.rs', '.rb', '.php', '.cs', '.swift', '.vue', '.svelte', '.htm', '.html'
+        ]
         for file_path in files:
             filename = file_path.replace('\\', '/').split('/')[-1]
             if any(filename.endswith(ext) for ext in allowed_exts) or '.env' in filename:

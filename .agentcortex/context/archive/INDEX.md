@@ -14,6 +14,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/checks/data_exfiltration_detector.py` → `feat-data-exfiltration.md` (AI Data Exfiltration Detector checking LLM prompt, MCP tool leakage, and public writes)
 - `src/ghostcheck/checks/context_inflation_detector.py` → `feat-context-inflation-20260701.md` (Context Inflation / Prompt Flooding Detector scanner plugin)
 - `src/ghostcheck/presets/manager.py` → `feat-context-inflation-20260701.md` (Integrated context_inflation into Next.js, Flutter, Django, FastAPI, Terraform presets)
+- `src/ghostcheck/ignorefile.py`, `src/ghostcheck/checks/secrets.py`, `src/ghostcheck/cli.py` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md` (Pre-Mortem, Tenth Man, and Expert Peer Review Hardening)
 
 ## By Pattern
 
@@ -36,6 +37,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[ts-syntax-fallback]` → `feat-data-exfiltration.md`
 - `[context-inflation]` → `feat-context-inflation-20260701.md`
 - `[n-gram-performance]` → `feat-context-inflation-20260701.md`
+- `[ignore-ssot-centralization]` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`
+- `[secrets-extension-blindspot]` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`
 
 ## By Decision
 
@@ -56,4 +59,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[typescript-syntax-fallback-scanning]` → Gracefully fallback to text-based scanning on typescript AST parsing failures (`feat-data-exfiltration.md`)
 - `[ngram-repetition-optimized-comparison]` → Use index-based sliding comparisons for n-gram checks instead of full list comprehension tuple allocations to ensure O(1) memory complexity (`feat-context-inflation-20260701.md`)
 - `[zw-unicode-isolates-expansion]` → Include bidirectional isolates (\u2066–\u2069), word joiners, and Mongolian vowel separators to prevent Trojan Source-style prompt injection bypasses (`feat-context-inflation-20260701.md`)
+- `[ignore-ssot-centralization]` → Centralize default directory ignores in IgnoreMatcher SSoT to preserve negation rules (`ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`)
+- `[secrets-extension-blindspot]` → Add .tsx, .jsx, .toml, .tf to SecretScanner allowed_exts to close React/Cloud scanning gaps (`ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`)
 

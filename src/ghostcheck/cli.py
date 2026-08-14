@@ -305,6 +305,8 @@ def main():
                 color_func = getattr(reporter, '_color', lambda text, sev: text)
                 print(f"\n{get_icon('stats', use_unicode)} {color_func('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
                 print(f"{get_icon('info', use_unicode)} Total findings: {len(findings)}")
+                if len(findings) > 15 and not args.fail_on:
+                    print(f"💡 Tip: For CI pipelines, use --fail-on HIGH to focus on actionable security risks.")
 
             if findings and not args.soft_fail:
                 # Severity order mapping

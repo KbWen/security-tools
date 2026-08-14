@@ -89,6 +89,16 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 
 ## Ship History
 
+### Ship-v1.2.3-pre-mortem-and-expert-hardening-2026-08-14
+- v1.2.3 Patch Release — Pre-Mortem, Tenth Man, and Expert Peer Review Hardening shipped:
+  - Centralized default directory ignores in `IgnoreMatcher` (`ignorefile.py`) to include `dist/`, `.next/`, `build/`, `.venv/`, `venv/`, `env/`, `.pytest_cache/`, `.mypy_cache/`, `.turbo/`, `.nuxt/` while preserving `.ghostcheckignore` negation rules (`!dist/bundle.js`).
+  - Closed `SecretScanner` file extension blind spots in `secrets.py` by adding `.tsx`, `.jsx`, `.toml`, `.tf`, `.tfvars`, `.ini`, `.cfg`, `.conf`, `.properties`, `.rs`, `.rb`, `.php`, `.cs`, `.swift`.
+  - Hardened `_is_placeholder_value` and `_is_likely_generic_false_positive` against prefix evasion (`your_live_token_...` detected as real secret token) and path suffix checks.
+  - Added path normalization for Windows backslashes (`\`), leading slashes (`/`), and relative dots (`./`).
+  - Added console-only CI UX tip for `--fail-on HIGH` in `cli.py`.
+  - Added 6 unit test cases in `tests/test_expert_review_hardening.py`.
+- Tests: Pass (331/331 tests passed).
+
 ### Ship-v1.2.2-p0-p2-security-hardening-2026-07-22
 - P0/P1/P2 Security and Quality Hardening shipped: Resolved expert roundtable, tenth man, and pre-mortem findings. Fixed `HallucinationChecker._load_cache()` dictionary mutation during integrity verification. Eliminated silent `except Exception: return findings` Fail-Open flaw in `JsAstSecretChecker` when `esprima` fails to parse TypeScript/JSX by adding a fallback line-by-line text scan. Hardened `IgnoreMatcher` with `os.path.normcase` to eliminate Windows drive letter casing mismatch (`c:\` vs `C:\`) in `os.path.commonpath` which caused `.ghostcheckignore` bypass and CI timeouts/OOM. Added `threading.Lock` to `Scanner` to guarantee thread safety during parallel `results_cache` updates in `ThreadPoolExecutor`. Enhanced regex assignment patterns in `GoASTScanner`, `JavaASTScanner`, and `DartASTScanner` to detect struct field initializations (`Key: "value"`), nullable types, and field modifiers (`private final String`). Added fallback text scan unit test. Tagged and released v1.2.2.
 - Tests: Pass (325/325 tests passed).
