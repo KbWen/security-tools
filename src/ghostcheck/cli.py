@@ -213,6 +213,18 @@ def main():
             print(f"  - {name:<15}: {desc}")
         sys.exit(0)
 
+    if args.command == "list-plugins":
+        from .plugin_manager import PluginManager
+        pm = PluginManager()
+        pm.load_builtins()
+        print(f"{get_icon('info', use_unicode)} Loaded Scanners ({len(pm.get_all_scanners())}):")
+        for name in pm.get_all_scanners():
+            print(f"  - {name}")
+        print(f"{get_icon('info', use_unicode)} Loaded Reporters ({len(pm.get_all_reporters())}):")
+        for name in pm.get_all_reporters():
+            print(f"  - {name}")
+        sys.exit(0)
+
     from .scanner import Scanner
     from .plugin_manager import PluginManager
     
@@ -259,16 +271,6 @@ def main():
         
         # Report
         output_file = None
-
-        if args.command == "list-plugins":
-            # For now, list loaded scanners and reporters
-            print(f"{get_icon('info', use_unicode)} Loaded Scanners ({len(pm.get_all_scanners())}):")
-            for name in pm.get_all_scanners():
-                print(f"  - {name}")
-            print(f"{get_icon('info', use_unicode)} Loaded Reporters ({len(pm.get_all_reporters())}):")
-            for name in pm.get_all_reporters():
-                print(f"  - {name}")
-            sys.exit(0)
 
         reporter_cls = pm.get_reporter(args.format)
         if not reporter_cls:
