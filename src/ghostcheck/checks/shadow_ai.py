@@ -405,7 +405,8 @@ class ShadowAIDetector(BaseScannerPlugin):
                 for match in self.python_import_pattern.finditer(scan_line):
                     pkgs_str = match.group(1) or match.group(2) or match.group(3)
                     for pkg_raw in pkgs_str.split(','):
-                        pkg = pkg_raw.strip().split('.')[0]
+                        tokens = pkg_raw.strip().split()
+                        pkg = tokens[0].split('.')[0] if tokens else ""
                         if pkg and self.is_sdk_python_unauthorized(pkg):
                             findings.append({
                                 "name": "unauthorized_ai_sdk_python",

@@ -94,9 +94,9 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
   - Fixed `IgnoreMatcher` in `ignorefile.py` where `lstrip('./')` corrupted dot-prefixed directories (`.git/`, `.venv/`, `.pytest_cache/`), completely eliminating 50 false positive findings and elevating repository self-scan to **Grade A (100/100)**.
   - Implemented Python AST Constant Folding (`ast.BinOp(op=ast.Add)`, `ast.JoinedStr`) and JavaScript/TypeScript string concatenation folding in `ShadowAIDetector` (`shadow_ai.py`) to block dynamic obfuscated imports (`__import__('open' + 'ai')`, `require('lan' + 'gchain')`).
   - Hardened GitHub Actions workflows (`.github/workflows/ci.yml`, `integrity-check.yml`) by locking all actions to 40-character Commit SHAs (eliminating `gha_unpinned_action` OWASP LLM03 risks).
-  - Added dedicated unit test suite in `tests/test_obfuscation_defense.py` covering AST constant folding, JS concatenation defense, dot-directory preservation, and pinned GHA actions.
-- Tests: Pass (335/335 tests passed).
-- Review: Pass (Five-perspective expert roundtable peer review).
+  - Added dedicated unit test suite in `tests/test_obfuscation_defense.py` and zero-trust adversarial test suite in `tests/test_zero_trust_adversarial.py` covering malformed AST degradation, extreme recursion, null bytes, path traversal, inline tamper prevention, and Unicode bidirectional isolation.
+- Tests: Pass (342/342 tests passed).
+- Review: Pass (Five-perspective expert roundtable peer review & Zero-Trust verification).
 
 ### Ship-v1.2.3-pre-mortem-and-expert-hardening-2026-08-14
 - v1.2.3 Patch Release — Pre-Mortem, Tenth Man, and Expert Peer Review Hardening shipped:
