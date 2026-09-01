@@ -34,7 +34,7 @@ class GoASTScanner(BaseScannerPlugin):
 
     def scan_file(self, file_path, content):
         findings = []
-        if not file_path.endswith('.go'):
+        if not file_path.lower().endswith('.go'):
             return findings
 
         # Matches assignments: key := "value", var key = `value`, or struct fields / map keys: Key: "value"

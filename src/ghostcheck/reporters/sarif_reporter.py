@@ -71,7 +71,7 @@ class SarifReporter(BaseReporterPlugin):
                     {
                         "physicalLocation": {
                             "artifactLocation": {
-                                "uri": f.get('file', 'unknown')
+                                "uri": str(f.get('file', 'unknown')).replace('\\', '/')
                             },
                             "region": {
                                 "startLine": f.get('line', 1)

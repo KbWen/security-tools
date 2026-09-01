@@ -13,7 +13,7 @@ def test_sarif_reporter(tmp_path):
             "message": "Found a hardcoded secret."
         },
         {
-            "file": "test2.py",
+            "file": "src\\components\\auth.py",
             "line": 10,
             "pattern_name": "AWS Access Key",
             "severity": "CRITICAL",
@@ -42,11 +42,15 @@ def test_sarif_reporter(tmp_path):
     results = run['results']
     assert len(results) == 2
     
-    # Check mapping
+    # Check mapping & URI normalization
     high_result = next(r for r in results if r['ruleId'] == "Hardcoded Secret")
     assert high_result['level'] == "error"
     assert high_result['message']['text'] == "Found a hardcoded secret."
+    assert high_result['locations'][0]['physicalLocation']['artifactLocation']['uri'] == "test.py"
     
     critical_result = next(r for r in results if r['ruleId'] == "AWS Access Key")
     assert critical_result['level'] == "error"
     assert critical_result['message']['text'] == "Revoke immediately."
+    # Backslashes normalized to forward slashes for SARIF 2.1.0 standard
+    assert critical_result['locations'][0]['physicalLocation']['artifactLocation']['uri'] == "src/components/auth.py"
+

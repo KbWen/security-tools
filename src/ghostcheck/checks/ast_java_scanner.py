@@ -34,7 +34,7 @@ class JavaASTScanner(BaseScannerPlugin):
 
     def scan_file(self, file_path, content):
         findings = []
-        if not (file_path.endswith('.java') or file_path.endswith('.kt')):
+        if not file_path.lower().endswith(('.java', '.kt', '.kts')):
             return findings
 
         # Matches: String key = "value" or val key = "value" or private final String key = "value" or key: "value"

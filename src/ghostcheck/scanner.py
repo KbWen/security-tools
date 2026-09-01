@@ -515,8 +515,10 @@ class Scanner:
             
             integrity_hash = hashlib.sha256((json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
             cache_to_save['integrity'] = integrity_hash
-            with open(self.results_cache_file, 'w', encoding='utf-8') as f:
+            tmp_cache_file = self.results_cache_file + f".tmp.{os.getpid()}"
+            with open(tmp_cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_to_save, f, separators=(',', ':'))
+            os.replace(tmp_cache_file, self.results_cache_file)
         except Exception:
             pass
 

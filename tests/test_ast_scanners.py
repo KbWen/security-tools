@@ -56,3 +56,22 @@ void main() {
     assert findings[0]["name"] == "Dart Hardcoded Google API Key"
     assert findings[1]["name"] == "Dart Leaky Print"
     assert "apiKey" in findings[1]["message"]
+
+def test_ast_scanners_case_insensitive_extensions(dummy_patterns):
+    go_scanner = GoASTScanner(dummy_patterns)
+    java_scanner = JavaASTScanner(dummy_patterns)
+    dart_scanner = DartASTScanner(dummy_patterns)
+
+    # Uppercase .GO, .JAVA, .DART, and Kotlin Script .kts
+    go_findings = go_scanner.scan_file("App.GO", 'key := "AIzaSyDummyKey12345678901234567890123456789"')
+    assert len(go_findings) == 1
+
+    java_findings = java_scanner.scan_file("Main.JAVA", 'String key = "AIzaSyDummyKey12345678901234567890123456789";')
+    assert len(java_findings) == 1
+
+    kt_findings = java_scanner.scan_file("build.gradle.kts", 'val secret = "AIzaSyDummyKey12345678901234567890123456789"')
+    assert len(kt_findings) == 1
+
+    dart_findings = dart_scanner.scan_file("Main.DART", 'const key = "AIzaSyDummyKey12345678901234567890123456789";')
+    assert len(dart_findings) == 1
+

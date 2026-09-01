@@ -34,7 +34,7 @@ class DartASTScanner(BaseScannerPlugin):
 
     def scan_file(self, file_path, content):
         findings = []
-        if not file_path.endswith('.dart'):
+        if not file_path.lower().endswith('.dart'):
             return findings
 
         # Matches: const key = "value" or String key = "value" or var key = 'value' or key: "value"
