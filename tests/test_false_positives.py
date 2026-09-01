@@ -27,6 +27,14 @@ def test_fp_simple_greeting_delimiter():
     assert len(findings) == 1
     assert findings[0]['name'] == 'missing_input_delimiter'
 
+def test_issue_11_kebab_case_css_false_positive():
+    from ghostcheck.checks.entropy_scanner import EntropyScanner
+    scanner = EntropyScanner()
+    # Long CSS classes from Tailwind / HTML (Issue #11)
+    content = '<div class="bg-gradient-to-r-from-indigo-to-purple-ui-container shadow-xl"></div>'
+    findings = scanner.scan_content("component.tsx", content)
+    assert len(findings) == 0
+
 def test_fp_defensive_jailbreak_phrasing():
     # Scenario: A template containing instructions to resist jailbreaks, which includes
     # the phrasing but is defensive.

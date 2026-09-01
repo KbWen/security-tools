@@ -7,11 +7,21 @@ from ..interfaces import BaseScannerPlugin
 def _is_kebab_case_false_positive(token: str) -> bool:
     if '-' not in token:
         return False
-    if len(token) > 40:
-        return False
     if not re.match(r'^[a-z0-9-]+$', token): # Enforce lowercase to prevent mixed-case secrets from matching
         return False
     parts = token.split('-')
+
+    # Recognize UI / CSS utility class combinations regardless of length
+    css_keywords = {'bg', 'text', 'font', 'border', 'flex', 'grid', 'from', 'to', 'r', 'l', 't', 'b',
+                    'gradient', 'indigo', 'purple', 'blue', 'red', 'green', 'yellow', 'gray',
+                    'container', 'rounded', 'shadow', 'items', 'justify', 'center', 'relative',
+                    'absolute', 'modal', 'button', 'btn', 'card', 'header', 'footer', 'sidebar',
+                    'wrapper', 'layout', 'ui', 'box', 'panel', 'icon', 'menu', 'nav', 'link'}
+    if len(parts) >= 2 and all((p.lower() in css_keywords) or (p.isdigit() and len(p) <= 4) for p in parts if p):
+        return True
+
+    if len(token) > 40:
+        return False
     if len(parts) > 5:
         return False
     for part in parts:

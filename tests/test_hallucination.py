@@ -78,3 +78,15 @@ def test_empty_requirements():
     checker = HallucinationChecker()
     findings = checker.check_requirements("")
     assert findings == []
+
+@patch('urllib.request.urlopen')
+def test_issue_10_scoped_npm_package_url_encoding(mock_urlopen):
+    mock_response = MagicMock()
+    mock_response.read.return_value = b'{"name": "@types/node", "time": {"created": "2015-01-01T00:00:00.000Z"}}'
+    mock_response.__enter__.return_value = mock_response
+    mock_urlopen.return_value = mock_response
+
+    checker = HallucinationChecker()
+    result = checker._check_npm_online("@types/node")
+    assert result is None  # Established package, no hallucination finding
+
