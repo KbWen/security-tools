@@ -41,7 +41,8 @@ project_type = "{project_type}"
                     if not force:
                         return False, f"ghostcheck.toml already exists at {parent_config}. Use --force to overwrite."
                 else:
-                    return False, f"Project already initialized at parent directory: {curr}. No need to re-initialize here."
+                    if not force:
+                        return False, f"Project already initialized at parent directory: {curr}. No need to re-initialize here. Use --force to initialize subproject config."
             
             parent = os.path.dirname(curr)
             if parent == curr:
