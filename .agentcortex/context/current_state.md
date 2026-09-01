@@ -84,10 +84,19 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Parentheses-Depth-Extraction]: Replaced simple non-greedy regex matching with dynamic parentheses depth balancing in fallback text scanner to support nested function calls.
 - [Masked-Context-Exemption]: When writing scanner self-exemptions checking line contexts, always account for both the raw string representation and the masked representation (e.g. `abcd******************wxyz`), as masking happens prior to the final post-processing filter.
 - [context-inflation-performance]: Use index-based sliding comparisons for n-gram checks instead of full list comprehension tuple allocations to ensure O(1) memory overhead on large files.
-- [context-inflation-unicode]: Ensure zero-width scanning includes the full set of Unicode directional isolates (\u2066–\u2069), Mongolian vowel separators, and word joiners to prevent Trojan Source-style prompt injection bypasses.
 - [context-inflation-divider-fp]: Exclude common code and structured file extensions from divider spam checks to eliminate false positives on header banners and comment blocks.
+- [Prefix-Strip-Safety]: Never use `str.lstrip('./')` to remove path prefixes; it treats the argument as a character set, corrupting dot-directories (`.git/`, `.venv/`, `.next/`, `.pytest_cache/`) into (`git/`, `venv/`, `next/`). Always use `.startswith('./')` or `.removeprefix()`.
 
 ## Ship History
+
+### Ship-v1.2.4-roundtable-and-obfuscation-hardening-2026-09-01
+- v1.2.4 Patch Release — Expert Roundtable, Obfuscation Defense, and VCS Ignore Hardening shipped:
+  - Fixed `IgnoreMatcher` in `ignorefile.py` where `lstrip('./')` corrupted dot-prefixed directories (`.git/`, `.venv/`, `.pytest_cache/`), completely eliminating 50 false positive findings and elevating repository self-scan to **Grade A (100/100)**.
+  - Implemented Python AST Constant Folding (`ast.BinOp(op=ast.Add)`, `ast.JoinedStr`) and JavaScript/TypeScript string concatenation folding in `ShadowAIDetector` (`shadow_ai.py`) to block dynamic obfuscated imports (`__import__('open' + 'ai')`, `require('lan' + 'gchain')`).
+  - Hardened GitHub Actions workflows (`.github/workflows/ci.yml`, `integrity-check.yml`) by locking all actions to 40-character Commit SHAs (eliminating `gha_unpinned_action` OWASP LLM03 risks).
+  - Added dedicated unit test suite in `tests/test_obfuscation_defense.py` covering AST constant folding, JS concatenation defense, dot-directory preservation, and pinned GHA actions.
+- Tests: Pass (335/335 tests passed).
+- Review: Pass (Five-perspective expert roundtable peer review).
 
 ### Ship-v1.2.3-pre-mortem-and-expert-hardening-2026-08-14
 - v1.2.3 Patch Release — Pre-Mortem, Tenth Man, and Expert Peer Review Hardening shipped:

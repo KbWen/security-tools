@@ -127,24 +127,7 @@ class ShadowAIDetector(BaseScannerPlugin):
 
         # 2. Source Code Checks (Python)
         if filename.endswith('.py'):
-            for i, line in enumerate(lines):
-                # Strip comments for python checks to prevent imports matching inside comments
-                scan_line = line.split('#')[0]
-                # Python imports (GSA-01)
-                for match in self.python_import_pattern.finditer(scan_line):
-                    pkgs_str = match.group(1) or match.group(2) or match.group(3)
-                    for pkg_raw in pkgs_str.split(','):
-                        pkg = pkg_raw.strip().split('.')[0]
-                        if pkg and self.is_sdk_python_unauthorized(pkg):
-                            findings.append({
-                                "name": "unauthorized_ai_sdk_python",
-                                "rule_id": "GSA-01",
-                                "severity": "MEDIUM",
-                                "file": filepath,
-                                "line": i + 1,
-                                "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
-                                "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
-                            })
+            findings.extend(self._scan_python_source(filepath, content, lines))
 
         # 3. Source Code Checks (JavaScript/TypeScript)
         elif any(filename.endswith(ext) for ext in ['.js', '.ts', '.jsx', '.tsx']):
@@ -154,7 +137,11 @@ class ShadowAIDetector(BaseScannerPlugin):
                 return '\n' * match.group(0).count('\n')
             clean_content = re.sub(r'/\*.*?\*/', replace_multiline, content_no_single, flags=re.DOTALL)
             
-            for match in self.js_import_pattern.finditer(clean_content):
+            # Pre-fold string concatenations like 'open' + 'ai' or "lang" + "chain"
+            folded_content = re.sub(r'([\'"`])\s*\+\s*\1', '', clean_content)
+            folded_content = re.sub(r'[\'"`]\s*\+\s*[\'"`]', '', folded_content)
+            
+            for match in self.js_import_pattern.finditer(folded_content):
                 pkg = match.group(1) or match.group(2) or match.group(3)
                 if pkg and self.is_sdk_js_unauthorized(pkg):
                     line_no = clean_content.count('\n', 0, match.start()) + 1
@@ -328,4 +315,105 @@ class ShadowAIDetector(BaseScannerPlugin):
                             "message": f"Recommendation of unauthorized AI editor assistant detected (fallback scan): '{ext}'.",
                             "suggestion": f"Remove the extension or add '{ext}' to allowed_extensions in ghostcheck.toml."
                         })
+        return findings
+
+    def _fold_python_ast_string(self, node):
+        import ast
+        if isinstance(node, ast.Constant) and isinstance(node.value, str):
+            return node.value
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+            left = self._fold_python_ast_string(node.left)
+            right = self._fold_python_ast_string(node.right)
+            if left is not None and right is not None:
+                return left + right
+        if isinstance(node, ast.JoinedStr):
+            parts = []
+            for val in node.values:
+                if isinstance(val, ast.Constant) and isinstance(val.value, str):
+                    parts.append(val.value)
+                else:
+                    return None
+            return "".join(parts)
+        return None
+
+    def _scan_python_source(self, filepath, content, lines):
+        import ast
+        findings = []
+        parsed_via_ast = False
+        try:
+            tree = ast.parse(content)
+            parsed_via_ast = True
+            for node in ast.walk(tree):
+                line_no = getattr(node, 'lineno', 1)
+                # 1. Standard import foo, bar
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        pkg = alias.name.split('.')[0]
+                        if pkg and self.is_sdk_python_unauthorized(pkg):
+                            findings.append({
+                                "name": "unauthorized_ai_sdk_python",
+                                "rule_id": "GSA-01",
+                                "severity": "MEDIUM",
+                                "file": filepath,
+                                "line": line_no,
+                                "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
+                                "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
+                            })
+                # 2. from foo import bar
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module:
+                        pkg = node.module.split('.')[0]
+                        if pkg and self.is_sdk_python_unauthorized(pkg):
+                            findings.append({
+                                "name": "unauthorized_ai_sdk_python",
+                                "rule_id": "GSA-01",
+                                "severity": "MEDIUM",
+                                "file": filepath,
+                                "line": line_no,
+                                "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
+                                "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
+                            })
+                # 3. Dynamic import: __import__('...'), importlib.import_module('...')
+                elif isinstance(node, ast.Call):
+                    func_name = ""
+                    if isinstance(node.func, ast.Name):
+                        func_name = node.func.id
+                    elif isinstance(node.func, ast.Attribute):
+                        func_name = node.func.attr
+                    
+                    if func_name in ("__import__", "import_module", "require") and node.args:
+                        folded_str = self._fold_python_ast_string(node.args[0])
+                        if folded_str:
+                            pkg = folded_str.split('.')[0]
+                            if pkg and self.is_sdk_python_unauthorized(pkg):
+                                findings.append({
+                                    "name": "unauthorized_ai_sdk_python",
+                                    "rule_id": "GSA-01",
+                                    "severity": "MEDIUM",
+                                    "file": filepath,
+                                    "line": line_no,
+                                    "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
+                                    "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
+                                })
+        except (SyntaxError, ValueError, OverflowError, RecursionError):
+            parsed_via_ast = False
+
+        if not parsed_via_ast:
+            # Fallback to line-by-line regex scanning if AST fails
+            for i, line in enumerate(lines):
+                scan_line = line.split('#')[0]
+                for match in self.python_import_pattern.finditer(scan_line):
+                    pkgs_str = match.group(1) or match.group(2) or match.group(3)
+                    for pkg_raw in pkgs_str.split(','):
+                        pkg = pkg_raw.strip().split('.')[0]
+                        if pkg and self.is_sdk_python_unauthorized(pkg):
+                            findings.append({
+                                "name": "unauthorized_ai_sdk_python",
+                                "rule_id": "GSA-01",
+                                "severity": "MEDIUM",
+                                "file": filepath,
+                                "line": i + 1,
+                                "message": f"Unauthorized Python AI SDK imported: '{pkg}'.",
+                                "suggestion": f"Avoid using unapproved AI SDKs or add '{pkg}' to allowed_sdks in ghostcheck.toml."
+                            })
         return findings

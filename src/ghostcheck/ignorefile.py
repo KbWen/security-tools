@@ -37,8 +37,12 @@ class IgnoreMatcher:
         abs_path = os.path.normcase(os.path.realpath(path))
         try:
             if self.base_path and os.path.commonpath([self.base_path, abs_path]) == self.base_path:
-                rel = os.path.relpath(abs_path, self.base_path).replace('\\', '/').lstrip('./')
-                if rel:
+                rel = os.path.relpath(abs_path, self.base_path).replace('\\', '/')
+                if rel.startswith('./'):
+                    rel = rel[2:]
+                if rel.startswith('/'):
+                    rel = rel[1:]
+                if rel and rel != '.':
                     path_norm = rel
         except (ValueError, OSError):
             pass
