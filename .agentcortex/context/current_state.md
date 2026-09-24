@@ -86,8 +86,27 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [context-inflation-performance]: Use index-based sliding comparisons for n-gram checks instead of full list comprehension tuple allocations to ensure O(1) memory overhead on large files.
 - [context-inflation-divider-fp]: Exclude common code and structured file extensions from divider spam checks to eliminate false positives on header banners and comment blocks.
 - [Prefix-Strip-Safety]: Never use `str.lstrip('./')` to remove path prefixes; it treats the argument as a character set, corrupting dot-directories (`.git/`, `.venv/`, `.next/`, `.pytest_cache/`) into (`git/`, `venv/`, `next/`). Always use `.startswith('./')` or `.removeprefix()`.
+- [fstring-ast-folding]: Python AST f-strings wrap interpolated values inside `ast.FormattedValue`; `node.values` in `ast.JoinedStr` must unpack `.value` recursively to fold string constants properly.
+- [gitignore-negation-semantics]: IgnoreMatcher pattern matching must follow Last-Matching-Pattern semantics rather than short-circuiting on first positive match, otherwise negation patterns (`!path`) are unable to override prior rules.
 
 ## Ship History
+
+### Ship-v1.2.6-multi-perspective-review-and-adversarial-hardening-2026-09-24
+- v1.2.6 Patch Release — Multi-Perspective Independent Review & Adversarial Hardening shipped:
+  - Plugged critical scanner blindspot by adding `data_exfiltration` to default `enabled_modules` in `Scanner._process_single_file` and PresetManager presets (`next.js`, `django`, `fastapi`, `flutter`), activating 1834 lines of previously silent data exfiltration detection in standard `ghostcheck scan`.
+  - Hardened Python AST Constant Folding in `ShadowAIDetector` (`shadow_ai.py`) and `AstSecretChecker` (`ast_scanner.py`) to recursively unpack `ast.FormattedValue` in `ast.JoinedStr` with a depth limit guard (`depth > 30`), eliminating f-string dynamic import evasion (`__import__(f"{'open'}{'ai'}")`) and f-string secret masking.
+  - Corrected `IgnoreMatcher.is_ignored()` in `ignorefile.py` to follow standard Git Last-Matching-Pattern semantics, enabling negation rules (`!pattern`) in `.ghostcheckignore` to successfully override default ignores without early termination.
+  - Cleaned redundant `self.context_auditor` instantiation and replaced bare `except Exception: pass` blocks in `scanner.py` with standard `logger.debug` calls.
+- Tests: Pass (349/349 tests passed).
+- Review: Pass (Independent Peer Reviewer subagent verdict: PASS WITH NOTES, all recommendations incorporated).
+
+### Ship-v1.2.5-hardening-and-sarif-normalization-2026-09-01
+- v1.2.5 Patch Release — SARIF URI Normalization, Atomic Cache Persistence, and Multi-Language Case-Insensitive Extensions shipped:
+  - Normalized backslashes to forward slashes in SARIF 2.1.0 URIs (`src/ghostcheck/reporters/sarif_reporter.py`).
+  - Implemented atomic cache write via PID-tagged temporary file and `os.replace` (`src/ghostcheck/scanner.py`).
+  - Added case-insensitive file extension matching and Kotlin Script `.kts` support in Go, Java, and Dart AST scanners.
+- Tests: Pass (345/345 tests passed).
+- Review: Pass.
 
 ### Ship-v1.2.4-roundtable-and-obfuscation-hardening-2026-09-01
 - v1.2.4 Patch Release — Expert Roundtable, Obfuscation Defense, and VCS Ignore Hardening shipped:

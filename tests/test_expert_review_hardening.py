@@ -85,3 +85,60 @@ def test_secret_scanner_your_prefix_token_not_bypassed():
     assert _is_placeholder_value("your_live_token_998877665544332211") is False
     assert _is_placeholder_value("your-production-key-99887766554433") is False
 
+
+def test_shadow_ai_fstring_ast_folding():
+    """Verify ShadowAIDetector properly folds f-strings with ast.FormattedValue (e.g. __import__(f"{'open'}{'ai'}"))"""
+    from ghostcheck.checks.shadow_ai import ShadowAIDetector
+    detector = ShadowAIDetector()
+    code = "__import__(f\"{'open'}{'ai'}\")\n"
+    findings = detector.scan_file("dynamic_import.py", code)
+    assert any(f.get("rule_id") == "GSA-01" or "openai" in f.get("message", "").lower() for f in findings), \
+        f"Expected ShadowAIDetector to detect f-string obfuscated import, got: {findings}"
+
+
+def test_ast_scanner_fstring_secret_folding():
+    """Verify AstSecretChecker folds f-strings with ast.FormattedValue for secrets"""
+    from ghostcheck.checks.ast_scanner import AstSecretChecker
+    patterns = [{
+        "name": "Test Key",
+        "pattern": r"sk_live_[0-9a-zA-Z]{16,}",
+        "severity": "CRITICAL"
+    }]
+    checker = AstSecretChecker(patterns)
+    code = "api_key = f\"sk_live_{'12345678901234567890'}\"\n"
+    findings = checker.scan_file("secrets.py", code)
+    assert len(findings) == 1, f"Expected 1 finding for f-string secret, got: {findings}"
+
+
+def test_ignore_matcher_negation_overrides_default():
+    """Verify that !pattern in IgnoreMatcher properly overrides previous patterns (Last-Matching-Pattern)"""
+    matcher = IgnoreMatcher(patterns=['dist/', '!dist/bundle.js'])
+    # dist/bundle.js should be un-ignored by the negation rule
+    assert matcher.is_ignored('dist/bundle.js') is False
+    # dist/other.js should remain ignored
+    assert matcher.is_ignored('dist/other.js') is True
+
+
+def test_data_exfiltration_integrated_in_scanner(tmp_path):
+    """Verify that DataExfiltrationDetector is enabled and executed during Scanner.scan()"""
+    from ghostcheck.scanner import Scanner
+
+    exfil_code = """
+import os
+import openai
+
+env = os.environ
+secret = env.get("API_KEY")
+openai.chat.completions.create(
+    model="gpt-4",
+    messages=[{"role": "user", "content": secret}]
+)
+"""
+    src_file = tmp_path / "exfil.py"
+    src_file.write_text(exfil_code, encoding="utf-8")
+
+    scanner = Scanner(root_path=str(tmp_path), ignore_enabled=False)
+    findings = scanner.scan()
+    assert any("data exfiltration" in str(f.get("name", "")).lower() or
+               "prompt leakage" in str(f.get("name", "")).lower() for f in findings), \
+        f"Expected DataExfiltrationDetector findings in Scanner.scan(), got: {findings}"

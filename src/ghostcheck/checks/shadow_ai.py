@@ -317,20 +317,25 @@ class ShadowAIDetector(BaseScannerPlugin):
                         })
         return findings
 
-    def _fold_python_ast_string(self, node):
+    def _fold_python_ast_string(self, node, depth=0):
         import ast
+        if depth > 30:
+            return None
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             return node.value
+        if isinstance(node, ast.FormattedValue):
+            return self._fold_python_ast_string(node.value, depth + 1)
         if isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
-            left = self._fold_python_ast_string(node.left)
-            right = self._fold_python_ast_string(node.right)
+            left = self._fold_python_ast_string(node.left, depth + 1)
+            right = self._fold_python_ast_string(node.right, depth + 1)
             if left is not None and right is not None:
                 return left + right
         if isinstance(node, ast.JoinedStr):
             parts = []
             for val in node.values:
-                if isinstance(val, ast.Constant) and isinstance(val.value, str):
-                    parts.append(val.value)
+                folded = self._fold_python_ast_string(val, depth + 1)
+                if folded is not None:
+                    parts.append(folded)
                 else:
                     return None
             return "".join(parts)

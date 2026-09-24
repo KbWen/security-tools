@@ -47,29 +47,31 @@ class IgnoreMatcher:
         except (ValueError, OSError):
             pass
             
+        matched_status = False
         for pattern in self.patterns:
             negate = pattern.startswith('!')
             p = pattern[1:] if negate else pattern
             p = p.replace('\\', '/')
             p_stripped = p.rstrip('/')
             
+            is_match = False
             # Absolute matching from root if starts with /
             if p.startswith('/'):
                 match_p = p[1:]
                 if fnmatch.fnmatch(path_norm, match_p) or path_norm.startswith(match_p.rstrip('/') + '/'):
-                    return not negate
+                    is_match = True
             else:
                 # Basic filename or full path match
                 if fnmatch.fnmatch(path_norm, p) or fnmatch.fnmatch(os.path.basename(path_norm), p):
-                    return not negate
-                
-                # Match directories anywhere ONLY if pattern has no intermediate slashes
-                if '/' not in p_stripped:
-                    if any(fnmatch.fnmatch(part, p_stripped) for part in path_norm.split('/')):
-                        return not negate
-                
-                # Prefix matching
-                if p.endswith('/') and path_norm.startswith(p):
-                    return not negate
-                    
-        return False
+                    is_match = True
+                elif '/' not in p_stripped and any(fnmatch.fnmatch(part, p_stripped) for part in path_norm.split('/')):
+                    # Match directories anywhere ONLY if pattern has no intermediate slashes
+                    is_match = True
+                elif p.endswith('/') and path_norm.startswith(p):
+                    # Prefix matching
+                    is_match = True
+
+            if is_match:
+                matched_status = not negate
+
+        return matched_status

@@ -88,6 +88,10 @@ class AstSecretChecker(BaseScannerPlugin):
                 for v in node.values:
                     if isinstance(v, ast.Constant) and isinstance(v.value, (str, bytes)):
                         full_val += v.value.decode('utf-8', errors='ignore') if isinstance(v.value, bytes) else v.value
+                    elif isinstance(v, ast.FormattedValue):
+                        val, _ = self._resolve_concat_with_members(v.value)
+                        if val:
+                            full_val += val
                 if full_val:
                     self._check_string(full_val, line_no, file_path, findings, is_concat=True)
 

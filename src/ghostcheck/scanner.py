@@ -2,6 +2,9 @@ import os
 import json
 import hashlib
 import threading
+import logging
+
+logger = logging.getLogger(__name__)
 from .plugin_manager import PluginManager
 from .checks.hallucination import HallucinationChecker
 from .checks.secrets import SecretScanner
@@ -178,7 +181,6 @@ class Scanner:
         # v0.5.0 features
         self.severity_engine = SeverityEngine(self.root_path)
         self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
-        self.context_auditor = ContextAuditor(config=self.config)
         self.privilege_auditor = PrivilegeAuditor()
         self.shadow_ai_detector = ShadowAIDetector(config=self.config)
 
@@ -497,8 +499,8 @@ class Scanner:
                             return {}
                     return data
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to load results cache: {e}")
         return {}
 
     def _save_results_cache(self):
@@ -519,8 +521,8 @@ class Scanner:
             with open(tmp_cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_to_save, f, separators=(',', ':'))
             os.replace(tmp_cache_file, self.results_cache_file)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"Failed to save results cache: {e}")
 
     def _get_file_fingerprint(self, file_path: str) -> str:
         try:
@@ -621,7 +623,7 @@ class Scanner:
                 "hallucination", "secrets", "env", "rules", "docker", 
                 "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", 
                 "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper",
-                "context_inflation"
+                "context_inflation", "data_exfiltration"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -775,8 +777,8 @@ class Scanner:
                             if raw_val and masked_val and raw_val in ctx_str:
                                 ctx_str = ctx_str.replace(raw_val, masked_val)
                             fnd['context'] = ctx_str
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug(f"Failed to fetch line context: {e}")
             ctx_str = str(ctx_str)
             
             if "ghostcheck-ignore" in ctx_str:
