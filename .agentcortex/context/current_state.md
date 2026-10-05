@@ -88,8 +88,19 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Prefix-Strip-Safety]: Never use `str.lstrip('./')` to remove path prefixes; it treats the argument as a character set, corrupting dot-directories (`.git/`, `.venv/`, `.next/`, `.pytest_cache/`) into (`git/`, `venv/`, `next/`). Always use `.startswith('./')` or `.removeprefix()`.
 - [fstring-ast-folding]: Python AST f-strings wrap interpolated values inside `ast.FormattedValue`; `node.values` in `ast.JoinedStr` must unpack `.value` recursively to fold string constants properly.
 - [gitignore-negation-semantics]: IgnoreMatcher pattern matching must follow Last-Matching-Pattern semantics rather than short-circuiting on first positive match, otherwise negation patterns (`!path`) are unable to override prior rules.
+- [MCP-Config-Zero-FP]: In MCP configs, environment variable placeholders (${VAR}, %VAR%) and legitimate rich schema documentation (>500 chars) must not be falsely flagged as hardcoded secrets or context flooding; apply multi-factor heuristic checks and structured JSON parsing.
+- [CLI-Runner-Primary-Package]: When auditing package execution commands (npx, uvx, pipx), only the first positional argument is the executable package; multi-token flags (e.g. --python 3.11) and subsequent tool parameters must be skipped to avoid false positive version alarms.
 
 ## Ship History
+
+### Ship-v1.2.7-anthropic-mcp-deep-defense-and-zero-fp-hardening-2026-10-05
+- v1.2.7 Patch Release — Anthropic MCP Deep Defense, Zero False Positive Optimization, and Security Hardening shipped:
+  - Eliminated high false-positive rates on legitimate production-grade MCP configurations by replacing naive string length checks with multi-factor heuristics (`_is_suspicious_description`), exempting environment variable interpolations (`${VAR}`, `%VAR%`) in credentials, and replacing restrictive domain whitelisting with targeted cloud metadata SSRF detection (`169.254.169.254`, `metadata.google.internal`).
+  - Aligned with Anthropic MCP Security Guidelines: implemented detection for unpinned stdio package execution (`npx -y package` without `@version`, `uvx package` without `==version`), broad OS root filesystem mounts across Linux and Windows (`/`, `C:\`, `D:\`, `~`, `/etc`), and insecure SSE host bindings (`0.0.0.0`, `::`, `0:0:0:0:0:0:0:0`) across configs, CLI argument flags, and Python/TS server code (`FastMCP`, `.listen()`).
+  - Hardened tool poisoning / Confused Deputy defense against prompt injection hidden inside HTML comments (`<!-- ... -->`), zero-width characters (`\u200b-\u200d`, `\ufeff`), and directive overrides (`disregard all previous instructions`).
+  - Added dedicated zero-false-positive and adversarial test suite in `tests/test_mcp_auditor_hardening.py`.
+- Tests: Pass (358/358 tests passed).
+- Review: Pass (Independent Peer Reviewer subagent verdict: PASS).
 
 ### Ship-v1.2.6-multi-perspective-review-and-adversarial-hardening-2026-09-24
 - v1.2.6 Patch Release — Multi-Perspective Independent Review & Adversarial Hardening shipped:
