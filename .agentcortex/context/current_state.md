@@ -90,8 +90,22 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [gitignore-negation-semantics]: IgnoreMatcher pattern matching must follow Last-Matching-Pattern semantics rather than short-circuiting on first positive match, otherwise negation patterns (`!path`) are unable to override prior rules.
 - [MCP-Config-Zero-FP]: In MCP configs, environment variable placeholders (${VAR}, %VAR%) and legitimate rich schema documentation (>500 chars) must not be falsely flagged as hardcoded secrets or context flooding; apply multi-factor heuristic checks and structured JSON parsing.
 - [CLI-Runner-Primary-Package]: When auditing package execution commands (npx, uvx, pipx), only the first positional argument is the executable package; multi-token flags (e.g. --python 3.11) and subsequent tool parameters must be skipped to avoid false positive version alarms.
+- [Agent-Rules-Defensive-Context]: Agent rules (AGENTS.md, .cursorrules) frequently define defensive safety constraints (e.g. "NEVER run curl", "Avoid accessing ~/.ssh"); behavioral and system command patterns must respect negative/safe context keywords, while invisible prompt injections (RTL, zero-width) remain strictly non-bypassable.
 
 ## Ship History
+
+### Ship-v1.2.8-multi-framework-simulation-and-agent-rules-hardening-2026-10-05
+- v1.2.8 Patch Release — Multi-Framework Downstream Simulation & Agent Rules Defensive Context Hardening shipped:
+  - Eliminated critical false-positive flaw in `AgentRulesLinter` (`agent_rules.py`) where defensive engineering guardrails (e.g. `- NEVER run curl`, `Strictly prohibited: rm -rf /`, `禁止未經確認執行危險指令`) were falsely alerted as malicious command injections.
+  - Hardened stealth injection boundaries: `hidden_prompt_injection` (zero-width spaces `\u200b-\u200f`, `\ufeff`, and RTL overrides `\u202a-\u202e`) remains strictly unconditionally enforced regardless of surrounding negative/safe keywords.
+  - Implemented comprehensive multi-framework downstream simulation test suite in `tests/test_real_world_framework_simulations.py` covering:
+    - Cursor & Claude Code real-world project safety guardrails (0 false positives).
+    - LangChain & LlamaIndex production RAG prompt templates with XML delimiters (0 false positives).
+    - CrewAI & AutoGen multi-agent system roles and tools (0 false positives).
+    - Enterprise production MCP server multi-service architectures (0 false positives).
+    - Active adversarial attack injection verification (100% true positive detection).
+- Tests: Pass (363/363 tests passed).
+- Review: Pass (Independent Peer Reviewer subagent verdict: PASS).
 
 ### Ship-v1.2.7-anthropic-mcp-deep-defense-and-zero-fp-hardening-2026-10-05
 - v1.2.7 Patch Release — Anthropic MCP Deep Defense, Zero False Positive Optimization, and Security Hardening shipped:

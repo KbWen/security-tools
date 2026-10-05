@@ -215,8 +215,12 @@ class AgentRulesLinter(BaseScannerPlugin):
                             "context": line.strip()
                         })
             
-            # v0.8.0 Advanced patterns (NEVER bypassed by safe_keywords or code blocks)
+            # v0.8.0 Advanced patterns
             for p in self.advanced_patterns:
+                # Critical prompt injection (invisible unicode, RTL overrides) is NEVER bypassed by safe_keywords.
+                # Other behavioral and command rules respect defensive negative-context (e.g. "NEVER run curl").
+                if p['name'] != "hidden_prompt_injection" and is_safe:
+                    continue
                 match = re.search(p['pattern'], line, re.IGNORECASE if p['name'] != "hidden_prompt_injection" else 0)
                 if match:
                     findings.append({
