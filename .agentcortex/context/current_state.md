@@ -93,8 +93,20 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Lockfile-Sync-Gate]: Lockfiles (uv.lock, poetry.lock, package-lock.json) must be validated with --check before any release tag; version bumps in packaging metadata (pyproject.toml) must atomically update the lockfile to prevent CI cache/sync failures.
 - [Release-Tag-Integrity]: Release commits must atomically create corresponding Git version tags; avoid unanchored release commit accumulation.
 - [PEP508-Requirements-Parsing]: PyPI package names must start with an alphanumeric character; pip options (--extra-index-url, -r, -c, -e) and direct URLs must be filtered before querying registries to avoid Grade F false positives.
+- [Slim-Container-Git-Dependency]: Debian slim container images (e.g. python:*-slim) do not pre-install git; CI templates requiring git+https://... must include 'apt-get update && apt-get install -y --no-install-recommends git' to avoid runner failure.
 
 ## Ship History
+
+### Ship-fix-remove-pypi-claim-2026-10-13
+- PyPI Installation Claims Removed & Supply Chain Hardening shipped:
+  - Removed all unverified `pip install ghostcheck` claims from `README.md` and `README_zh-TW.md`, switching recommended installation to direct GitHub release tag (`pip install git+https://github.com/KbWen/security-tools.git@v1.2.9`).
+  - Aligned Version Badge to `1.2.9` across README files.
+  - Corrected author placeholder email in `pyproject.toml` to verified committer email `luvseldom@hotmail.com`.
+  - Updated CI generator in `src/ghostcheck/init.py` for GitHub Actions and GitLab CI to use git installs.
+  - Implemented Tenth Man finding: added `apt-get install -y --no-install-recommends git` to GitLab CI template for Debian slim image compatibility.
+  - Added unit test assertions in `tests/test_cli.py` to prevent regression.
+- Tests: Pass (368/368 tests passed, Grade A 100/100 self-scan, validate.ps1 integrity passed).
+- Review: Pass (Five-Perspective Expert Roundtable unanimous PASS).
 
 ### Ship-dx-real-world-usability-and-zero-fp-2026-10-12
 - Real-World Usability & False-Positive Hardening shipped:
