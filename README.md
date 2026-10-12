@@ -43,6 +43,25 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 
 ## ✨ Key Features & Highlights
 
+### 🛡️ v1.2.9: Tenth Man Release Verification & Lockfile Hardening
+*   **Lockfile Synchronization:** Harmonized `uv.lock` with project dependencies and eliminated CI check mismatches.
+*   **Git Tag Integrity:** Fully aligned release tagging across all v1.2.x releases (`v1.2.6` ~ `v1.2.9`).
+*   **Tenth Man Audit:** Completed rigorous devil's advocate security audit and five-perspective expert roundtable verification.
+
+### 🧪 v1.2.8: Multi-Framework Simulation & Agent Rules Defensive Context
+*   **Multi-Framework Simulation Suite:** Added real-world test coverage across Cursor, Claude Code, LangChain, LlamaIndex, CrewAI, AutoGen, and enterprise MCP architectures.
+*   **Zero-False-Positive Defensive Context:** Negative safety statements in rules (e.g. `NEVER run curl`, `Strictly prohibited: rm -rf`) are recognized as defensive guardrails and will not trigger false alarms, while invisible Unicode and RTL overrides remain strictly non-bypassable.
+
+### 🔒 v1.2.7: Anthropic MCP Deep Defense & Root Mount Hardening
+*   **Unpinned Package Execution:** Audits `npx -y package` without `@version` and `uvx package` without `==version` to block dependency confusion and rug pull attacks.
+*   **Broad Root Mount Audit:** Flags overly broad filesystem mounts (`/`, `C:\`, `~`, `/etc`) in MCP server configurations.
+*   **Insecure Binding & SSRF Protection:** Flags insecure wildcard bindings (`0.0.0.0`, `::`) and blocks Cloud metadata SSRF endpoints (`169.254.169.254`, `metadata.google.internal`).
+
+### ⚡ v1.2.6: AST Constant Folding & AI Data Exfiltration Scanner
+*   **Python AST Constant Folding:** Recursively unpacks nested f-strings (`ast.JoinedStr`) and string concatenation with depth guards (`depth > 30`) to block dynamic obfuscated imports and secret masking.
+*   **Data Exfiltration Activated:** AI Data Exfiltration detection enabled by default across all standard presets.
+*   **VCS Last-Matching Semantics:** Corrected ignore matching to allow negation rules (`!pattern`) in `.ghostcheckignore` to properly override defaults.
+
 ### 🎯 v1.1.0: Agentic Security Checkers & Honeypot CLI
 A simple collection of helper utilities shared to verify basic agent safety behaviors:
 *   **Honeypot CLI (`ghostcheck honeypot`):** Easily deploy decoy canary credentials in `.env.canary`, `aws_credentials.canary`, and SSH files to trace if hijacked agents attempt to crawl the workspace. Registers automatically in ignores.

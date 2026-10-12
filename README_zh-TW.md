@@ -42,6 +42,25 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 
 ## ✨ 核心功能與改版亮點
 
+### 🛡️ v1.2.9: 第十人發布驗證與鎖檔加固 (Tenth Man Hardening)
+*   **相依性鎖檔完全同步：** 同步 `uv.lock` 與專案定義，解決版本漂移並消弭 CI 檢查不一致。
+*   **Git Release 標籤鏈條補齊：** 補齊 v1.2.x 系列所有歷史標籤（`v1.2.6` 至 `v1.2.9`），確保版本可追溯性。
+*   **第十人逆向審查與圓桌評審：** 完成逆向批判式安全審計與五方專家圓桌會審。
+
+### 🧪 v1.2.8: 多框架真實世界模擬與 Agent 規則防禦性上下文 (Downstream Simulations)
+*   **多框架真實世界模擬測試套件：** 覆蓋 Cursor, Claude Code, LangChain, LlamaIndex, CrewAI, AutoGen 及企業級 MCP 等多種下游架構。
+*   **Agent 規則防禦上下文零誤判：** 辨識安全規則中的負向/防禦性警語（如 `NEVER run curl`、`嚴禁 rm -rf`），消弭自我保護規範被誤判為攻擊指令的問題；同時對零寬字元與 RTL 混淆維持絕對無例外攔截。
+
+### 🔒 v1.2.7: Anthropic MCP 深度防禦與根目錄掛載加固 (MCP Deep Defense)
+*   **未鎖定版本套件執行防護：** 審計 `npx -y package`（缺少 `@version`）與 `uvx package`（缺少 `==version`），防範依賴混淆與供應鏈 Rug Pull。
+*   **過度寬鬆根目錄掛載審計：** 嚴格標記掛載根目錄（`/`, `C:\`, `~`, `/etc`）的 MCP Server 配置。
+*   **不安全網路綁定與 SSRF 防禦：** 標記通配綁定（`0.0.0.0`, `::`）並阻斷雲端 Metadata SSRF（`169.254.169.254`, `metadata.google.internal`）。
+
+### ⚡ v1.2.6: AST 常數摺疊與 AI 資料外洩防護 (AST Folding & Data Exfiltration)
+*   **Python AST 常數摺疊：** 遞迴解構 `ast.JoinedStr` f-string 與字串拼接，設有遞迴深度保護（`depth > 30`），防禦動態混淆引入與金鑰遮罩逃逸。
+*   **資料外洩檢測全面啟動：** 將 AI 資料外洩防禦模組納入標準掃描與各框架預設配置。
+*   **忽略規則語意修正：** 支援 `.ghostcheckignore` 依循 Git 最後匹配優先語意，允許以否定規則（`!path`）覆蓋預設忽略。
+
 ### 🎯 v1.1.0: Agent 專屬安全性檢查與本地誘捕工具 (Honeypot)
 分享幾個簡單實用的 Agent 邊界檢查工具，幫助驗證 Agent 的安全執行邊界：
 *   **本地誘捕 CLI (`ghostcheck honeypot`)：** 一鍵在工作區部署偽裝的 credentials 檔案（如 `.env.canary`、`aws_credentials.canary` 及 SSH 金鑰），用以測試和追蹤被劫持的 Agent 是否會私自探測並向外傳送金鑰。產生後會自動加進忽略清單避免自我誤報。

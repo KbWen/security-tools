@@ -35,6 +35,13 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.0 | Agent Rule Auditing & Prompt Template Protection | ✅ |
 | v1.2.1 | Usability, DX, and Context Inflation Hardening | ✅ |
 | v1.2.2 | P0/P1/P2 Security & Quality Hardening | ✅ |
+| v1.2.3 | Pre-Mortem, Tenth Man & Expert Hardening | ✅ |
+| v1.2.4 | Expert Roundtable & VCS Ignore Hardening | ✅ |
+| v1.2.5 | SARIF URI Normalization & Atomic Cache Persistence | ✅ |
+| v1.2.6 | AST Constant Folding & AI Data Exfiltration Scanner | ✅ |
+| v1.2.7 | Anthropic MCP Deep Defense & Root Mount Hardening | ✅ |
+| v1.2.8 | Multi-Framework Simulation & Agent Rules Defensive Context | ✅ |
+| v1.2.9 | Tenth Man Release Verification & Lockfile Hardening | ✅ |
 
 ---
 

@@ -90,9 +90,19 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [gitignore-negation-semantics]: IgnoreMatcher pattern matching must follow Last-Matching-Pattern semantics rather than short-circuiting on first positive match, otherwise negation patterns (`!path`) are unable to override prior rules.
 - [MCP-Config-Zero-FP]: In MCP configs, environment variable placeholders (${VAR}, %VAR%) and legitimate rich schema documentation (>500 chars) must not be falsely flagged as hardcoded secrets or context flooding; apply multi-factor heuristic checks and structured JSON parsing.
 - [CLI-Runner-Primary-Package]: When auditing package execution commands (npx, uvx, pipx), only the first positional argument is the executable package; multi-token flags (e.g. --python 3.11) and subsequent tool parameters must be skipped to avoid false positive version alarms.
-- [Agent-Rules-Defensive-Context]: Agent rules (AGENTS.md, .cursorrules) frequently define defensive safety constraints (e.g. "NEVER run curl", "Avoid accessing ~/.ssh"); behavioral and system command patterns must respect negative/safe context keywords, while invisible prompt injections (RTL, zero-width) remain strictly non-bypassable.
+- [Lockfile-Sync-Gate]: Lockfiles (uv.lock, poetry.lock, package-lock.json) must be validated with --check before any release tag; version bumps in packaging metadata (pyproject.toml) must atomically update the lockfile to prevent CI cache/sync failures.
+- [Release-Tag-Integrity]: Release commits must atomically create corresponding Git version tags; avoid unanchored release commit accumulation.
 
 ## Ship History
+
+### Ship-v1.2.9-release-hardening-and-tenth-man-verification-2026-10-12
+- v1.2.9 Patch Release — Tenth Man Release Verification, Lockfile Hardening & Git Tag Realignment shipped:
+  - Eliminated `uv.lock` desynchronization failure where `pyproject.toml` was ahead of lockfile (`1.2.6` vs `1.2.8`), aligning all dependencies and restoring `uv lock --check` pass.
+  - Reconstructed complete Git Release Tag chain across all v1.2.x historical milestones (`v1.2.6`, `v1.2.7`, `v1.2.8`, `v1.2.9`).
+  - Updated user-facing `README.md`, `README_zh-TW.md`, and product backlog with comprehensive v1.2.x capabilities highlights.
+  - Passed Tenth Man adversarial challenge and Five-Perspective Expert Roundtable (Security Architect, Tenth Man/Red Team, Release Engineer, DX, QA).
+- Tests: Pass (363/363 tests passed, Grade A 100/100 self-scan, validate.ps1 integrity passed, wheel/sdist build verified).
+- Review: Pass (Expert Roundtable unanimous PASS).
 
 ### Ship-v1.2.8-multi-framework-simulation-and-agent-rules-hardening-2026-10-05
 - v1.2.8 Patch Release — Multi-Framework Downstream Simulation & Agent Rules Defensive Context Hardening shipped:
