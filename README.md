@@ -4,7 +4,7 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.9-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Tests Status](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
@@ -103,10 +103,10 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 
 ## 🛠️ Installation & Setup
 
-### 📦 Option A: Install via PyPI (Standard)
+### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install ghostcheck
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.9
 ```
 
 ### 🔨 Option B: Install from Source

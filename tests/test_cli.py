@@ -336,13 +336,29 @@ def test_cli_honeypot_missing_args():
 def test_cli_init_ci(tmp_path, monkeypatch):
     # Mock project root path inside cli/init
     monkeypatch.chdir(tmp_path)
-    # Run ghostcheck init with --ci and --force
+    # Run ghostcheck init with --ci github and --force
     with patch('sys.argv', ['ghostcheck', 'init', '--force', '--ci', 'github']):
         with pytest.raises(SystemExit) as e:
             main()
         assert e.value.code == 0
-    # verify github workflow dir created
-    assert os.path.exists(tmp_path / ".github" / "workflows")
+    # verify github workflow dir created and content verified
+    gh_workflow = tmp_path / ".github" / "workflows" / "ghostcheck.yml"
+    assert os.path.exists(gh_workflow)
+    gh_content = gh_workflow.read_text(encoding="utf-8")
+    assert "pip install git+https://github.com/KbWen/security-tools.git" in gh_content
+    assert "pip install ghostcheck\n" not in gh_content
+
+    # Run ghostcheck init with --ci gitlab and --force
+    with patch('sys.argv', ['ghostcheck', 'init', '--force', '--ci', 'gitlab']):
+        with pytest.raises(SystemExit) as e:
+            main()
+        assert e.value.code == 0
+    gl_ci = tmp_path / ".gitlab-ci.yml"
+    assert os.path.exists(gl_ci)
+    gl_content = gl_ci.read_text(encoding="utf-8")
+    assert "apt-get update && apt-get install -y --no-install-recommends git" in gl_content
+    assert "pip install git+https://github.com/KbWen/security-tools.git" in gl_content
+    assert "pip install ghostcheck\n" not in gl_content
 
 
 def test_cli_flexible_option_order(capsys):

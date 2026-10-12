@@ -4,7 +4,7 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.9-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![測試狀態](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
@@ -102,10 +102,10 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 
 ## 🛠️ 安裝與設定說明
 
-### 📦 選項 A: 透過 PyPI 安裝 (標準安裝)
+### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install ghostcheck
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.9
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
