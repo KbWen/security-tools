@@ -256,6 +256,8 @@ class Scanner:
                     file_path = os.path.join(root, file)
                     if not self._is_safe_path(file_path):
                         continue
+                    if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                        continue
                     findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
 
@@ -266,6 +268,8 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
+                    continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 for plugin in plugins:
                     findings.extend(plugin.scan([file_path], self.config))
@@ -280,6 +284,8 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
                     continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
 
@@ -291,6 +297,8 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
+                    continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
@@ -304,8 +312,11 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
                     continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
+
 
     def scan_ci(self, limit_files=None):
         findings = []
@@ -315,6 +326,8 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
+                    continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
@@ -328,6 +341,8 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
                     continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
 
@@ -339,6 +354,8 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
+                    continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
@@ -367,6 +384,8 @@ class Scanner:
                     file_path = os.path.join(root, file)
                     if not self._is_safe_path(file_path):
                         continue
+                    if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                        continue
                     findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
 
@@ -378,6 +397,8 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
+                    continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
@@ -391,6 +412,8 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
                     continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
 
@@ -402,6 +425,8 @@ class Scanner:
             for file in files:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
+                    continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
                     continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
@@ -415,8 +440,11 @@ class Scanner:
                 file_path = os.path.join(root, file)
                 if not self._is_safe_path(file_path):
                     continue
+                if self.ignore_enabled and self.ignore_matcher.is_ignored(file_path):
+                    continue
                 findings.extend(plugin.scan([file_path], self.config))
         return self._post_process(findings)
+
 
     def _get_fnd_id(self, fnd):
         """Extracts a stable ID for the finding regardless of which scanner produced it."""
