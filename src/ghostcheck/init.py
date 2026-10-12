@@ -147,7 +147,7 @@ jobs:
       - name: Install GhostCheck
         run: |
           python -m pip install --upgrade pip
-          pip install ghostcheck
+          pip install git+https://github.com/KbWen/security-tools.git
 
       - name: Run GhostCheck Scan
         run: |
@@ -175,7 +175,8 @@ ghostcheck-scan:
   stage: security
   image: python:3.10-slim
   script:
-    - pip install ghostcheck
+    - apt-get update && apt-get install -y --no-install-recommends git
+    - pip install git+https://github.com/KbWen/security-tools.git
     - ghostcheck scan . --format json --output ghostcheck-report.json
   artifacts:
     reports:

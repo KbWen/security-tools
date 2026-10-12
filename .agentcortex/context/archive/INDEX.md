@@ -15,6 +15,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/checks/context_inflation_detector.py` → `feat-context-inflation-20260701.md` (Context Inflation / Prompt Flooding Detector scanner plugin)
 - `src/ghostcheck/presets/manager.py` → `feat-context-inflation-20260701.md` (Integrated context_inflation into Next.js, Flutter, Django, FastAPI, Terraform presets)
 - `src/ghostcheck/ignorefile.py`, `src/ghostcheck/checks/secrets.py`, `src/ghostcheck/cli.py` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md` (Pre-Mortem, Tenth Man, and Expert Peer Review Hardening)
+- `README.md`, `README_zh-TW.md`, `pyproject.toml`, `src/ghostcheck/init.py` → `fix-remove-pypi-claim.md` (Removed PyPI install claims, switched to GitHub install, hardened CI templates)
 
 ## By Pattern
 
@@ -39,6 +40,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[n-gram-performance]` → `feat-context-inflation-20260701.md`
 - `[ignore-ssot-centralization]` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`
 - `[secrets-extension-blindspot]` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`
+- `[pypi-claim-removal]` → `fix-remove-pypi-claim.md`
+- `[slim-container-git-hardening]` → `fix-remove-pypi-claim.md`
 
 ## By Decision
 
@@ -61,4 +64,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[zw-unicode-isolates-expansion]` → Include bidirectional isolates (\u2066–\u2069), word joiners, and Mongolian vowel separators to prevent Trojan Source-style prompt injection bypasses (`feat-context-inflation-20260701.md`)
 - `[ignore-ssot-centralization]` → Centralize default directory ignores in IgnoreMatcher SSoT to preserve negation rules (`ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`)
 - `[secrets-extension-blindspot]` → Add .tsx, .jsx, .toml, .tf to SecretScanner allowed_exts to close React/Cloud scanning gaps (`ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`)
+- `[pypi-removal-to-github-tag]` → Switch default install from unverified PyPI to GitHub tag @v1.2.9 (`fix-remove-pypi-claim.md`)
+- `[gitlab-ci-git-dependency]` → Pre-install git via apt-get in python:3.10-slim GitLab CI runner (`fix-remove-pypi-claim.md`)
 
