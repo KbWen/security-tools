@@ -27,6 +27,13 @@ def main():
         sys.stdout = io.StringIO()
     if sys.stderr is None:
         sys.stderr = io.StringIO()
+    # Detect original stdout encoding before reconfiguring to preserve non-UTF8 terminal detection (e.g. CP950, CP437)
+    original_encoding = 'ascii'
+    if sys.stdout is not None and getattr(sys.stdout, 'encoding', None):
+        original_encoding = sys.stdout.encoding.lower()
+    elif sys.__stdout__ is not None and getattr(sys.__stdout__, 'encoding', None):
+        original_encoding = sys.__stdout__.encoding.lower()
+
     # Fix: Reconfigure stdout to UTF-8 with replacement to avoid cp950/encoding crashes
     # on non-UTF-8 terminals (e.g., Windows cmd). Falls back gracefully.
     if sys.stdout is not None and hasattr(sys.stdout, 'reconfigure'):
@@ -39,6 +46,7 @@ def main():
             sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
         except Exception:
             pass
+
 
     # parent parser for common scan arguments
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -88,13 +96,16 @@ def main():
     create_bl.add_argument("output", nargs="?", default=".ghostcheck-baseline.json", help="Output file path")
     
     # check-deps command
-    subparsers.add_parser("check-deps", parents=[parent_parser], help="Check dependencies for hallucinations")
+    deps_parser = subparsers.add_parser("check-deps", parents=[parent_parser], help="Check dependencies for hallucinations")
+    deps_parser.add_argument("path", nargs="?", default=".", help="Target path to check (default: .)")
     
     # check-rules command
-    subparsers.add_parser("check-rules", parents=[parent_parser], help="Scan for security risks in AI rules")
+    rules_parser = subparsers.add_parser("check-rules", parents=[parent_parser], help="Scan for security risks in AI rules")
+    rules_parser.add_argument("path", nargs="?", default=".", help="Target path to check (default: .)")
     
     # check-secrets command
-    subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
+    secrets_parser = subparsers.add_parser("check-secrets", parents=[parent_parser], help="Scan for leaked secrets")
+    secrets_parser.add_argument("path", nargs="?", default=".", help="Target path to check (default: .)")
     
     # list-checks command
     subparsers.add_parser("list-checks", parents=[parent_parser], help="List all available security checks")
@@ -121,10 +132,9 @@ def main():
             setattr(args, k, v)
     
     # Determine encoding/unicode support
-    stdout_encoding = 'ascii'
-    if sys.stdout is not None and getattr(sys.stdout, 'encoding', None):
-        stdout_encoding = sys.stdout.encoding.lower()
-    use_unicode = not args.ascii_only and stdout_encoding == 'utf-8'
+    # Respect ascii-only flag, and fallback to ASCII if terminal does not natively support UTF-8 (e.g. CP950)
+    use_unicode = not args.ascii_only and 'utf-8' in original_encoding
+
 
     if args.command == "version":
         print(f"GhostCheck version: {__version__}")

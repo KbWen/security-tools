@@ -151,7 +151,18 @@ class HallucinationChecker(BaseScannerPlugin):
             dev_deps = data.get('devDependencies', {})
             all_deps = {**deps, **dev_deps}
             
-            for pkg in all_deps:
+            for pkg, ver in all_deps.items():
+                # Filter out workspace, local, or git dependencies (e.g. workspace:*, file:..., link:..., portal:...)
+                if isinstance(ver, str):
+                    ver_clean = ver.strip().lower()
+                    if (ver_clean.startswith('workspace:') or
+                        ver_clean.startswith('file:') or
+                        ver_clean.startswith('link:') or
+                        ver_clean.startswith('portal:') or
+                        ver_clean.startswith('git+') or
+                        ver_clean.startswith('github:') or
+                        '://' in ver_clean):
+                        continue
                 result, network_called = self._check_package("npm", pkg)
                 if result:
                     findings.append(result)
@@ -167,11 +178,29 @@ class HallucinationChecker(BaseScannerPlugin):
             line = line.strip()
             if not line or line.startswith('#'):
                 continue
-            # Basic parsing: name[==version]
-            match = re.match(r'^([a-zA-Z0-9._-]+)', line)
+            # Handle editable installs (e.g. -e git+...#egg=requests)
+            if line.startswith('-e') or line.startswith('--editable'):
+                egg_match = re.search(r'#egg=([a-zA-Z0-9][a-zA-Z0-9._-]*)', line)
+                if egg_match:
+                    packages.append(egg_match.group(1))
+                continue
+            # Skip pip flags and options (e.g. --extra-index-url, -r, -c, -i, -f)
+            if line.startswith(('--', '-r', '-c', '-i', '-f')):
+                continue
+            # Skip direct URLs or VCS references
+            if any(line.startswith(prefix) for prefix in ('http://', 'https://', 'git+', 'hg+', 'svn+', 'bzr+', 'file:', './', '../')):
+                continue
+            # Strip trailing comments (whitespace preceding #)
+            line = re.sub(r'\s+#.*$', '', line).strip()
+            # Strip environment markers (; python_version >= ...) and hashes (--hash=...)
+            line = line.split(';')[0].strip()
+            line = line.split('--hash')[0].strip()
+            # Standard PEP 508 package name: alphanumeric start, followed by alphanumeric, dot, underscore, or dash
+            match = re.match(r'^([a-zA-Z0-9][a-zA-Z0-9._-]*)', line)
             if match:
                 packages.append(match.group(1))
         return packages
+
 
     def _check_package(self, registry, pkg_name):
         # Filter out local files, git repository references, or direct URL dependencies
