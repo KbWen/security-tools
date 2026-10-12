@@ -92,10 +92,23 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [CLI-Runner-Primary-Package]: When auditing package execution commands (npx, uvx, pipx), only the first positional argument is the executable package; multi-token flags (e.g. --python 3.11) and subsequent tool parameters must be skipped to avoid false positive version alarms.
 - [Lockfile-Sync-Gate]: Lockfiles (uv.lock, poetry.lock, package-lock.json) must be validated with --check before any release tag; version bumps in packaging metadata (pyproject.toml) must atomically update the lockfile to prevent CI cache/sync failures.
 - [Release-Tag-Integrity]: Release commits must atomically create corresponding Git version tags; avoid unanchored release commit accumulation.
+- [PEP508-Requirements-Parsing]: PyPI package names must start with an alphanumeric character; pip options (--extra-index-url, -r, -c, -e) and direct URLs must be filtered before querying registries to avoid Grade F false positives.
 
 ## Ship History
 
+### Ship-dx-real-world-usability-and-zero-fp-2026-10-12
+- Real-World Usability & False-Positive Hardening shipped:
+  - Fixed CLI subcommands `check-deps`, `check-rules`, and `check-secrets` to accept optional `path` positional argument (`nargs='?', default='.'`), resolving `error: unrecognized arguments: .`.
+  - Upgraded `HallucinationChecker` to support modern PEP 508 / pip requirements.txt syntax: filtering pip options (`--extra-index-url`, `--index-url`, `--find-links`, `--trusted-host`, etc.), flags (`-e`, `-r`, `-c`), direct URLs (`https://`, `git+`), and extracting `#egg=pkg` cleanly without triggering PyPI 404 false alarms.
+  - Added frontend monorepo workspace dependencies support in `package.json`: exempting `workspace:*`, `file:...`, `link:...`, and `portal:...` from public npm checks.
+  - Hardened scanner submethods (`scan_secrets`, `scan_rules`, `scan_dependencies`, etc.) to honor single-file `.ghostcheckignore` rules.
+  - Enhanced Windows terminal encoding detection to gracefully fallback to ASCII badges on non-UTF-8 consoles (CP950/CP437).
+  - Added dedicated unit test suite in `tests/test_dx_usability_hardening.py`.
+- Tests: Pass (368/368 tests passed, Grade A 100/100 self-scan, validate.ps1 integrity passed).
+- Review: Pass (Five-Perspective Expert Roundtable unanimous PASS).
+
 ### Ship-v1.2.9-release-hardening-and-tenth-man-verification-2026-10-12
+
 - v1.2.9 Patch Release — Tenth Man Release Verification, Lockfile Hardening & Git Tag Realignment shipped:
   - Eliminated `uv.lock` desynchronization failure where `pyproject.toml` was ahead of lockfile (`1.2.6` vs `1.2.8`), aligning all dependencies and restoring `uv lock --check` pass.
   - Reconstructed complete Git Release Tag chain across all v1.2.x historical milestones (`v1.2.6`, `v1.2.7`, `v1.2.8`, `v1.2.9`).
