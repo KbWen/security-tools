@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.9-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.10-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-368%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛡️ v1.2.10: Demo Exemption Fix, Release Alignment & SSoT Synchronization
+*   **Targeted Demo Fixtures Support:** Fixed `_is_self_scan_exempt` so targeted scans (`make demo`) actively detect and display sample findings, restoring demo ergonomics while preserving Grade A (100/100) repo-level self-scanning.
+*   **Release Tag Alignment:** Synchronized release versioning to `1.2.10` and harmonized `uv.lock`.
+*   **Documentation & SSoT Realignment:** Updated test suite status badges to 368 tests passed, corrected spec indexing, and cleaned up legacy deployment residues.
 
 ### 🛡️ v1.2.9: Tenth Man Release Verification & Lockfile Hardening
 *   **Lockfile Synchronization:** Harmonized `uv.lock` with project dependencies and eliminated CI check mismatches.
@@ -106,7 +111,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.9
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.10
 ```
 
 ### 🔨 Option B: Install from Source

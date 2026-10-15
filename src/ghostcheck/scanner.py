@@ -475,7 +475,12 @@ class Scanner:
                 return True
 
         # Demo fixtures containing intentional patterns for testing/demo
+        # Only exempt demo fixtures if scan root is NOT specifically targeting demo_fixtures
+        # (Allows `make demo` / targeted demo scans to demonstrate detected issues)
         if 'src/ghostcheck/data/demo_fixtures/' in file_path:
+            norm_root = os.path.normpath(self.root_path).replace('\\', '/')
+            if 'demo_fixtures' in norm_root:
+                return False
             return True
 
         # Exempt utility files (init.py and config.py) from loops, install command checks, and privilege checks

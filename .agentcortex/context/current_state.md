@@ -18,8 +18,9 @@
 - **Spec Index**:
   - `[agent-least-privilege-audit] docs/specs/agent-least-privilege-audit.md [Frozen] [Updated: 2026-05-20]`
   - `[template-import-cleanup] .agentcortex/specs/template-import-cleanup.md [Frozen] [Updated: 2026-03-06]`
-  - `[red-team-skill] .agentcortex/specs/red-team-skill.md [Frozen] [Updated: 2026-03-18]`
-  - `[ghostcheck-mvp] .agentcortex/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]`
+  - `[red-team-skill] .agent/skills/red-team-adversarial/SKILL.md [Integrated] [Updated: 2026-03-18]`
+  - `[ghostcheck-mvp] docs/specs/ghostcheck-mvp.md [Frozen] [Updated: 2026-03-11]`
+  - `[feature-owasp-llm-report] docs/specs/feature-owasp-llm-report.md [Frozen] [Updated: 2026-05-20]`
   - `[shadow-ai-detection] docs/specs/shadow-ai-detection.md [Frozen] [Updated: 2026-05-20]`
   - `[auto-mode-integration] docs/specs/auto-mode-integration.md [Frozen] [Updated: 2026-06-05]`
   - `[ghostcheck-roadmap] docs/specs/ghostcheck-roadmap-v1.md [Frozen] [Updated: 2026-03-23]`
@@ -96,6 +97,16 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Slim-Container-Git-Dependency]: Debian slim container images (e.g. python:*-slim) do not pre-install git; CI templates requiring git+https://... must include 'apt-get update && apt-get install -y --no-install-recommends git' to avoid runner failure.
 
 ## Ship History
+
+### Ship-v1.2.10-release-alignment-and-demo-hardening-2026-10-15
+- v1.2.10 Patch Release — Demo Exemption Hardening, Release Alignment & SSoT Synchronization shipped:
+  - Fixed `_is_self_scan_exempt` in `src/ghostcheck/scanner.py` to allow explicit `demo_fixtures` scans (`make demo`) to detect and report vulnerabilities, resolving silent suppression while maintaining Grade A (100/100) repository self-scanning.
+  - Aligned release versioning to `1.2.10` atomically across `pyproject.toml`, `src/ghostcheck/__init__.py`, and `uv.lock`.
+  - Updated user-facing documentation (`README.md`, `README_zh-TW.md`) with accurate test count badge (`368 passed`), updated version badge, and synchronized install instructions (`@v1.2.10`).
+  - Corrected SSoT Spec Index (fixed `ghostcheck-mvp` path, registered `feature-owasp-llm-report`, updated `red-team-skill`) and cleaned up template deployment residue (`current_state.md.acx-incoming`).
+  - Passed Tenth Man independent review and Five-Perspective roundtable.
+- Tests: Pass (368/368 tests passed, Grade A 100/100 self-scan, validate.ps1 integrity passed).
+- Review: Pass (Independent Tenth Man Auditor verdict: PASS WITH NOTES, all actions completed).
 
 ### Ship-fix-remove-pypi-claim-2026-10-13
 - PyPI Installation Claims Removed & Supply Chain Hardening shipped:

@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.2.9-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.10-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-178%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-368%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛡️ v1.2.10: 範例展示豁免修復、發布鏈條對齊與 SSoT 同步
+*   **針對性 Demo Fixtures 檢測支援：** 修復 `_is_self_scan_exempt`，使針對性掃描（如 `make demo`）能真實檢出並展示範例漏洞特徵，恢復展示體驗的同時，確保儲存庫自身自檢仍維持 Grade A (100/100) 滿分標準。
+*   **Git 發布標籤完全對齊：** 版本號同步升級為 `1.2.10`，原子化更新 `uv.lock` 解決依賴鎖定漂移。
+*   **文檔徽章與 SSoT 規格校正：** 更新測試徽章為 368 passed、校正 SSoT 規格索引並清理歷史殘留檔案。
 
 ### 🛡️ v1.2.9: 第十人發布驗證與鎖檔加固 (Tenth Man Hardening)
 *   **相依性鎖檔完全同步：** 同步 `uv.lock` 與專案定義，解決版本漂移並消弭 CI 檢查不一致。
@@ -105,7 +110,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.9
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.10
 ```
 
 ### 🔨 選項 B: 從原始碼安裝

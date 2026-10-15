@@ -26,4 +26,4 @@ clean:
 	find . -type d -name "__pycache__" -exec rm -rf {} +
 
 demo:
-	python -m ghostcheck.cli scan src/ghostcheck/data/demo_fixtures --soft-fail
+	python -m ghostcheck.cli scan src/ghostcheck/data/demo_fixtures --soft-fail --no-ignore
