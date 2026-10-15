@@ -16,6 +16,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/presets/manager.py` → `feat-context-inflation-20260701.md` (Integrated context_inflation into Next.js, Flutter, Django, FastAPI, Terraform presets)
 - `src/ghostcheck/ignorefile.py`, `src/ghostcheck/checks/secrets.py`, `src/ghostcheck/cli.py` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md` (Pre-Mortem, Tenth Man, and Expert Peer Review Hardening)
 - `README.md`, `README_zh-TW.md`, `pyproject.toml`, `src/ghostcheck/init.py` → `fix-remove-pypi-claim.md` (Removed PyPI install claims, switched to GitHub install, hardened CI templates)
+- `src/ghostcheck/scanner.py`, `Makefile`, `tests/test_self_scan_exemption.py` → `fix-v1.2.10-release-alignment.md` (Fixed demo_fixtures exemption so targeted demo scans report vulnerabilities while preserving Grade A repo self-scans)
 
 ## By Pattern
 
@@ -42,6 +43,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[secrets-extension-blindspot]` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`
 - `[pypi-claim-removal]` → `fix-remove-pypi-claim.md`
 - `[slim-container-git-hardening]` → `fix-remove-pypi-claim.md`
+- `[demo-targeted-exemption]` → `fix-v1.2.10-release-alignment.md`
+- `[semver-tag-alignment]` → `fix-v1.2.10-release-alignment.md`
 
 ## By Decision
 
@@ -66,4 +69,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[secrets-extension-blindspot]` → Add .tsx, .jsx, .toml, .tf to SecretScanner allowed_exts to close React/Cloud scanning gaps (`ship-main-pre-mortem-and-expert-hardening-2026-08-14.md`)
 - `[pypi-removal-to-github-tag]` → Switch default install from unverified PyPI to GitHub tag @v1.2.9 (`fix-remove-pypi-claim.md`)
 - `[gitlab-ci-git-dependency]` → Pre-install git via apt-get in python:3.10-slim GitLab CI runner (`fix-remove-pypi-claim.md`)
+- `[demo-fixtures-targeted-scan]` → Only exempt demo_fixtures when scanning whole repo, permit detection when explicitly targeted (`fix-v1.2.10-release-alignment.md`)
+- `[semver-bump-over-force-tag]` → Prohibit force-updating git tags to protect tag immutability; release new patch v1.2.10 (`fix-v1.2.10-release-alignment.md`)
 
