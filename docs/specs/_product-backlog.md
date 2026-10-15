@@ -42,6 +42,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.7 | Anthropic MCP Deep Defense & Root Mount Hardening | ✅ |
 | v1.2.8 | Multi-Framework Simulation & Agent Rules Defensive Context | ✅ |
 | v1.2.9 | Tenth Man Release Verification & Lockfile Hardening | ✅ |
+| v1.2.10 | Demo Exemption Hardening, Release Alignment & SSoT Synchronization | ✅ |
 
 ---
 

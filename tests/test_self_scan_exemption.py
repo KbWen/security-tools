@@ -18,6 +18,9 @@ def test_is_self_scan_exempt():
     # 2. Test Demo fixtures (contains src/ghostcheck/data/demo_fixtures/)
     fnd_demo = {"file": "src/ghostcheck/data/demo_fixtures/rules_demo.md", "name": "dangerous_system_command"}
     assert scanner._is_self_scan_exempt(fnd_demo) is True
+    # When explicitly scanning demo fixtures directory, it should NOT be exempted
+    scanner_demo = Scanner(root_path="src/ghostcheck/data/demo_fixtures", ignore_enabled=False)
+    assert scanner_demo._is_self_scan_exempt(fnd_demo) is False
     
     # 3. Test checkers (contains src/ghostcheck/checks/)
     # Exempted rule in checkers
