@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ghostcheck"
-version = "1.2.10"
+version = "1.2.11"
 description = "AI-era security scanner for developers"
 authors = [
     { name = "KbWen", email = "luvseldom@hotmail.com" }
@@ -22,6 +22,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Environment :: Console",
     "Operating System :: OS Independent",
 ]

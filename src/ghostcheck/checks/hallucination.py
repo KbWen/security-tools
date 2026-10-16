@@ -20,6 +20,17 @@ class HallucinationChecker(BaseScannerPlugin):
     def description(self) -> str:
         return "Scanner plugin for HallucinationChecker"
 
+    def _find_pkg_line(self, content: str, pkg_name: str) -> int:
+        if not content or not pkg_name:
+            return 1
+        for idx, line in enumerate(content.splitlines(), 1):
+            stripped = line.strip()
+            if not stripped or stripped.startswith('#'):
+                continue
+            if pkg_name in stripped:
+                return idx
+        return 1
+
     def scan(self, files: List[str], config: Any) -> List[Dict]:
         findings = []
         for file_path in files:
@@ -28,10 +39,19 @@ class HallucinationChecker(BaseScannerPlugin):
                     content = f.read()
 
                 filename = file_path.replace('\\', '/').split('/')[-1]
+                file_findings = []
                 if filename == 'requirements.txt':
-                    findings.extend(self.check_requirements(content))
+                    file_findings = self.check_requirements(content)
                 elif filename == 'package.json':
-                    findings.extend(self.check_package_json(content))
+                    file_findings = self.check_package_json(content)
+
+                for fnd in file_findings:
+                    if isinstance(fnd, dict):
+                        fnd_copy = fnd.copy()
+                        fnd_copy.setdefault('file', file_path)
+                        fnd_copy.setdefault('line', self._find_pkg_line(content, fnd_copy.get('package', '')))
+                        fnd_copy.setdefault('name', 'hallucinated_package')
+                        findings.append(fnd_copy)
 
             except Exception:
                 pass
@@ -43,6 +63,7 @@ class HallucinationChecker(BaseScannerPlugin):
         self.proxy = proxy
         self.ssl_verify = ssl_verify
         self.timeout = timeout
+        self.opener = None
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = os.path.join(self.cache_dir, "hallucination.json")
         self._load_cache()
@@ -66,7 +87,9 @@ class HallucinationChecker(BaseScannerPlugin):
             https_handler = urllib.request.HTTPSHandler(context=context)
             opener.add_handler(https_handler)
             
-        urllib.request.install_opener(opener)
+        self.opener = opener
+        if self.proxy or not self.ssl_verify:
+            urllib.request.install_opener(opener)
 
     def _load_cache(self):
         self.cache = {}

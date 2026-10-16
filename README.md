@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.10-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.11-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-368%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-374%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛡️ v1.2.11: Comprehensive Audit Remediation, OWASP LLM Mapping & Preset Parity
+*   **OWASP LLM Top 10 Mapping Alignment:** Synchronized `owasp_mapping.json` with all 24 scanner emission categories and added deterministic fallback resolution (`Scanner._resolve_owasp_llm`) so `--format owasp-llm` accurately reflects real-world compliance scores.
+*   **Framework Preset Parity & Plugin Wiring:** Expanded all framework presets (`next.js`, `flutter`, `django`, `fastapi`, `terraform`) to include AI security checks (`rules`, `mcp`, `privilege`, `exfiltration`, `trifecta`, `killswitch`) by default, and wired custom plugins (`.ghostcheck/plugins/`) directly into the single-pass scanner pipeline.
+*   **SARIF & Monorepo Hardening:** Attached exact `file` and `line` metadata to hallucination findings for SARIF/baseline fingerprinting, filtered monorepo `workspace:*` / `file:` / `git+` version specifiers from CVE vulnerability lookups, and pinned SHA-1 action commits in `ghostcheck init --ci` templates.
 
 ### 🛡️ v1.2.10: Demo Exemption Fix, Release Alignment & SSoT Synchronization
 *   **Targeted Demo Fixtures Support:** Fixed `_is_self_scan_exempt` so targeted scans (`make demo`) actively detect and display sample findings, restoring demo ergonomics while preserving Grade A (100/100) repo-level self-scanning.
@@ -99,7 +104,10 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 
 | Capability | Command | Target | Description |
 | :--- | :--- | :--- | :--- |
-| **Full Security Scan** | `ghostcheck scan` | Entire Workspace / Git Diffs | Scans for secrets, IAC misconfigurations, and agent rules. |
+| **Full Security Scan** | `ghostcheck scan` | Entire Workspace / Git Diffs | Scans for secrets, IaC misconfigurations, MCP configs, and agent rules. |
+| **Project Initialization** | `ghostcheck init` | `.ghostcheckignore`, `ghostcheck.toml` | Auto-detects framework preset and scaffolds config, hooks (`--hook`), or CI (`--ci`). |
+| **Check Catalog** | `ghostcheck list-checks` | Built-in Check Registry | Lists all 24 active security scanner modules and descriptions. |
+| **Honeypot Deployment** | `ghostcheck honeypot` | `.env.canary`, `aws_credentials.canary` | Deploys or cleans (`--clean`) decoy canary files to detect rogue agent crawling. |
 | **Dependency Check** | `ghostcheck check-deps` | `requirements.txt`, `package.json` | Detects hallucinated packages or vulnerable dependencies. |
 | **Secret Detection** | `ghostcheck check-secrets` | Logs, Source, Docs | Identifies API keys, tokens, and credentials via AST parsing. |
 | **Rule Audit** | `ghostcheck check-rules` | `.agent/`, `.cursor/`, `.agentcortex/` | Validates agent instructions against privilege escalation/tampering. |
@@ -111,7 +119,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.10
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.11
 ```
 
 ### 🔨 Option B: Install from Source
@@ -168,7 +176,7 @@ ghostcheck scan --staged
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 178 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 374 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -183,7 +191,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 178 passed in 6.05s =============================
+============================= 374 passed in 8.40s =============================
 ```
 
 ---

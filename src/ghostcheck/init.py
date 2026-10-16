@@ -111,11 +111,12 @@ project_type = "{project_type}"
         return False, f"Unsupported CI provider: {provider}"
 
     def _generate_github_action(self):
+        from . import __version__
         workflows_dir = os.path.join(self.project_root, ".github", "workflows")
         os.makedirs(workflows_dir, exist_ok=True)
         
         ci_path = os.path.join(workflows_dir, "ghostcheck.yml")
-        content = """name: GhostCheck Security Scan
+        content = f"""name: GhostCheck Security Scan
 
 on:
   push:
@@ -135,19 +136,19 @@ jobs:
     
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0 # Full history for git-diff scan
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install GhostCheck
         run: |
           python -m pip install --upgrade pip
-          pip install git+https://github.com/KbWen/security-tools.git
+          pip install git+https://github.com/KbWen/security-tools.git@v{__version__}
 
       - name: Run GhostCheck Scan
         run: |
@@ -156,7 +157,7 @@ jobs:
         continue-on-error: true # Don't block pipeline by default, but report to Security Tab
 
       - name: Upload SARIF report
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@b56ba49b26e50535fa1e7f7db0f4f7b4bf6da180 # v3
         if: always()
         with:
           sarif_file: ghostcheck-results.sarif
@@ -166,17 +167,18 @@ jobs:
         return True, f"GitHub Action generated at {ci_path}"
 
     def _generate_gitlab_ci(self):
+        from . import __version__
         ci_path = os.path.join(self.project_root, ".gitlab-ci.yml")
-        content = """stages:
+        content = f"""stages:
   - test
   - security
 
 ghostcheck-scan:
   stage: security
-  image: python:3.10-slim
+  image: python:3.11-slim
   script:
     - apt-get update && apt-get install -y --no-install-recommends git
-    - pip install git+https://github.com/KbWen/security-tools.git
+    - pip install git+https://github.com/KbWen/security-tools.git@v{__version__}
     - ghostcheck scan . --format json --output ghostcheck-report.json
   artifacts:
     reports:

@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.2.10-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.11-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-368%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-374%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛡️ v1.2.11: 全方位審計修復、OWASP LLM 映射對齊與框架預設強化
+*   **OWASP LLM Top 10 映射全面對齊：** 同步 `owasp_mapping.json` 與全數 24 個掃描器類別，並新增確定性分類回退解析（`Scanner._resolve_owasp_llm`），確保 `--format owasp-llm` 精準反映合規分數。
+*   **框架 Preset 對齊與自訂插件串接：** 為所有框架預設（`next.js`, `flutter`, `django`, `fastapi`, `terraform`）補齊 AI 專屬安全檢查（`rules`, `mcp`, `privilege`, `exfiltration`, `trifecta`, `killswitch`），並將 `.ghostcheck/plugins/` 自訂插件正式接入單通掃描管線。
+*   **SARIF 定位與 Monorepo 相容強化：** 為套件幻覺檢測結果補齊精確 `file` 與 `line` 屬性（支援 SARIF 報表與 Baseline 指紋），在 CVE 掃描中過濾 `workspace:*` / `file:` / `git+` 等本地協議，並將 `ghostcheck init --ci` 產出之 GitHub Actions 改為 40 字元 SHA-1 鎖定以通過自身 CI 審計。
 
 ### 🛡️ v1.2.10: 範例展示豁免修復、發布鏈條對齊與 SSoT 同步
 *   **針對性 Demo Fixtures 檢測支援：** 修復 `_is_self_scan_exempt`，使針對性掃描（如 `make demo`）能真實檢出並展示範例漏洞特徵，恢復展示體驗的同時，確保儲存庫自身自檢仍維持 Grade A (100/100) 滿分標準。
@@ -98,7 +103,10 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 
 | 安全能力 | 執行指令 | 掃描目標 | 詳細說明 |
 | :--- | :--- | :--- | :--- |
-| **完整安全掃描** | `ghostcheck scan` | 整個工作區 / Git 變更 | 掃描金鑰、IaC 錯誤配置以及 Agent 規則安全性。 |
+| **完整安全掃描** | `ghostcheck scan` | 整個工作區 / Git 變更 | 掃描金鑰、IaC 錯誤配置、MCP 設定以及 Agent 規則安全性。 |
+| **專案規則初始化** | `ghostcheck init` | `.ghostcheckignore`, `ghostcheck.toml` | 自動偵測框架 Preset 並生成設定檔、Git Hooks (`--hook`) 或 CI 範本 (`--ci`)。 |
+| **檢查模組清單** | `ghostcheck list-checks` | 內建 24 項檢查器註冊表 | 列出所有支援的 24 大安全檢查模組與說明。 |
+| **本地誘捕部署** | `ghostcheck honeypot` | `.env.canary`, `aws_credentials.canary` | 一鍵部署或清理 (`--clean`) 誘捕憑證檔，偵測異常 Agent 讀取行為。 |
 | **依賴項真實性檢查** | `ghostcheck check-deps` | `requirements.txt`, `package.json` | 偵測 AI 幻覺套件與不安全的安全依賴。 |
 | **機密資訊偵測** | `ghostcheck check-secrets` | 日誌、純文字、源碼 | 透過 AST 語法樹分析，精準識別 API Key 與憑證。 |
 | **Agent 專屬規則審核** | `ghostcheck check-rules` | `.agent/`, `.cursor/`, `.agentcortex/` | 驗證 Agent 指令檔，防止越權或篡改。 |
@@ -110,7 +118,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.10
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.11
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -167,7 +175,7 @@ ghostcheck scan --staged
 
 ## 🧪 執行測試與驗證
 
-透過執行 178 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 374 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -182,7 +190,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 178 passed in 6.05s =============================
+============================= 374 passed in 8.40s =============================
 ```
 
 ---

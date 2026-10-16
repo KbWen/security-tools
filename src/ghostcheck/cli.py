@@ -205,22 +205,33 @@ def main():
     if args.command == "list-checks":
         print(f"{get_icon('info', use_unicode)} Available Checks (v{__version__}):")
         checks = [
-            ("hallucination", "Scan for hallucinated packages in requirements.txt/package.json"),
-            ("secrets",       "Scan for hardcoded secrets using regex, AST & entropy analysis"),
-            ("env",           "Scan .env files for exposed secrets"),
-            ("rules",         "Lint AI agent rules (.cursorrules, AGENTS.md, CLAUDE.md)"),
-            ("docker",        "Audit Dockerfiles & docker-compose for security risks"),
-            ("iac",           "Audit Terraform/CloudFormation/K8s templates"),
-            ("ci_cd",         "Scan CI pipeline configs (GitHub Actions/GitLab CI)"),
-            ("mcp",           "Audit Model Context Protocol configuration"),
-            ("supply_chain",  "Check AI supply chain & agentic dependencies"),
-            ("mobile",        "Audit mobile configs (AndroidManifest.xml, Info.plist)"),
-            ("api",           "Lint API endpoints for CORS, auth, and rate-limit issues"),
-            ("vuln",          "Query OSV for known vulnerabilities in dependencies"),
-            ("logic",         "Detect business logic bypass patterns (subscription, admin, debug)"),
+            ("hallucination",     "Scan for hallucinated packages in requirements.txt/package.json"),
+            ("secrets",           "Scan for hardcoded secrets using regex, AST & entropy analysis"),
+            ("env",               "Scan .env files for exposed secrets"),
+            ("rules",             "Lint AI agent rules (.cursorrules, AGENTS.md, CLAUDE.md)"),
+            ("docker",            "Audit Dockerfiles & docker-compose for security risks"),
+            ("iac",               "Audit Terraform/CloudFormation/K8s templates"),
+            ("ci_cd",             "Scan CI pipeline configs (GitHub Actions/GitLab CI)"),
+            ("mcp",               "Audit Model Context Protocol configuration & tool poisoning"),
+            ("supply_chain",      "Check AI supply chain & agentic dependencies"),
+            ("mobile",            "Audit mobile configs (AndroidManifest.xml, Info.plist)"),
+            ("api",               "Lint API endpoints for CORS, auth, and rate-limit issues"),
+            ("vuln",              "Query OSV for known vulnerabilities in dependencies"),
+            ("logic",             "Detect business logic bypass patterns (subscription, admin, debug)"),
+            ("privilege",         "Audit agent least privilege (GITHUB_TOKEN scopes, MCP mounts, CLI keys)"),
+            ("shadow_ai",         "Detect unauthorized AI SDKs, local LLM endpoints, and IDE extensions"),
+            ("entropy",           "Detect high-entropy secret tokens and credentials"),
+            ("tamper",            "Detect scanner evasion, long-line padding, and malformed inline ignores"),
+            ("context_inflation", "Detect context window flooding and invisible Unicode padding"),
+            ("data_exfiltration", "Detect sensitive data exfiltration via LLM prompts, MCP tools, or SSRF"),
+            ("killswitch",        "Verify loop caps, recursion limits, LLM timeouts, and HITL confirmations"),
+            ("lethal_trifecta",   "Detect co-occurrence of private data, untrusted input, and command execution"),
+            ("silent_install",    "Detect silent or unpinned dynamic background package installations"),
+            ("prompt_template",   "Scan prompt templates (.prompt, .jinja2) for injection and missing delimiters"),
+            ("ai_marker",         "Track AI-generated code markers and unreviewed AI commit trailers"),
         ]
         for name, desc in checks:
-            print(f"  - {name:<15}: {desc}")
+            print(f"  - {name:<18}: {desc}")
         sys.exit(0)
 
     if args.command == "list-plugins":

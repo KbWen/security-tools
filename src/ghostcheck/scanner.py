@@ -180,9 +180,7 @@ class Scanner:
 
         # v0.5.0 features
         self.severity_engine = SeverityEngine(self.root_path)
-        self.env_scanner = EnvScanner(self.root_path, self.ignore_matcher)
-        self.privilege_auditor = PrivilegeAuditor()
-        self.shadow_ai_detector = ShadowAIDetector(config=self.config)
+
 
     def _is_safe_path(self, file_path):
         """Ensures the path is within project root and handles potential directory traversal."""
@@ -656,7 +654,8 @@ class Scanner:
                 "hallucination", "secrets", "env", "rules", "docker", 
                 "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", 
                 "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper",
-                "context_inflation", "data_exfiltration"
+                "context_inflation", "data_exfiltration", "killswitch",
+                "lethal_trifecta", "silent_install", "prompt_template", "ai_marker"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
@@ -690,7 +689,9 @@ class Scanner:
                 def _matches_config(plugin, checks):
                     pname_lower = getattr(plugin, 'name', '').lower()
                     for c in checks:
-                        c_clean = c.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                        c_clean = c.lower().replace("secrets", "secret").replace("ci_cd", "ciauditor").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                        if c_clean == "ci":
+                            c_clean = "ciauditor"
                         if c_clean in pname_lower:
                             return True
                     return False
@@ -703,7 +704,9 @@ class Scanner:
                 def _matches(plugin, modules):
                     pname_lower = getattr(plugin, 'name', '').lower()
                     for m in modules:
-                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ci").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ciauditor").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                        if m_clean == "ci":
+                            m_clean = "ciauditor"
                         if m_clean in pname_lower:
                             return True
                     return False
@@ -720,7 +723,41 @@ class Scanner:
                 if os.getenv("GHOSTCHECK_DEBUG") == "1":
                     print(f"[DEBUG] Error running plugin {getattr(plugin, 'name', 'unknown')} on {file_path}: {e}")
 
+        # Run user/workspace custom plugins loaded via PluginLoader
+        if getattr(self, 'plugin_loader', None) and getattr(self.plugin_loader, 'plugins', None):
+            try:
+                custom_findings = self.plugin_loader.run_all(file_path, content)
+                if custom_findings:
+                    for cf in custom_findings:
+                        if 'file' not in cf or not cf['file']:
+                            cf['file'] = file_path
+                    findings.extend(custom_findings)
+            except Exception as e:
+                logger.debug(f"Custom plugin execution failed on {file_path}: {e}")
+
         return findings
+
+    def _resolve_owasp_llm(self, fnd, fnd_id: str) -> str:
+        """Maps a finding to its corresponding OWASP LLM Top 10 category."""
+        if fnd.get('owasp_llm') and fnd.get('owasp_llm') != "N/A":
+            return fnd['owasp_llm']
+        if fnd_id in self.owasp_mapping:
+            return self.owasp_mapping[fnd_id]
+        fnd_lower = fnd_id.lower()
+        for k, v in self.owasp_mapping.items():
+            if k.lower() == fnd_lower:
+                return v
+        if any(x in fnd_lower for x in ['prompt_injection', 'context_inflation', 'tool_poisoning', 'jailbreak', 'jinja', 'delimiter', 'placeholder']):
+            return "LLM01: Prompt Injection"
+        if any(x in fnd_lower for x in ['secret', 'api key', 'api_key', 'token', 'password', 'credential', 'private key', 'leakage', 'exfiltration', 'insecure_binding', 'broad_root_mount', 'sensitive']):
+            return "LLM02: Sensitive Information Disclosure"
+        if any(x in fnd_lower for x in ['supply_chain', 'unpinned', 'package_install', 'custom_registry', 'cve_', 'untrusted_source', 'provenance']):
+            return "LLM03: Supply Chain Vulnerabilities"
+        if any(x in fnd_lower for x in ['kill-switch', 'kill_switch', 'trifecta', 'privilege', 'agency', 'destructive', 'hitl', 'human-in-the-loop', 'human_in_the_loop', 'unconstrained_llm']):
+            return "LLM06: Excessive Agency"
+        if any(x in fnd_lower for x in ['hallucinat', 'not_found']) or ('package' in fnd and 'registry' in fnd):
+            return "LLM09: Misinformation (Hallucination)"
+        return "N/A"
 
     def _post_process(self, raw_findings):
         # v0.6.0: Inline suppression and Baseline filter
@@ -846,7 +883,7 @@ class Scanner:
                         fnd['message'] = (fnd.get('message', '') + " [VERIFIED ACTIVE]").strip()
 
             # Apply OWASP mapping
-            fnd['owasp_llm'] = self.owasp_mapping.get(fnd_id, "N/A")
+            fnd['owasp_llm'] = self._resolve_owasp_llm(fnd, fnd_id)
             fnd['fingerprint'] = legacy_fp
             if robust_fp:
                 fnd['robust_fingerprint'] = robust_fp

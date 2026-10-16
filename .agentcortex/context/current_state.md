@@ -95,8 +95,20 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Release-Tag-Integrity]: Release commits must atomically create corresponding Git version tags; avoid unanchored release commit accumulation.
 - [PEP508-Requirements-Parsing]: PyPI package names must start with an alphanumeric character; pip options (--extra-index-url, -r, -c, -e) and direct URLs must be filtered before querying registries to avoid Grade F false positives.
 - [Slim-Container-Git-Dependency]: Debian slim container images (e.g. python:*-slim) do not pre-install git; CI templates requiring git+https://... must include 'apt-get update && apt-get install -y --no-install-recommends git' to avoid runner failure.
+- [Plugin-Substring-Collision]: Never map short module identifiers like 'ci_cd' to 'ci' for substring matching against plugin class names, as 'ci' collides with 'hallucinationchecker' ('hallu-ci-nation'); always map to the explicit scanner identifier ('ciauditor').
 
 ## Ship History
+
+### Ship-v1.2.11-comprehensive-audit-remediation-2026-10-16
+- v1.2.11 Patch Release — Comprehensive Tenth-Man Audit Remediation, OWASP LLM Mapping & Preset Parity shipped:
+  - Synchronized `src/ghostcheck/data/owasp_mapping.json` with all 24 scanner emission names and added deterministic fallback resolution (`Scanner._resolve_owasp_llm`) in `src/ghostcheck/scanner.py` so `--format owasp-llm` accurately reflects real-world compliance ratios (e.g., 60.0% on `demo_fixtures` instead of a false 100%).
+  - Expanded all framework presets (`next.js`, `flutter`, `django`, `fastapi`, `terraform`) in `src/ghostcheck/presets/manager.py`, default `enabled_modules` in `src/ghostcheck/scanner.py`, and `ghostcheck list-checks` in `src/ghostcheck/cli.py` to cover all 24 security check categories; fixed `"ci_cd"` -> `"ciauditor"` matching collision with `"hallucinationchecker"`.
+  - Injected exact `file`, `line`, and `name: "hallucinated_package"` metadata into `HallucinationChecker` findings (`src/ghostcheck/checks/hallucination.py`) and filtered `workspace:*`, `file:`, `link:`, `portal:`, and `git+` specifiers in `VulnScanner._scan_package_json` (`src/ghostcheck/checks/vuln_scanner.py`).
+  - Wired custom plugins (`.ghostcheck/plugins/`) via `self.plugin_loader.run_all` in `Scanner._process_single_file`, removed dead duplicate scanner attributes, and guarded `urllib.request.install_opener` to only trigger when custom proxy/SSL settings are configured.
+  - Hardened `ghostcheck init --ci` templates (`src/ghostcheck/init.py`) with 40-char commit SHAs and `@v{__version__}` tag pinning to pass `CIAuditor` with 0 findings.
+  - Restored corrupted Cyrillic characters in `ghostcheck.toml`, untracked `test_results.txt`, cleaned root workspace clutter, and synchronized version `1.2.11` and `374 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
+- Tests: Pass (374/374 tests passed including 6 new TDD regression tests in `tests/test_audit_remediation_v1_2_11.py`, Grade A 100/100 self-scan, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (Tenth Man & Security/Red Team Verdict: PASS).
 
 ### Ship-v1.2.10-release-alignment-and-demo-hardening-2026-10-15
 - v1.2.10 Patch Release — Demo Exemption Hardening, Release Alignment & SSoT Synchronization shipped:

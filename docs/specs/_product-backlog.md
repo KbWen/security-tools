@@ -43,6 +43,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.8 | Multi-Framework Simulation & Agent Rules Defensive Context | ✅ |
 | v1.2.9 | Tenth Man Release Verification & Lockfile Hardening | ✅ |
 | v1.2.10 | Demo Exemption Hardening, Release Alignment & SSoT Synchronization | ✅ |
+| v1.2.11 | Comprehensive Tenth-Man Audit Remediation, OWASP Mapping & Preset Parity | ✅ |
 
 ---
 
@@ -142,10 +143,10 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 |---|---------|------|------|------|------|
 | E7-F1 | **RAG Data Poisoning Scanner** | P1 | v1.1.0 | 🟡 | 掃描被作為 context 的文件/知識庫，偵測隱藏的 injection patterns 阻止透過檢索觸發攻擊。 |
 | E7-F2 | **Agent Least Privilege Audit** | P0 | v1.1.0 | ✅ | 自動化審計 AI 專案中的 Token 權限範圍（GitHub/OpenAI/MCP），確保符合最小權限原則。 |
-| E7-F3 | **Prompt Injection Honeypot** | P2 | v1.2.0 | 🟡 | 自動在專案中生成偽造的敏感檔案，回傳誘標資訊以偵測不誠實或被操控的 Agent 行為。 |
+| E7-F3 | **Prompt Injection Honeypot** | P2 | v1.1.0 | ✅ | 自動在專案中生成偽造的敏感檔案，回傳誘標資訊以偵測不誠實或被操控的 Agent 行為 (`ghostcheck honeypot`)。 |
 | E7-F4 | **Multi-modal Injection Detection** | P1 | v1.2.0 | 🟡 | 針對 Vision-capable agents，掃描圖像/媒體檔案中藏匿的隱現指令（Steganographic prompt injection）。 |
 | E7-F5 | **Shadow AI Detection** | P1 | v1.1.0 | ✅ | 偵測專案原始碼中私自引入的未授權 AI SDK、Local LLM 配置或第三方 AI Plugin。 |
-| E7-F6 | **LLM Cost/DoS Guard** | P1 | v1.2.0 | 🟡 | 偵測可能導致 Agent 陷入無限循環、遞迴呼叫或過度消費 Token 的邏輯漏洞。 |
+| E7-F6 | **LLM Cost/DoS Guard** | P1 | v1.1.0 | ✅ | 偵測可能導致 Agent 陷入無限循環、遞迴呼叫或過度消費 Token 的邏輯漏洞 (`killswitch.py`)。 |
 
 ---
 
@@ -157,9 +158,9 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 |---|---------|------|------|------|------|
 | E8-F1 | **Memory Poisoning Audit** | P1 | v1.2.0 | 🟡 | 掃描 Agent 的持久化記憶系統（Vector DB / JSON Profile），偵測潛伏中的惡意指令或偏見。 |
 | E8-F2 | **Swarm Cascading Risk Analysis** | P2 | v1.3.0 | 🟡 | 分析 Multi-agent 工作流中的通訊拓補，找出單點 Agent 被劫持後可能導致的級聯失效點。 |
-| E8-F3 | **Lethal Trifecta Detector** | P0 | v1.2.0 | ✅ | 自動偵測「私有資料存取+不受信輸入+工具執行」的危險組合，強制調高安全等級與審核要求。 |
-| E8-F4 | **Tool Metadata Poisoning Linter** | P1 | v1.2.0 | 🟡 | 深度掃描 MCP Server 或 Plugin 的 Metadata/Description，防止 Hidden Prompt 注入至 LLM 推理過程。 |
-| E8-F5 | **Agentic Kill-Switch Compliance** | P0 | v1.3.0 | 🟡 | 審核專案中是否實作了實體的斷路器機制（Token Cap/File Limit/Human-Confirm），防止 Autonomous 跑飛。 |
+| E8-F3 | **Lethal Trifecta Detector** | P0 | v1.1.0 | ✅ | 自動偵測「私有資料存取+不受信輸入+工具執行」的危險組合，強制調高安全等級與審核要求 (`trifecta.py`)。 |
+| E8-F4 | **Tool Metadata Poisoning Linter** | P1 | v1.1.0 | ✅ | 深度掃描 MCP Server 或 Plugin 的 Metadata/Description，防止 Hidden Prompt 注入至 LLM 推理過程 (`mcp_scanner.py`)。 |
+| E8-F5 | **Agentic Kill-Switch Compliance** | P0 | v1.1.0 | ✅ | 審核專案中是否實作了實體的斷路器機制（Token Cap/File Limit/Human-Confirm），防止 Autonomous 跑飛 (`killswitch.py`)。 |
 | E8-F6 | **MCP Registry & Provenance Guard** | P2 | v1.3.0 | 🟡 | 建立 MCP Server 信任鏈驗證，檢查第三方工具的數位簽署、來源聲譽與已知惡意黑名單。 |
 
 ---
@@ -263,13 +264,13 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 能力 | GhostCheck | Snyk | Semgrep | Trivy | Gitleaks |
 |------|-----------|------|---------|-------|----------|
 | Secret 掃描 | ✅ | ✅ | ✅ | ✅ | ✅ |
-| CVE 偵測 | 🟡 v0.8 | ✅ | ❌ | ✅ | ❌ |
+| CVE 偵測 | ✅ | ✅ | ❌ | ✅ | ❌ |
 | IaC 掃描 | ✅ | ✅ | ✅ | ✅ | ❌ |
 | **AI 幻覺套件** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Agent Rules Audit** | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **MCP Security** | 🟡 v0.8 | ❌ | ❌ | ❌ | ❌ |
-| **OWASP LLM Top 10** | 🟡 v0.8 | ❌ | ❌ | ❌ | ❌ |
-| **Prompt Injection Detection** | 🟡 v0.9 | ❌ | ❌ | ❌ | ❌ |
+| **MCP Security** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **OWASP LLM Top 10** | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **Prompt Injection Detection** | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Docker 掃描 | ✅ | ✅ | ❌ | ✅ | ❌ |
 | CI/CD Audit | ✅ | ❌ | ❌ | ❌ | ❌ |
 | 免費開源 | ✅ | 部分 | 部分 | ✅ | ✅ |
@@ -283,3 +284,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-04-09 | 初版建立，新增 Epic 1-5 (AI-Era Security Features) |
 | 2026-04-13 | 擴展 Epic 7 (Agentic Security) 與 Epic 8 (Advanced Resilience), 新增 v1.1.0-v1.2.0 規劃 |
 | 2026-06-03 | 擴展 Epic 9 (AI Execution Sandbox Guard) 與 Epic 10 (RAG & Knowledge Base Trust)，新增相關規劃。 |
+| 2026-10-16 | 完成 v1.2.11 全方位審計修復，同步已實作功能狀態 (E7-F3, E7-F6, E8-F4, E8-F5) 與競品矩陣。 |

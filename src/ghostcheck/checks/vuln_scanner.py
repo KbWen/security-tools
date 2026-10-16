@@ -120,6 +120,16 @@ class VulnScanner(BaseScannerPlugin):
                 for name, version in {**deps, **dev_deps}.items():
                     if not isinstance(version, str):
                         continue
+                    ver_lower = version.strip().lower()
+                    if (ver_lower.startswith('workspace:') or
+                        ver_lower.startswith('file:') or
+                        ver_lower.startswith('link:') or
+                        ver_lower.startswith('portal:') or
+                        ver_lower.startswith('git+') or
+                        ver_lower.startswith('github:') or
+                        '://' in ver_lower or
+                        ver_lower in ('*', 'latest', 'next')):
+                        continue
                     # Clean version (strip ^, ~)
                     clean_version = version.lstrip('^~<>=').split(' ')[0]
                     res = self._query_osv(name, clean_version, "npm")
