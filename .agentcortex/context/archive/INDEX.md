@@ -17,6 +17,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/ignorefile.py`, `src/ghostcheck/checks/secrets.py`, `src/ghostcheck/cli.py` → `ship-main-pre-mortem-and-expert-hardening-2026-08-14.md` (Pre-Mortem, Tenth Man, and Expert Peer Review Hardening)
 - `README.md`, `README_zh-TW.md`, `pyproject.toml`, `src/ghostcheck/init.py` → `fix-remove-pypi-claim.md` (Removed PyPI install claims, switched to GitHub install, hardened CI templates)
 - `src/ghostcheck/scanner.py`, `Makefile`, `tests/test_self_scan_exemption.py` → `fix-v1.2.10-release-alignment.md` (Fixed demo_fixtures exemption so targeted demo scans report vulnerabilities while preserving Grade A repo self-scans)
+- `src/ghostcheck/scanner.py`, `src/ghostcheck/data/owasp_mapping.json`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/init.py`, `src/ghostcheck/cli.py`, `ghostcheck.toml` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md` (Comprehensive Tenth-Man Audit Remediation F-01~F-09, OWASP LLM mapping alignment, preset parity, and CI SHA pinning)
 
 ## By Pattern
 
@@ -45,6 +46,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[slim-container-git-hardening]` → `fix-remove-pypi-claim.md`
 - `[demo-targeted-exemption]` → `fix-v1.2.10-release-alignment.md`
 - `[semver-tag-alignment]` → `fix-v1.2.10-release-alignment.md`
+- `[owasp-llm-mapping-sync]` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`
+- `[plugin-substring-collision-guard]` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`
 
 ## By Decision
 
@@ -71,4 +74,6 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[gitlab-ci-git-dependency]` → Pre-install git via apt-get in python:3.10-slim GitLab CI runner (`fix-remove-pypi-claim.md`)
 - `[demo-fixtures-targeted-scan]` → Only exempt demo_fixtures when scanning whole repo, permit detection when explicitly targeted (`fix-v1.2.10-release-alignment.md`)
 - `[semver-bump-over-force-tag]` → Prohibit force-updating git tags to protect tag immutability; release new patch v1.2.10 (`fix-v1.2.10-release-alignment.md`)
+- `[ci-cd-plugin-matching-guard]` → Map `ci_cd` explicitly to `ciauditor` in `Scanner._process_single_file` to prevent substring collision with `hallucinationchecker` (`ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`)
+- `[owasp-llm-fallback-resolver]` → Implement `Scanner._resolve_owasp_llm` deterministic fallback alongside exact `owasp_mapping.json` keys so no AI security findings fall through to unmapped categories (`ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`)
 

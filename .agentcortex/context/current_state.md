@@ -108,7 +108,7 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
   - Hardened `ghostcheck init --ci` templates (`src/ghostcheck/init.py`) with 40-char commit SHAs and `@v{__version__}` tag pinning to pass `CIAuditor` with 0 findings.
   - Restored corrupted Cyrillic characters in `ghostcheck.toml`, untracked `test_results.txt`, cleaned root workspace clutter, and synchronized version `1.2.11` and `374 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
 - Tests: Pass (374/374 tests passed including 6 new TDD regression tests in `tests/test_audit_remediation_v1_2_11.py`, Grade A 100/100 self-scan, `uv lock --check` passed, `validate.ps1` passed).
-- Review: Pass (Tenth Man & Security/Red Team Verdict: PASS).
+- Review: Pass (Independent Tenth Man & Release Reviewer subagent `c47daeb8-6ff4-44b8-9cde-4c9660f67879` verdict: PASS across Scope, Security, and Red Team).
 
 ### Ship-v1.2.10-release-alignment-and-demo-hardening-2026-10-15
 - v1.2.10 Patch Release — Demo Exemption Hardening, Release Alignment & SSoT Synchronization shipped:
