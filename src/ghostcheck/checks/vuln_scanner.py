@@ -41,6 +41,7 @@ class VulnScanner(BaseScannerPlugin):
         self.ssl_verify = ssl_verify
         self.timeout = timeout
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
+        self._consecutive_net_failures = 0
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = self.cache_file or os.path.join(self.cache_dir, "osv_cache.json")
         self._load_cache()
@@ -110,10 +111,18 @@ class VulnScanner(BaseScannerPlugin):
                 verify=self.ssl_verify
             )
             if response.status_code == 200:
+                self._consecutive_net_failures = 0
                 data = response.json()
                 self._set_cached(ecosystem, package_name, version, data)
                 return data
+            else:
+                self._consecutive_net_failures += 1
+                if self._consecutive_net_failures >= 2:
+                    self.offline = True
         except requests.RequestException as e:
+            self._consecutive_net_failures += 1
+            if self._consecutive_net_failures >= 2:
+                self.offline = True
             # Silently fail on network errors but could log here in debug mode
             logger.debug(f"OSV API request failed: {e}")
             if os.environ.get("GHOSTCHECK_DEBUG") == "1":

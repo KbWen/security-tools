@@ -98,8 +98,19 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Plugin-Substring-Collision]: Never map short module identifiers like 'ci_cd' to 'ci' for substring matching against plugin class names, as 'ci' collides with 'hallucinationchecker' ('hallu-ci-nation'); always map to the explicit scanner identifier ('ciauditor').
 - [Cache-Poisoning-Guard]: Online registry and vulnerability scanners (`HallucinationChecker`, `VulnScanner`) must strictly distinguish authoritative HTTP 200/404 responses from transient network/timeout errors (`None`/`ERROR`), never persisting network failures as `"OK"` in local disk caches.
 - [Pragmatic-SAST-Defaults]: Developer security tools targeting AI workflows should default `--fail-on` to `HIGH`, treat mainstream AI SDKs (`openai`, `anthropic`, `langchain`) as allowed unless `blocked_sdks` is configured, and support granular `disabled_rules` + non-punitive `# ghostcheck-ignore: <rule_id>` to prevent alert fatigue.
+- [Offline-Circuit-Breaker]: Network-dependent static analyzers should track consecutive network failures and trip into offline mode after 2 consecutive connection/timeout errors (`_consecutive_net_failures >= 2`), preventing multi-minute hangs in air-gapped or restricted CI environments without requiring complex state machines.
 
 ## Ship History
+
+### Ship-v1.2.13-pragmatic-dx-and-circuit-breaker-2026-10-19
+- v1.2.13 Patch Release — Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish shipped:
+  - Implemented lightweight fast-fail network circuit breaker (`_consecutive_net_failures >= 2`) in `HallucinationChecker` (`src/ghostcheck/checks/hallucination.py`) and `VulnScanner` (`src/ghostcheck/checks/vuln_scanner.py`) to automatically switch to offline mode after 2 consecutive connection/timeout errors, eliminating multi-minute hangs in air-gapped/offline environments.
+  - Reduced false positives in `APILinter` (`src/ghostcheck/checks/api_linter.py`) by downgrading `api_cors_wildcard` and `api_csrf_disabled` to `MEDIUM` and skipping `api_csrf_disabled` when stateless auth indicators (`jwt`, `bearer`, `oauth`, `authorization`) are present.
+  - Reduced false positives in `EntropyScanner` (`src/ghostcheck/checks/entropy_scanner.py`) by excluding Subresource Integrity (SRI) hashes (`sha256-`, `sha384-`, `sha512-`), Data URIs (`data:image/`, `;base64,`), and multi-segment URL/file paths (`/` count >= 2 without credentials).
+  - Added `-q` / `--quiet` CLI mode (`src/ghostcheck/cli.py`, `src/ghostcheck/reporters/console.py`) that suppresses banners and `INFO`/`LOW` advisories, remaining completely silent on clean scans while printing concise single-line output when actionable issues exist.
+  - Synchronized version `1.2.13` and `408 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
+- Tests: Pass (408/408 tests passed including 14 new TDD tests in `tests/test_dx_v1_2_13.py`, Grade A 100/100 self-scan, `ghostcheck scan . -q` silent pass, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (Independent Pre-Commit Reviewer subagent `2eb58d02-3cbc-480a-89e4-05df32fae76e` verdict: PASS across Scope, Security, and Red Team).
 
 ### Ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19
 - v1.2.12 Patch Release — DX (Developer Experience), Cache Stability & False-Positive Overhaul shipped:

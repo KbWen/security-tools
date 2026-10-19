@@ -37,6 +37,33 @@ def _is_kebab_case_false_positive(token: str) -> bool:
             return False
     return True
 
+def _is_path_or_uri_false_positive(token: str, line_str: str) -> bool:
+    # 1. Subresource Integrity (SRI) hashes
+    if token.startswith(('sha256-', 'sha384-', 'sha512-')):
+        return True
+    line_lower = line_str.lower()
+    if 'integrity=' in line_lower and ('sha256-' in line_str or 'sha384-' in line_str or 'sha512-' in line_str):
+        return True
+
+    # 2. Data URIs
+    if ';base64,' in line_lower or 'data:image/' in line_lower or 'data:font/' in line_lower or 'data:application/' in line_lower:
+        return True
+
+    # 3. URL/file paths containing 2 or more slashes
+    if token.count('/') >= 2:
+        if '@' in token or '://' in token:
+            return False
+        if '+' in token or '=' in token:
+            return False
+        parts = [p for p in token.split('/') if p]
+        if len(parts) >= 2:
+            if all(re.match(r'^[a-z0-9._-]+$', p) for p in parts):
+                return True
+            if token.startswith('/') and all(re.match(r'^[a-zA-Z0-9._-]+$', p) for p in parts):
+                return True
+
+    return False
+
 class EntropyScanner(BaseScannerPlugin):
 
     @property
@@ -108,10 +135,14 @@ class EntropyScanner(BaseScannerPlugin):
             
             if _is_kebab_case_false_positive(token):
                 continue
-            
-            # Filter if it's likely just a long path or URL
-            # Note: Do not discard tokens just because they contain a slash, as this is a bypass.
-            # Base64 strings can contain slashes. If we need to filter URLs, we should use a stronger regex.
+
+            start_offset = match.start()
+            line_start = content.rfind('\n', 0, start_offset) + 1
+            line_end = content.find('\n', start_offset)
+            line_str = content[line_start:line_end if line_end != -1 else len(content)]
+
+            if _is_path_or_uri_false_positive(token, line_str):
+                continue
                 
             entropy = self.calculate_entropy(token)
             

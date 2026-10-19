@@ -67,6 +67,7 @@ class HallucinationChecker(BaseScannerPlugin):
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = os.path.join(self.cache_dir, "hallucination_v2.json")
         self._last_status = None
+        self._consecutive_net_failures = 0
         self._load_cache()
         self._setup_opener()
 
@@ -253,6 +254,13 @@ class HallucinationChecker(BaseScannerPlugin):
         else:
             result = None
 
+        if getattr(self, '_last_status', None) == "ERROR":
+            self._consecutive_net_failures += 1
+            if self._consecutive_net_failures >= 2:
+                self.offline = True
+        else:
+            self._consecutive_net_failures = 0
+
         # 4. Update Cache (Only cache confirmed HTTP 200 responses as "OK" and HTTP 404/findings; NEVER cache on network error!)
         if getattr(self, '_last_status', None) == "OK":
             self._set_cached(registry, pkg_name, result if result else "OK")
@@ -375,7 +383,7 @@ class HallucinationChecker(BaseScannerPlugin):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://crates.io/api/v1/crates/{safe_pkg}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.12'})
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.13'})
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 if status_code == 200:

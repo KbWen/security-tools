@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.12-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.13-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-394%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-408%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛠️ v1.2.13: Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish
+*   **Network Fast-Fail Circuit Breaker:** Both `HallucinationChecker` and `VulnScanner` incorporate an automatic circuit breaker. When 2 consecutive network timeouts or connection failures occur, the scanner dynamically trips to offline mode, preventing painful hangs in air-gapped or poor-network environments while caching confirmed online responses.
+*   **Pragmatic False-Positive Reduction:** Downgraded `api_cors_wildcard` and `api_csrf_disabled` in `APILinter` to `MEDIUM` severity. Automatically suppresses `api_csrf_disabled` warnings when stateless authentication indicators (`jwt`, `bearer`, `oauth`, `authorization`) are detected in code. In `EntropyScanner`, cleanly excludes Subresource Integrity (SRI) hashes, Data URIs, and multi-segment Unix/API paths without missing genuine high-entropy secrets.
+*   **Quiet CI Mode (`-q` / `--quiet`):** Adds a standard `-q` / `--quiet` flag that suppresses banners, cache messages, and informational footers. Completely silent when no actionable risks exist, and outputs crisp, single-line format when actionable (`MEDIUM`/`HIGH`/`CRITICAL`) issues require attention.
 
 ### 🛠️ v1.2.12: DX, Stability & False-Positive Overhaul
 *   **Cache Poisoning Fix & Multi-Registry Support:** Hardened `HallucinationChecker` to only cache authoritative HTTP 200/404 responses (never caching transient network failures), added live registry checking for Rust crates on crates.io, and implemented local 24-hour TTL caching for OSV vulnerability lookups.
@@ -126,7 +131,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.12
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.13
 ```
 
 ### 🔨 Option B: Install from Source
@@ -180,13 +185,16 @@ ghostcheck scan --staged
 
 # Compact output for single-line IDE / CLI inspection
 ghostcheck scan . --compact
+
+# Quiet mode for silent clean scans in CI pipelines
+ghostcheck scan . -q
 ```
 
 ---
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 394 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 408 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -201,7 +209,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 394 passed in 19.82s =============================
+============================= 408 passed in 25.11s =============================
 ```
 
 ---

@@ -11,14 +11,14 @@ class APILinter(BaseScannerPlugin):
             {
                 "name": "api_cors_wildcard",
                 "pattern": re.compile(r'\b(?:Access-Control-Allow-Origin|origins?|allow_origins?)[\s\S]{0,100}?[`\'"]\*[`\'"]', re.IGNORECASE),
-                "severity": "HIGH",
+                "severity": "MEDIUM",
                 "message": "CORS wildcard (*) detected. This allows any domain to access your API.",
                 "remediation": "Restrict CORS to specific trusted origins."
             },
             {
                 "name": "api_csrf_disabled",
                 "pattern": re.compile(r'\b(?:csrf_enabled|enable_csrf)[\s\S]{0,50}?[:=]\s*(?:false|0)\b', re.IGNORECASE),
-                "severity": "HIGH",
+                "severity": "MEDIUM",
                 "message": "CSRF protection appears to be disabled.",
                 "remediation": "Enable CSRF protection for session-based APIs."
             },
@@ -96,7 +96,12 @@ class APILinter(BaseScannerPlugin):
     def scan_content(self, file_path, content):
         findings = []
         clean_content = self._clean_comments(content, file_path)
+        clean_content_lower = clean_content.lower()
+        is_stateless = any(kw in clean_content_lower for kw in ('jwt', 'bearer', 'oauth', 'authorization'))
+
         for rule in self.rules:
+            if rule['name'] == 'api_csrf_disabled' and is_stateless:
+                continue
             matches = rule['pattern'].finditer(clean_content)
             for match in matches:
                 start_offset = match.start()

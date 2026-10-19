@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.2.12-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.13-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-394%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-408%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛠️ v1.2.13: 實用主義 DX、離線熔斷器與零膨脹打磨 (Pragmatic DX & Offline Circuit Breaker)
+*   **網路快速失敗熔斷器 (Fast-Fail Circuit Breaker)：** `HallucinationChecker` 與 `VulnScanner` 內建自動熔斷保護。當網路發生連續 2 次超時或連線失敗，自動切換至離線模式，徹底告別內網、隔離區或弱網環境下的卡頓與無謂等待。
+*   **務實誤報大幅降低 (Pragmatic FP Reduction)：** 將 `APILinter` 的 `api_cors_wildcard` 與 `api_csrf_disabled` 降級為 `MEDIUM`。當檔案包含無狀態認證指標（`jwt`、`bearer`、`oauth`、`authorization`）時，智慧抑制 CSRF 告警；在 `EntropyScanner` 中精準排除 SRI 雜湊、Data URI 與多層路徑，不誤傷真實金鑰。
+*   **極簡安靜模式 (`-q` / `--quiet`)：** 新增標準 `-q` / `--quiet` 命令列參數，自動壓制 Banner、快取訊息與資訊性頁尾。在專案安全無虞時完全靜默（Unix 標準哲學），存在 actionable 風險時輸出精簡、單行清晰報告。
 
 ### 🛠️ v1.2.12: DX、穩定性與誤報大掃除 (DX & False-Positive Overhaul)
 *   **快取投毒修復與多套件庫支援：** 嚴格限制 `HallucinationChecker` 僅持久化快取 HTTP 200/404 權威響應（網路中斷或連線失敗永不快取），補齊 Rust crates.io 線上套件註冊表檢查，並為 OSV 漏洞庫新增本機 24 小時 TTL 快取機制。
@@ -125,7 +130,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.12
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.13
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -179,13 +184,16 @@ ghostcheck scan --staged
 
 # 極簡單行輸出模式 (適合 IDE 與 CI 簡報)
 ghostcheck scan . --compact
+
+# 安靜模式 (CI 流程無風險時完全靜默)
+ghostcheck scan . -q
 ```
 
 ---
 
 ## 🧪 執行測試與驗證
 
-透過執行 394 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 408 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -200,7 +208,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 394 passed in 19.82s =============================
+============================= 408 passed in 25.11s =============================
 ```
 
 ---

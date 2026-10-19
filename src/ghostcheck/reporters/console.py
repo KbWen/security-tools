@@ -8,10 +8,11 @@ class ConsoleReporter(BaseReporterPlugin):
     def name(self) -> str:
         return "console"
 
-    def __init__(self, use_color=True, use_unicode=True, compact=False):
+    def __init__(self, use_color=True, use_unicode=True, compact=False, quiet=False):
         self.use_color = use_color
         self.use_unicode = use_unicode
         self.compact = compact
+        self.quiet = quiet
         self.terminal_width = min(shutil.get_terminal_size((80, 20)).columns, 80)
         self._colors = {
             "CRITICAL": "\033[97;41;1m", # White on Red
@@ -40,6 +41,23 @@ class ConsoleReporter(BaseReporterPlugin):
                 print(*args, **kwargs_print, file=stream)
             else:
                 print(*args, **kwargs_print)
+
+        is_quiet = kwargs.get('quiet', self.quiet)
+        severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+
+        if is_quiet:
+            active_findings = [f for f in findings if (f.get('severity') or 'INFO').upper() not in ('INFO', 'LOW')]
+            if not active_findings:
+                return
+            sorted_findings = sorted(active_findings, key=lambda x: severity_order.get((x.get('severity') or 'INFO').upper(), 5))
+            for f in sorted_findings:
+                sev = (f.get('severity') or 'INFO').upper()
+                title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
+                loc_file = f.get('file', '')
+                loc_line = f.get('line', 0)
+                msg = f.get('message', '')
+                _print(f"{loc_file}:{loc_line}: [{self._color(sev, sev)}] {title}: {msg}")
+            return
 
         is_compact = kwargs.get('compact', self.compact)
 

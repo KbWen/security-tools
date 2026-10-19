@@ -54,6 +54,7 @@ def main():
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
     parent_parser.add_argument("--fail-on", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="HIGH", help="Minimum severity threshold to trigger non-zero exit code (default: HIGH)")
     parent_parser.add_argument("--compact", action="store_true", help="Print findings in single-line compact format")
+    parent_parser.add_argument("-q", "--quiet", action="store_true", help="Quiet mode: suppress banners and INFO/LOW advisories")
     parent_parser.add_argument("--preset", help="Use a framework-specific scan preset (e.g., next.js, flutter)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
@@ -307,13 +308,21 @@ def main():
             reporter = reporter_cls(
                 use_color=not args.no_color and not args.output,
                 use_unicode=use_unicode,
-                compact=getattr(args, 'compact', False)
+                compact=getattr(args, 'compact', False),
+                quiet=getattr(args, 'quiet', False)
             )
         except TypeError:
             try:
-                reporter = reporter_cls(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+                reporter = reporter_cls(
+                    use_color=not args.no_color and not args.output,
+                    use_unicode=use_unicode,
+                    compact=getattr(args, 'compact', False)
+                )
             except TypeError:
-                reporter = reporter_cls()
+                try:
+                    reporter = reporter_cls(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+                except TypeError:
+                    reporter = reporter_cls()
 
         if args.output:
             try:
@@ -323,14 +332,14 @@ def main():
                 sys.exit(2)
         
         try:
-            reporter.report(findings, stream=output_file, grade=grade, score_val=score_val, output_path=args.output)
+            reporter.report(findings, stream=output_file, grade=grade, score_val=score_val, output_path=args.output, quiet=getattr(args, 'quiet', False))
             
             # If console and we have cache hits
-            if args.format == "console" and hasattr(scanner, 'cache_hits') and scanner.cache_hits > 0:
+            if not getattr(args, 'quiet', False) and args.format == "console" and hasattr(scanner, 'cache_hits') and scanner.cache_hits > 0:
                 print(f"  ({scanner.cache_hits} files loaded from cache)")
             
-            # Summary footer for console (skip extra footer in compact mode as report handles it)
-            if args.format == "console" and not getattr(args, 'compact', False):
+            # Summary footer for console (skip extra footer in compact or quiet mode as report handles it)
+            if not getattr(args, 'quiet', False) and args.format == "console" and not getattr(args, 'compact', False):
                 # Assuming ConsoleReporter has _color, otherwise just print
                 color_func = getattr(reporter, '_color', lambda text, sev: text)
                 print(f"\n{get_icon('stats', use_unicode)} {color_func('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
