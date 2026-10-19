@@ -180,21 +180,38 @@ class KillSwitchVisitor(ast.NodeVisitor):
                     break
 
         if has_recursion:
-            has_limit = False
+            # Only flag recursive functions that contain AI/LLM/Agent/network execution indicators
+            agentic_keywords = ['llm', 'agent', 'openai', 'anthropic', 'chat', 'completion', 'invoke', 'generate', 'fetch', 'requests']
+            has_agentic_indicator = False
             for subnode in ast.walk(node):
-                if isinstance(subnode, ast.If):
-                    if self._is_limit_condition(subnode.test):
-                        has_limit = True
+                if isinstance(subnode, ast.Name) and any(kw in subnode.id.lower() for kw in agentic_keywords):
+                    has_agentic_indicator = True
+                    break
+                elif isinstance(subnode, ast.Attribute) and any(kw in subnode.attr.lower() for kw in agentic_keywords):
+                    has_agentic_indicator = True
+                    break
+                elif isinstance(subnode, ast.Call):
+                    fn = self._get_full_name(subnode.func) or (subnode.func.attr if isinstance(subnode.func, ast.Attribute) else "")
+                    if any(kw in fn.lower() for kw in agentic_keywords):
+                        has_agentic_indicator = True
                         break
-            if not has_limit:
-                self.findings.append({
-                    "file": self.file_path,
-                    "line": node.lineno,
-                    "name": "Missing Recursive Kill-Switch",
-                    "severity": "HIGH",
-                    "message": f"Recursive function '{node.name}' detected without iteration limits or recursion depth guards. This can lead to runaway recursion and high API costs.",
-                    "suggestion": "Add a depth/limit check argument (e.g., depth=0) and abort the recursion if it exceeds a threshold (e.g., if depth > max_depth: return)."
-                })
+
+            if has_agentic_indicator:
+                has_limit = False
+                for subnode in ast.walk(node):
+                    if isinstance(subnode, ast.If):
+                        if self._is_limit_condition(subnode.test):
+                            has_limit = True
+                            break
+                if not has_limit:
+                    self.findings.append({
+                        "file": self.file_path,
+                        "line": node.lineno,
+                        "name": "Missing Recursive Kill-Switch",
+                        "severity": "HIGH",
+                        "message": f"Recursive function '{node.name}' detected without iteration limits or recursion depth guards. This can lead to runaway recursion and high API costs.",
+                        "suggestion": "Add a depth/limit check argument (e.g., depth=0) and abort the recursion if it exceeds a threshold (e.g., if depth > max_depth: return)."
+                    })
 
         self.generic_visit(node)
         self.current_function = None

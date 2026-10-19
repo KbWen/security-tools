@@ -44,6 +44,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.9 | Tenth Man Release Verification & Lockfile Hardening | ✅ |
 | v1.2.10 | Demo Exemption Hardening, Release Alignment & SSoT Synchronization | ✅ |
 | v1.2.11 | Comprehensive Tenth-Man Audit Remediation, OWASP Mapping & Preset Parity | ✅ |
+| v1.2.12 | DX, Stability & False-Positive Overhaul | ✅ |
 
 ---
 
@@ -285,3 +286,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-04-13 | 擴展 Epic 7 (Agentic Security) 與 Epic 8 (Advanced Resilience), 新增 v1.1.0-v1.2.0 規劃 |
 | 2026-06-03 | 擴展 Epic 9 (AI Execution Sandbox Guard) 與 Epic 10 (RAG & Knowledge Base Trust)，新增相關規劃。 |
 | 2026-10-16 | 完成 v1.2.11 全方位審計修復，同步已實作功能狀態 (E7-F3, E7-F6, E8-F4, E8-F5) 與競品矩陣。 |
+| 2026-10-19 | 完成 v1.2.12 DX、穩定性與誤報大掃除 (快取投毒修復、crates 支援、OSV TTL 快取、--fail-on HIGH 預設、--compact 輸出、disabled_rules 與精準誤報校準)。 |

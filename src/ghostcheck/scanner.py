@@ -829,6 +829,23 @@ class Scanner:
             if self._is_self_scan_exempt(fnd):
                 continue
             
+            # Disabled rules filtering (case-insensitive)
+            disabled_rules = []
+            if self.config:
+                if hasattr(self.config, 'disabled_rules'):
+                    disabled_rules = self.config.disabled_rules
+                elif isinstance(self.config, dict):
+                    disabled_rules = self.config.get('disabled_rules', [])
+                elif hasattr(self.config, 'get'):
+                    disabled_rules = self.config.get('disabled_rules', [])
+            if disabled_rules:
+                disabled_set = {str(r).strip().lower() for r in disabled_rules if r}
+                fnd_identifiers = [str(x).strip().lower() for x in [
+                    fnd.get('name'), fnd.get('rule_id'), fnd.get('rule_name'), fnd.get('pattern_name'), fnd_id
+                ] if x]
+                if any(fid in disabled_set for fid in fnd_identifiers):
+                    continue
+
             # Inline suppression (Strict Mode)
             # If context is missing (common for AST findings), fetch it dynamically to check for suppressions
             ctx_str = fnd.get('context', '')
@@ -853,10 +870,18 @@ class Scanner:
             
             if "ghostcheck-ignore" in ctx_str:
                 import re
-                if re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore', ctx_str, re.IGNORECASE):
-                    if fnd.get('severity') == 'CRITICAL':
-                        fnd['message'] = (fnd.get('message', '') + " [TAMPER_ATTEMPT: CRITICAL finding cannot be ignored]").strip()
+                ignore_match = re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore(?::\s*([^\r\n*#]+))?', ctx_str, re.IGNORECASE)
+                if ignore_match:
+                    target_rules_str = ignore_match.group(2)
+                    if target_rules_str:
+                        target_rules = [r.strip().lower() for r in target_rules_str.split(',') if r.strip()]
+                        fnd_identifiers = [str(x).strip().lower() for x in [
+                            fnd.get('name'), fnd.get('rule_id'), fnd.get('rule_name'), fnd.get('pattern_name'), fnd_id
+                        ] if x]
+                        if any(tid in target_rules or any(tr == tid for tr in target_rules) for tid in fnd_identifiers):
+                            continue
                     else:
+                        # Bare ignore suppresses all severities without punitive tamper flags
                         continue
 
             # Context Intelligence: Filter examples and negative constraints in docs

@@ -3,6 +3,11 @@ import json
 from unittest.mock import patch, MagicMock
 from ghostcheck.checks.vuln_scanner import VulnScanner
 
+@pytest.fixture(autouse=True)
+def clean_vuln_cache(tmp_path, monkeypatch):
+    cache_file = tmp_path / "osv_cache.json"
+    monkeypatch.setattr(VulnScanner, "cache_file", str(cache_file))
+
 def test_vuln_scanner_basic(tmp_path):
     # Test requirements.txt scanning with mock OSV API
     req_file = tmp_path / "requirements.txt"

@@ -18,6 +18,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `README.md`, `README_zh-TW.md`, `pyproject.toml`, `src/ghostcheck/init.py` → `fix-remove-pypi-claim.md` (Removed PyPI install claims, switched to GitHub install, hardened CI templates)
 - `src/ghostcheck/scanner.py`, `Makefile`, `tests/test_self_scan_exemption.py` → `fix-v1.2.10-release-alignment.md` (Fixed demo_fixtures exemption so targeted demo scans report vulnerabilities while preserving Grade A repo self-scans)
 - `src/ghostcheck/scanner.py`, `src/ghostcheck/data/owasp_mapping.json`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/init.py`, `src/ghostcheck/cli.py`, `ghostcheck.toml` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md` (Comprehensive Tenth-Man Audit Remediation F-01~F-09, OWASP LLM mapping alignment, preset parity, and CI SHA pinning)
+- `src/ghostcheck/cli.py`, `src/ghostcheck/config.py`, `src/ghostcheck/scanner.py`, `src/ghostcheck/reporters/console.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/shadow_ai.py`, `src/ghostcheck/checks/lethal_trifecta_detector.py`, `src/ghostcheck/checks/killswitch_auditor.py`, `src/ghostcheck/checks/tamper_auditor.py`, `src/ghostcheck/checks/silent_installer.py`, `src/ghostcheck/checks/ai_marker.py` → `ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md` (v1.2.12 DX overhaul: fixed HallucinationChecker cache poisoning, added OSV disk cache, set default --fail-on HIGH, added --compact and disabled_rules, and eliminated false positives across 5 noisy checkers)
 
 ## By Pattern
 
@@ -48,6 +49,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[semver-tag-alignment]` → `fix-v1.2.10-release-alignment.md`
 - `[owasp-llm-mapping-sync]` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`
 - `[plugin-substring-collision-guard]` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`
+- `[cache-poisoning-guard]` → `ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`
+- `[pragmatic-sast-defaults]` → `ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`
 
 ## By Decision
 
@@ -76,4 +79,5 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[semver-bump-over-force-tag]` → Prohibit force-updating git tags to protect tag immutability; release new patch v1.2.10 (`fix-v1.2.10-release-alignment.md`)
 - `[ci-cd-plugin-matching-guard]` → Map `ci_cd` explicitly to `ciauditor` in `Scanner._process_single_file` to prevent substring collision with `hallucinationchecker` (`ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`)
 - `[owasp-llm-fallback-resolver]` → Implement `Scanner._resolve_owasp_llm` deterministic fallback alongside exact `owasp_mapping.json` keys so no AI security findings fall through to unmapped categories (`ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md`)
-
+- `[cache-poisoning-quarantine]` → Isolate online registry cache schema (`hallucination_v2.json`, `osv_cache.json`) and never persist transient HTTP/network errors as `"OK"` (`ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`)
+- `[non-punitive-dx-defaults]` → Default `--fail-on HIGH`, opt-in `blocked_sdks` for `ShadowAIDetector`, support `disabled_rules` in `ghostcheck.toml`, and allow `# ghostcheck-ignore: <rule_id>` across all severities (`ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`)

@@ -89,7 +89,7 @@ def test_secret_scanner_your_prefix_token_not_bypassed():
 def test_shadow_ai_fstring_ast_folding():
     """Verify ShadowAIDetector properly folds f-strings with ast.FormattedValue (e.g. __import__(f"{'open'}{'ai'}"))"""
     from ghostcheck.checks.shadow_ai import ShadowAIDetector
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config={"shadow_ai": {"blocked_sdks": ["openai"]}})
     code = "__import__(f\"{'open'}{'ai'}\")\n"
     findings = detector.scan_file("dynamic_import.py", code)
     assert any(f.get("rule_id") == "GSA-01" or "openai" in f.get("message", "").lower() for f in findings), \

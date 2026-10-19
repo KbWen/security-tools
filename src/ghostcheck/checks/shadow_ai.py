@@ -75,34 +75,39 @@ class ShadowAIDetector(BaseScannerPlugin):
 
     def is_sdk_python_unauthorized(self, sdk_name):
         sdk_lower = sdk_name.lower()
-        if sdk_lower in self.allowed_sdks:
+        if sdk_lower in self.allowed_sdks or any(sdk_lower == a or a.startswith(sdk_lower + '.') for a in self.allowed_sdks):
             return False
-        if sdk_lower in self.blocked_sdks:
+        if self.blocked_sdks:
+            return sdk_lower in self.blocked_sdks
+        if self.allowed_sdks:
             return True
-        if not self.blocked_sdks:
-            return sdk_lower in DEFAULT_AI_SDKS_PYTHON
         return False
 
     def is_sdk_js_unauthorized(self, sdk_name):
         sdk_lower = sdk_name.lower()
-        if sdk_lower in self.allowed_sdks:
+        if (
+            sdk_lower in self.allowed_sdks
+            or any(sdk_lower.startswith(x) for x in self.allowed_sdks)
+            or any(sdk_lower.startswith(f"@{x}/") for x in self.allowed_sdks)
+        ):
             return False
-        if sdk_lower in self.blocked_sdks:
+        if self.blocked_sdks:
+            if (
+                sdk_lower in self.blocked_sdks
+                or any(sdk_lower.startswith(x) for x in self.blocked_sdks)
+                or any(sdk_lower.startswith(f"@{x}/") for x in self.blocked_sdks)
+                or (any("langchain" in x for x in self.blocked_sdks) and sdk_lower.startswith("@langchain/"))
+            ):
+                return True
+            return False
+        if self.allowed_sdks:
             return True
-        if not self.blocked_sdks:
-            if sdk_lower in DEFAULT_AI_SDKS_JS:
-                return True
-            # Match namespaces (e.g. @google/generative-ai or @langchain/*)
-            if any(sdk_lower.startswith(x) for x in ['@google/generative-ai', 'langchain', '@langchain/']):
-                return True
         return False
 
     def is_extension_unauthorized(self, ext_id):
         ext_lower = ext_id.lower()
-        if ext_lower in self.blocked_extensions:
-            return True
-        if not self.blocked_extensions:
-            return ext_lower in DEFAULT_IDE_EXTENSIONS
+        if self.blocked_extensions:
+            return ext_lower in self.blocked_extensions
         return False
 
     def scan_file(self, filepath, content):

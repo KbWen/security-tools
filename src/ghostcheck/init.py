@@ -9,6 +9,7 @@ class GhostCheckInitializer:
 severity_threshold = "{severity}"
 exclude_patterns = {excludes}
 enabled_checks = {checks}
+disabled_rules = []
 offline = false
 preset = "{preset}"
 # proxy = "http://proxy.example.com:8080"

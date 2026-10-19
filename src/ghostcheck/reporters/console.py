@@ -8,9 +8,10 @@ class ConsoleReporter(BaseReporterPlugin):
     def name(self) -> str:
         return "console"
 
-    def __init__(self, use_color=True, use_unicode=True):
+    def __init__(self, use_color=True, use_unicode=True, compact=False):
         self.use_color = use_color
         self.use_unicode = use_unicode
+        self.compact = compact
         self.terminal_width = min(shutil.get_terminal_size((80, 20)).columns, 80)
         self._colors = {
             "CRITICAL": "\033[97;41;1m", # White on Red
@@ -40,14 +41,37 @@ class ConsoleReporter(BaseReporterPlugin):
             else:
                 print(*args, **kwargs_print)
 
+        is_compact = kwargs.get('compact', self.compact)
+
         if not findings:
             _print(f"\n{self._color(' [OK] ', 'INFO')} {self._color('No security issues found. Project is clean.', 'INFO')}\n")
             return
 
+        severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
+        sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity', 'INFO'), 5))
+
+        if is_compact:
+            for f in sorted_findings:
+                sev = f.get('severity', 'INFO')
+                title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
+                loc_file = f.get('file', '')
+                loc_line = f.get('line', 0)
+                msg = f.get('message', '')
+                _print(f"{loc_file}:{loc_line}: [{self._color(sev, sev)}] {title}: {msg}")
+
+            summary = {}
+            for f in findings:
+                sev = f.get('severity', 'INFO')
+                summary[sev] = summary.get(sev, 0) + 1
+            summary_line = []
+            for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]:
+                if sev in summary:
+                    summary_line.append(f"{self._color(sev, sev)}: {summary[sev]}")
+            _print("Summary: " + " | ".join(summary_line))
+            return
+
         _print(f"\n{self._color(' --- GhostCheck Scan Results --- ', 'CRITICAL')}")
         _print(self._dim('='*self.terminal_width))
-        
-        severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
         sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity', 'INFO'), 5))
 
         for f in sorted_findings:

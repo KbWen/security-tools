@@ -1,3 +1,3 @@
 # GhostCheck package initialization
-__version__ = "1.2.11"
+__version__ = "1.2.12"
 

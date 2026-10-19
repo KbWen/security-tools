@@ -17,6 +17,7 @@ class GhostCheckConfig:
         "severity_threshold": "INFO",
         "exclude_patterns": [],
         "enabled_checks": ["hallucination", "secrets", "rules", "docker"],
+        "disabled_rules": [],
         "offline": False,
         "custom_patterns": [],
         "load_local_plugins": False,
@@ -28,10 +29,20 @@ class GhostCheckConfig:
         "timeout": 10
     }
 
-    def __init__(self, project_root: str):
+    def __init__(self, project_root: str = ".", disabled_rules: Optional[list] = None):
         self.project_root = os.path.abspath(project_root)
         self.config = self.DEFAULT_CONFIG.copy()
+        if disabled_rules is not None:
+            self.config["disabled_rules"] = list(disabled_rules)
         self._load_all_configs()
+
+    @property
+    def disabled_rules(self) -> list:
+        return self.config.get("disabled_rules", [])
+
+    @disabled_rules.setter
+    def disabled_rules(self, val: list):
+        self.config["disabled_rules"] = list(val)
 
     def _load_all_configs(self):
         # 1. Load Global Config (~/.ghostcheck/config.toml)

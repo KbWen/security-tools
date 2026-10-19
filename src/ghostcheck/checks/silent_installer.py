@@ -159,7 +159,7 @@ class SilentInstaller(BaseScannerPlugin):
                     after_action = line[idx + 7:].strip()
                     packages = [p for p in after_action.split() if not p.startswith('-')]
                     for p in packages:
-                        if p in ['install', 'add', 'requirements.txt', '.'] or p.endswith('.txt'):
+                        if p in ['install', 'add', 'requirements.txt', '.', 'pip', 'setuptools', 'wheel'] or p.endswith('.txt'):
                             continue
                         if p.startswith('.') or p.startswith('/') or p.startswith('\\') or '/' in p or '\\' in p:
                             continue

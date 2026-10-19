@@ -279,7 +279,7 @@ class AIMarker(BaseScannerPlugin):
                         "file": "",  
                         "line": 0,
                         "name": "ai_unreviewed_commit",
-                        "severity": "MEDIUM",
+                        "severity": "INFO",
                         "suggestion": f"Commit {commit_hash[:8]} was authored or assisted by {tool_name} but lacks human review trailers (e.g. 'Reviewed-by:'). "
                                       f"If this is a human author named {tool_name}, add a 'Reviewed-by: DevName' trailer to your commit message, or add the commit hash to ignore lists.",
                         "context": f"Commit {commit_hash[:8]}: {body.splitlines()[0] if body.splitlines() else ''}"

@@ -247,6 +247,8 @@ class TrifectaVisitor(ast.NodeVisitor):
                 is_valid_exec = False
             if short_name in ['CDLL', 'windll'] and not func_name.startswith('ctypes'):
                 is_valid_exec = False
+            if isinstance(node.func, ast.Attribute) and node.func.attr in ('exec', 'eval') and not func_name.startswith(('subprocess', 'os', 'posix')):
+                is_valid_exec = False
             
             if is_valid_exec:
                 self.add_capability("command_exec", node.lineno, f"Call to execution API: {func_name or short_name}()")
@@ -494,7 +496,12 @@ class JsTrifectaVisitor:
                 self.add_capability("untrusted_input", line_val, f"Call to input api: {callee_str}()")
                 
             # Category C: Command Execution
-            if any(x in callee_str for x in ['exec', 'spawn', 'execSync', 'spawnSync', 'eval', 'Function']):
+            is_valid_js_exec = False
+            if callee_str in ['exec', 'spawn', 'execSync', 'spawnSync', 'eval', 'Function', 'execFile', 'execFileSync']:
+                is_valid_js_exec = True
+            elif callee_str.startswith(('child_process.', 'cp.')):
+                is_valid_js_exec = True
+            if is_valid_js_exec:
                 self.add_capability("command_exec", line_val, f"Call to execution API: {callee_str}()")
 
         elif node_type == 'MemberExpression':

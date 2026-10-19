@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.11-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.12-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-374%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-394%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,13 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛠️ v1.2.12: DX, Stability & False-Positive Overhaul
+*   **Cache Poisoning Fix & Multi-Registry Support:** Hardened `HallucinationChecker` to only cache authoritative HTTP 200/404 responses (never caching transient network failures), added live registry checking for Rust crates on crates.io, and implemented local 24-hour TTL caching for OSV vulnerability lookups.
+*   **Pragmatic CI Defaults (`--fail-on HIGH`):** Default `--fail-on` is now `HIGH`, ensuring routine `INFO`/`LOW`/`MEDIUM` notices do not break CI pipelines unless explicitly requested.
+*   **Non-Punitive & Targeted Suppressions:** Inline `# ghostcheck-ignore` suppresses all severities without triggering evasion alarms, and supports granular rule targeting via `# ghostcheck-ignore: <rule_name>`. Added `disabled_rules` configuration support in `ghostcheck.toml`.
+*   **Compact Single-Line Output (`--compact`):** Clean, standard linter output format `{file}:{line}: [{severity}] {name}: {message}` with a single-line summary, perfect for IDE integration and minimalist CI logs.
+*   **High-Precision False-Positive Reduction:** Refined detection heuristics across Shadow AI (only flags unauthorized SDKs when `blocked_sdks` or strict `allowed_sdks` configured), Lethal Trifecta (generic `.run()`/`.call()` calls safe), Kill Switch Auditor (recursion must accompany agentic/LLM patterns), and downgraded unreviewed commit marker to `INFO`.
 
 ### 🛡️ v1.2.11: Comprehensive Audit Remediation, OWASP LLM Mapping & Preset Parity
 *   **OWASP LLM Top 10 Mapping Alignment:** Synchronized `owasp_mapping.json` with all 24 scanner emission categories and added deterministic fallback resolution (`Scanner._resolve_owasp_llm`) so `--format owasp-llm` accurately reflects real-world compliance scores.
@@ -119,7 +126,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.11
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.12
 ```
 
 ### 🔨 Option B: Install from Source
@@ -170,13 +177,16 @@ ghostcheck scan .
 
 # Scan ONLY the files you are about to commit (Blazing Fast for pre-commit)
 ghostcheck scan --staged
+
+# Compact output for single-line IDE / CLI inspection
+ghostcheck scan . --compact
 ```
 
 ---
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 374 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 394 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -191,7 +201,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 374 passed in 8.40s =============================
+============================= 394 passed in 19.82s =============================
 ```
 
 ---
@@ -201,7 +211,9 @@ Expected output should show all tests passing:
 GhostCheck respects professional workflows and offers fine-grained configuration:
 
 *   **Custom Exclusions:** Use `.ghostcheckignore` to silently bypass safe paths or test fixtures.
-*   **Severity Filters:** Run scans with a targeted focus using `--severity [CRITICAL|HIGH|MEDIUM|LOW]`.
+*   **Rule Disabling & Targeted Ignores:** Disable noisy rules entirely using `disabled_rules = ["rule_name"]` in `ghostcheck.toml`, or suppress specific findings inline with `# ghostcheck-ignore: rule_name`.
+*   **Severity & CI Thresholds:** Run scans with targeted focus using `--severity [CRITICAL|HIGH|MEDIUM|LOW]`. By default, `--fail-on HIGH` exits non-zero only for HIGH and CRITICAL findings.
+*   **Compact CI Output:** Use `--compact` for concise single-line findings `{file}:{line}: [{severity}] {name}: {message}`.
 *   **Multilingual Support:** Define custom safe keywords in `ghostcheck.toml` (e.g., `custom_safe_keywords = ["нельзя"]` or `custom_safe_keywords = ["避免"]`) to prevent false positives in non-English documentation.
 *   **Automation & Reports:** Export results natively using `--format json`, `--format html`, `--format sarif`, or `--format owasp-llm` for seamless integration into GitHub Actions, GitLab CI/CD, and compliance tools.
 

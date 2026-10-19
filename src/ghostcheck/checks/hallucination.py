@@ -65,7 +65,8 @@ class HallucinationChecker(BaseScannerPlugin):
         self.timeout = timeout
         self.opener = None
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
-        self.cache_file = os.path.join(self.cache_dir, "hallucination.json")
+        self.cache_file = os.path.join(self.cache_dir, "hallucination_v2.json")
+        self._last_status = None
         self._load_cache()
         self._setup_opener()
 
@@ -162,8 +163,6 @@ class HallucinationChecker(BaseScannerPlugin):
             result, network_called = self._check_package("PyPI", pkg)
             if result:
                 findings.append(result)
-            if network_called and not self.offline:
-                time.sleep(0.5)  # Rate limiting only after network req
         return findings
 
     def check_package_json(self, file_content):
@@ -189,8 +188,6 @@ class HallucinationChecker(BaseScannerPlugin):
                 result, network_called = self._check_package("npm", pkg)
                 if result:
                     findings.append(result)
-                if network_called and not self.offline:
-                    time.sleep(0.5)  # Rate limiting
         except json.JSONDecodeError:
             pass
         return findings
@@ -246,20 +243,35 @@ class HallucinationChecker(BaseScannerPlugin):
             return None, False
 
         # 3. Perform real network check
+        self._last_status = "ERROR"
         if registry == "PyPI":
             result = self._check_pypi_online(pkg_name)
-        else:
+        elif registry == "npm":
             result = self._check_npm_online(pkg_name)
+        elif registry == "crates":
+            result = self._check_crates_online(pkg_name)
+        else:
+            result = None
 
-        # 4. Update Cache (store "OK" if no finding)
-        self._set_cached(registry, pkg_name, result if result else "OK")
+        # 4. Update Cache (Only cache confirmed HTTP 200 responses as "OK" and HTTP 404/findings; NEVER cache on network error!)
+        if getattr(self, '_last_status', None) == "OK":
+            self._set_cached(registry, pkg_name, result if result else "OK")
+        elif getattr(self, '_last_status', None) == "NOT_FOUND" and result:
+            self._set_cached(registry, pkg_name, result)
+        elif result is not None:
+            self._set_cached(registry, pkg_name, result)
+
         return result, True
 
     def _check_pypi_online(self, pkg_name):
+        self._last_status = "ERROR"
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://pypi.org/pypi/{safe_pkg}/json"
         try:
             with urllib.request.urlopen(url, timeout=self.timeout) as response:
+                status_code = getattr(response, 'status', getattr(response, 'code', 200))
+                if status_code == 200:
+                    self._last_status = "OK"
                 data = json.loads(response.read().decode())
                 info = data.get('info', {})
                 releases = data.get('releases', {})
@@ -295,6 +307,7 @@ class HallucinationChecker(BaseScannerPlugin):
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
+                self._last_status = "NOT_FOUND"
                 return {
                     "package": pkg_name, 
                     "registry": "PyPI", 
@@ -302,16 +315,21 @@ class HallucinationChecker(BaseScannerPlugin):
                     "message": "Package does not exist on PyPI. High risk of AI hallucination.",
                     "suggestion": "Check for typos or hallucinated package names."
                 }
+            self._last_status = "ERROR"
         except Exception:
-            pass
+            self._last_status = "ERROR"
         return None
 
     def _check_npm_online(self, pkg_name):
+        self._last_status = "ERROR"
         safe_pkg = urllib.parse.quote(pkg_name, safe='@')
         url = f"https://registry.npmjs.org/{safe_pkg}"
         try:
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                status_code = getattr(response, 'status', getattr(response, 'code', 200))
+                if status_code == 200:
+                    self._last_status = "OK"
                 data = json.loads(response.read().decode())
                 time_data = data.get('time', {})
                 created_at_str = time_data.get('created')
@@ -339,6 +357,7 @@ class HallucinationChecker(BaseScannerPlugin):
                 return None
         except urllib.error.HTTPError as e:
             if e.code == 404:
+                self._last_status = "NOT_FOUND"
                 return {
                     "package": pkg_name, 
                     "registry": "npm", 
@@ -346,6 +365,51 @@ class HallucinationChecker(BaseScannerPlugin):
                     "message": "Package does not exist on npm registry.",
                     "suggestion": "Check if the package name is correct or hallucinated."
                 }
+            self._last_status = "ERROR"
         except Exception:
-            pass
+            self._last_status = "ERROR"
+        return None
+
+    def _check_crates_online(self, pkg_name):
+        self._last_status = "ERROR"
+        safe_pkg = urllib.parse.quote(pkg_name)
+        url = f"https://crates.io/api/v1/crates/{safe_pkg}"
+        try:
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.12'})
+            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+                status_code = getattr(response, 'status', getattr(response, 'code', 200))
+                if status_code == 200:
+                    self._last_status = "OK"
+                data = json.loads(response.read().decode())
+                crate = data.get('crate', {})
+                created_at_str = crate.get('created_at')
+                if created_at_str:
+                    try:
+                        clean_date = created_at_str.split('.')[0].rstrip('Z')
+                        created_at = datetime.fromisoformat(clean_date)
+                        age_days = (datetime.now() - created_at).days
+                        if age_days < 30:
+                            return {
+                                "package": pkg_name,
+                                "registry": "crates",
+                                "severity": "HIGH",
+                                "message": f"Package is very new ({age_days} days old). Potential hallucination or typosquatting.",
+                                "suggestion": "Verify the crate author and source code before using."
+                            }
+                    except Exception:
+                        pass
+                return None
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                self._last_status = "NOT_FOUND"
+                return {
+                    "package": pkg_name,
+                    "registry": "crates",
+                    "severity": "CRITICAL",
+                    "message": "Package does not exist on crates.io. High risk of AI hallucination.",
+                    "suggestion": "Check for typos or hallucinated crate names."
+                }
+            self._last_status = "ERROR"
+        except Exception:
+            self._last_status = "ERROR"
         return None

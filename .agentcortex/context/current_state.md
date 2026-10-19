@@ -96,8 +96,20 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [PEP508-Requirements-Parsing]: PyPI package names must start with an alphanumeric character; pip options (--extra-index-url, -r, -c, -e) and direct URLs must be filtered before querying registries to avoid Grade F false positives.
 - [Slim-Container-Git-Dependency]: Debian slim container images (e.g. python:*-slim) do not pre-install git; CI templates requiring git+https://... must include 'apt-get update && apt-get install -y --no-install-recommends git' to avoid runner failure.
 - [Plugin-Substring-Collision]: Never map short module identifiers like 'ci_cd' to 'ci' for substring matching against plugin class names, as 'ci' collides with 'hallucinationchecker' ('hallu-ci-nation'); always map to the explicit scanner identifier ('ciauditor').
+- [Cache-Poisoning-Guard]: Online registry and vulnerability scanners (`HallucinationChecker`, `VulnScanner`) must strictly distinguish authoritative HTTP 200/404 responses from transient network/timeout errors (`None`/`ERROR`), never persisting network failures as `"OK"` in local disk caches.
+- [Pragmatic-SAST-Defaults]: Developer security tools targeting AI workflows should default `--fail-on` to `HIGH`, treat mainstream AI SDKs (`openai`, `anthropic`, `langchain`) as allowed unless `blocked_sdks` is configured, and support granular `disabled_rules` + non-punitive `# ghostcheck-ignore: <rule_id>` to prevent alert fatigue.
 
 ## Ship History
+
+### Ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19
+- v1.2.12 Patch Release — DX (Developer Experience), Cache Stability & False-Positive Overhaul shipped:
+  - Fixed `HallucinationChecker` cache poisoning bug (`src/ghostcheck/checks/hallucination.py`) where transient network/timeout errors were persisted as `"OK"` for 24h; upgraded cache schema to `hallucination_v2.json`, added `crates.io` online check, removed synchronous `time.sleep` bottleneck, and added 24h TTL local disk caching (`osv_cache.json`) to `VulnScanner` (`src/ghostcheck/checks/vuln_scanner.py`).
+  - Changed `--fail-on` default in `src/ghostcheck/cli.py` to `HIGH` (so `INFO`/`LOW`/`MEDIUM` advisories exit `0` by default) and added `--compact` single-line console output (`{file}:{line}: [{severity}] {name}: {message}`) in `src/ghostcheck/reporters/console.py`.
+  - Added granular `disabled_rules = [...]` configuration support (`src/ghostcheck/config.py`, `src/ghostcheck/init.py`, `src/ghostcheck/scanner.py`), rule-targeted inline suppression (`# ghostcheck-ignore: <rule_id>`), non-punitive `CRITICAL` inline suppression, and removed `> 5` ignores `Evasion: Excessive Ignores` penalty in `src/ghostcheck/checks/tamper_auditor.py`.
+  - Eliminated false positives across 5 noisy checkers: `ShadowAIDetector` (`shadow_ai.py`) now allows standard AI SDKs (`openai`, `anthropic`, `langchain`) unless `blocked_sdks` or strict `allowed_sdks` is configured; `LethalTrifectaDetector` (`lethal_trifecta_detector.py`) no longer flags generic object `.run()`/`.call()` methods; `KillSwitchAuditor` (`killswitch_auditor.py`) scopes recursion checks to functions with agentic/LLM/network indicators; `SilentInstaller` (`silent_installer.py`) exempts standard `pip`/`setuptools`/`wheel` bootstrap upgrades; and `AIMarker` (`ai_marker.py`) downgrades `ai_unreviewed_commit` to `INFO`.
+  - Synchronized version `1.2.12` and `394 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
+- Tests: Pass (394/394 tests passed including 20 new TDD regression tests in `tests/test_dx_v1_2_12.py`, Grade A 100/100 self-scan, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (Independent Pre-Commit Reviewer subagent `a3ba7477-b4db-4f36-909f-7dca1af99eb1` verdict: PASS across Scope, Security, and Red Team).
 
 ### Ship-v1.2.11-comprehensive-audit-remediation-2026-10-16
 - v1.2.11 Patch Release — Comprehensive Tenth-Man Audit Remediation, OWASP LLM Mapping & Preset Parity shipped:

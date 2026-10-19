@@ -33,6 +33,7 @@ class VulnScanner(BaseScannerPlugin):
         return findings
 
     OSV_API_URL = "https://api.osv.dev/v1/query"
+    cache_file = None
 
     def __init__(self, offline=False, proxy=None, ssl_verify=True, timeout=10):
         self.offline = offline
@@ -40,8 +41,56 @@ class VulnScanner(BaseScannerPlugin):
         self.ssl_verify = ssl_verify
         self.timeout = timeout
         self.proxies = {"http": proxy, "https": proxy} if proxy else None
+        self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
+        self.cache_file = self.cache_file or os.path.join(self.cache_dir, "osv_cache.json")
+        self._load_cache()
+
+    def _load_cache(self):
+        self.cache = {}
+        if os.path.exists(self.cache_file):
+            try:
+                with open(self.cache_file, 'r', encoding='utf-8') as f:
+                    self.cache = json.load(f)
+            except Exception:
+                self.cache = {}
+
+    def _save_cache(self):
+        try:
+            if not os.path.exists(self.cache_dir):
+                os.makedirs(self.cache_dir, exist_ok=True)
+            with open(self.cache_file, 'w', encoding='utf-8') as f:
+                json.dump(self.cache, f, separators=(',', ':'))
+        except IOError:
+            pass
+
+    def _get_cached(self, ecosystem, package_name, version):
+        from datetime import datetime, timedelta
+        key = f"{ecosystem}:{package_name}:{version}"
+        if key in self.cache:
+            entry = self.cache[key]
+            try:
+                cached_time = datetime.fromisoformat(entry['timestamp'])
+                is_stale = datetime.now() - cached_time > timedelta(hours=24)
+                if not is_stale or self.offline:
+                    return entry['data']
+            except (ValueError, KeyError, TypeError):
+                pass
+        return None
+
+    def _set_cached(self, ecosystem, package_name, version, data):
+        from datetime import datetime
+        key = f"{ecosystem}:{package_name}:{version}"
+        self.cache[key] = {
+            "timestamp": datetime.now().isoformat(),
+            "data": data
+        }
+        self._save_cache()
 
     def _query_osv(self, package_name, version, ecosystem):
+        cached_data = self._get_cached(ecosystem, package_name, version)
+        if cached_data is not None:
+            return cached_data
+
         if self.offline or requests is None:
             return None
         
@@ -61,7 +110,9 @@ class VulnScanner(BaseScannerPlugin):
                 verify=self.ssl_verify
             )
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                self._set_cached(ecosystem, package_name, version, data)
+                return data
         except requests.RequestException as e:
             # Silently fail on network errors but could log here in debug mode
             logger.debug(f"OSV API request failed: {e}")

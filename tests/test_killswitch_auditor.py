@@ -44,6 +44,7 @@ def run(depth):
 def test_python_recursive_non_compliant(tmp_path):
     code = """
 def run():
+    agent.step()
     run()
 """
     auditor = KillSwitchAuditor()
@@ -157,6 +158,7 @@ def test_python_recursion_indirect_reference(tmp_path):
     # Async recursion, recursive function definitions
     code = """
 async def runaway():
+    await llm.invoke("query")
     await runaway()
 """
     auditor = KillSwitchAuditor()

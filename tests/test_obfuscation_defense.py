@@ -5,7 +5,7 @@ from ghostcheck.ignorefile import IgnoreMatcher
 from ghostcheck.checks.ci_auditor import CIAuditor
 
 def test_shadow_ai_python_ast_constant_folding():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config={"shadow_ai": {"blocked_sdks": ["openai", "anthropic"]}})
     
     # 1. Simple binary addition
     code_binop = "__import__('open' + 'ai')\n"
@@ -23,7 +23,7 @@ def test_shadow_ai_python_ast_constant_folding():
     assert any(f.get("name") == "unauthorized_ai_sdk_python" for f in findings_direct)
 
 def test_shadow_ai_js_concatenation_folding():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config={"shadow_ai": {"blocked_sdks": ["openai", "langchain"]}})
     
     # 1. String concatenation inside require
     code_js_concat = "const ai = require('open' + 'ai');\n"

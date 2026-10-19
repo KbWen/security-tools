@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.2.11-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.12-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-374%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-394%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,13 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛠️ v1.2.12: DX、穩定性與誤報大掃除 (DX & False-Positive Overhaul)
+*   **快取投毒修復與多套件庫支援：** 嚴格限制 `HallucinationChecker` 僅持久化快取 HTTP 200/404 權威響應（網路中斷或連線失敗永不快取），補齊 Rust crates.io 線上套件註冊表檢查，並為 OSV 漏洞庫新增本機 24 小時 TTL 快取機制。
+*   **符合人性的 CI 預設值 (`--fail-on HIGH`)：** CLI 預設 `--fail-on` 調整為 `HIGH`，一般 `INFO`/`LOW`/`MEDIUM` 建議不再中斷 CI/CD 建置流程。
+*   **非懲罰性與目標化壓制支援：** 行內 `# ghostcheck-ignore` 支援全面壓制（包含 CRITICAL）且不觸發逃逸告警；支援針對性壓制語法 `# ghostcheck-ignore: <rule_name>`，並於 `ghostcheck.toml` 支援 `disabled_rules` 設定。
+*   **簡潔單行輸出格式 (`--compact`)：** 提供標準 linter 格式 `{file}:{line}: [{severity}] {name}: {message}` 與單行簡報，便於 IDE 與終端極簡整合。
+*   **高精度誤報大掃除：** 全面校準 Shadow AI（僅在設定 `blocked_sdks` 或嚴格 `allowed_sdks` 時觸發）、Lethal Trifecta（一般 `.run()`/`.call()` 不再誤判為指令執行）、Kill Switch Auditor（遞迴必須包含 AI/LLM 上下文）與 AI Marker（未審核 commit 降級為 `INFO`）。
 
 ### 🛡️ v1.2.11: 全方位審計修復、OWASP LLM 映射對齊與框架預設強化
 *   **OWASP LLM Top 10 映射全面對齊：** 同步 `owasp_mapping.json` 與全數 24 個掃描器類別，並新增確定性分類回退解析（`Scanner._resolve_owasp_llm`），確保 `--format owasp-llm` 精準反映合規分數。
@@ -118,7 +125,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.11
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.12
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -169,13 +176,16 @@ ghostcheck scan .
 
 # 僅掃描即將 Commit 的檔案 (極速 pre-commit 模式)
 ghostcheck scan --staged
+
+# 極簡單行輸出模式 (適合 IDE 與 CI 簡報)
+ghostcheck scan . --compact
 ```
 
 ---
 
 ## 🧪 執行測試與驗證
 
-透過執行 374 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 394 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -190,7 +200,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 374 passed in 8.40s =============================
+============================= 394 passed in 19.82s =============================
 ```
 
 ---
@@ -200,7 +210,9 @@ make test
 GhostCheck 完美契合專業的開發工作流程，提供細粒度的配置：
 
 *   **精準排除：** 透過 `.ghostcheckignore` 隱式排除不需要掃描的安全路徑或測試資料。
-*   **嚴重性過濾：** 支援 `--severity [CRITICAL|HIGH|MEDIUM|LOW]` 鎖定需要處理的漏洞等級。
+*   **規則停用與目標壓制：** 支援在 `ghostcheck.toml` 設定 `disabled_rules = ["rule_name"]` 完全關閉特定規則，或使用行內註解 `# ghostcheck-ignore: rule_name` 針對性壓制特定警告。
+*   **CI 門檻與嚴重性過濾：** 支援 `--severity [CRITICAL|HIGH|MEDIUM|LOW]`。預設 `--fail-on HIGH` 僅在出現 HIGH 或 CRITICAL 風險時回傳非零退出碼。
+*   **極簡單行輸出：** 使用 `--compact` 輸出簡潔單行格式 `{file}:{line}: [{severity}] {name}: {message}`。
 *   **多國語言支援：** 可在 `ghostcheck.toml` 內自訂文件專用的安全關鍵字 (例如 `custom_safe_keywords = ["避免"]` 或 `custom_safe_keywords = ["нельзя"]`)，大幅降低非英文文件的誤判率。
 *   **自動化就緒：** 原生支援 `--format json`、`html`、`sarif` 及 `owasp-llm`，提供標準化的合規報告輸出，便於整合至 GitHub Actions 或 GitLab CI/CD。
 

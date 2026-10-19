@@ -52,7 +52,8 @@ def main():
     parent_parser = argparse.ArgumentParser(add_help=False)
     parent_parser.add_argument("--format", choices=["console", "json", "sarif", "html", "owasp-llm"], default="console", help="Output format")
     parent_parser.add_argument("--severity", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], help="Minimum severity threshold (overrides config)")
-    parent_parser.add_argument("--fail-on", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="MEDIUM", help="Minimum severity threshold to trigger non-zero exit code (default: MEDIUM)")
+    parent_parser.add_argument("--fail-on", choices=["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"], default="HIGH", help="Minimum severity threshold to trigger non-zero exit code (default: HIGH)")
+    parent_parser.add_argument("--compact", action="store_true", help="Print findings in single-line compact format")
     parent_parser.add_argument("--preset", help="Use a framework-specific scan preset (e.g., next.js, flutter)")
     parent_parser.add_argument("--no-ignore", action="store_true", help="Disable .ghostcheckignore support")
     parent_parser.add_argument("--no-color", action="store_true", help="Disable colored output")
@@ -303,10 +304,16 @@ def main():
         
         # Instantiate reporter (pass common kwargs, some might ignore them)
         try:
-            reporter = reporter_cls(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+            reporter = reporter_cls(
+                use_color=not args.no_color and not args.output,
+                use_unicode=use_unicode,
+                compact=getattr(args, 'compact', False)
+            )
         except TypeError:
-            # If reporter doesn't take those kwargs
-            reporter = reporter_cls()
+            try:
+                reporter = reporter_cls(use_color=not args.no_color and not args.output, use_unicode=use_unicode)
+            except TypeError:
+                reporter = reporter_cls()
 
         if args.output:
             try:
@@ -322,19 +329,19 @@ def main():
             if args.format == "console" and hasattr(scanner, 'cache_hits') and scanner.cache_hits > 0:
                 print(f"  ({scanner.cache_hits} files loaded from cache)")
             
-            # Summary footer for console
-            if args.format == "console":
+            # Summary footer for console (skip extra footer in compact mode as report handles it)
+            if args.format == "console" and not getattr(args, 'compact', False):
                 # Assuming ConsoleReporter has _color, otherwise just print
                 color_func = getattr(reporter, '_color', lambda text, sev: text)
                 print(f"\n{get_icon('stats', use_unicode)} {color_func('Project Security Grade:', 'INFO')} {grade} ({score_val}/100)")
                 print(f"{get_icon('info', use_unicode)} Total findings: {len(findings)}")
-                if len(findings) > 15 and (args.fail_on in (None, "MEDIUM", "INFO", "LOW")):
+                if len(findings) > 15 and (args.fail_on in ("MEDIUM", "INFO", "LOW")):
                     print(f"💡 Tip: For CI pipelines, use --fail-on HIGH to focus on actionable security risks.")
 
             if findings and not args.soft_fail:
                 # Severity order mapping
                 severity_order = {"CRITICAL": 5, "HIGH": 4, "MEDIUM": 3, "LOW": 2, "INFO": 1}
-                fail_threshold = severity_order.get((args.fail_on or "INFO").upper(), 1)
+                fail_threshold = severity_order.get((args.fail_on or "HIGH").upper(), 4)
                 
                 # Check if any finding meets or exceeds the fail-on threshold
                 should_fail = False

@@ -41,17 +41,6 @@ class TamperAuditor(BaseScannerPlugin):
                     "suggestion": "Review the file manually for hidden payloads."
                 })
 
-        # 2. Detect excessive use of ignores
-        ignore_count = content.lower().count("ghostcheck-ignore")
-        if ignore_count > 5:
-            findings.append({
-                "file": file_path,
-                "line": 1,
-                "name": "Evasion: Excessive Ignores",
-                "severity": "MEDIUM",
-                "message": f"File uses ghostcheck-ignore {ignore_count} times, which is highly suspicious.",
-                "suggestion": "Audit the file's ignores to ensure they are legitimate."
-            })
 
         # 3. Detect invalid ignore syntax hiding in strings/variables
         for i, line in enumerate(lines):

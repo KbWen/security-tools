@@ -1,8 +1,17 @@
 import pytest
-from ghostcheck.checks.shadow_ai import ShadowAIDetector
+from ghostcheck.checks.shadow_ai import (
+    ShadowAIDetector, DEFAULT_AI_SDKS_PYTHON, DEFAULT_AI_SDKS_JS, DEFAULT_IDE_EXTENSIONS
+)
+
+BLOCKED_CONFIG = {
+    "shadow_ai": {
+        "blocked_sdks": list(DEFAULT_AI_SDKS_PYTHON | DEFAULT_AI_SDKS_JS),
+        "blocked_extensions": list(DEFAULT_IDE_EXTENSIONS)
+    }
+}
 
 def test_python_ai_imports():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     # Positive case: unauthorized imports
     content = "import openai\nfrom anthropic import Anthropic\nimport langchain"
@@ -18,7 +27,7 @@ def test_python_ai_imports():
     assert len(findings_safe) == 0
 
 def test_js_ai_imports():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     # Positive cases
     content_req = "const openai = require('openai');\nconst langchain = require('langchain');"
@@ -32,7 +41,7 @@ def test_js_ai_imports():
     assert all(f["rule_id"] == "GSA-02" for f in findings_import)
 
 def test_manifest_dependencies():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     # requirements.txt
     req_content = "openai>=1.0.0\nrequests==2.31.0\nlangchain\n# this is a comment"
@@ -56,7 +65,7 @@ def test_manifest_dependencies():
     assert all(f["rule_id"] == "GSA-03" for f in findings_pkg)
 
 def test_pyproject_toml_dependencies():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     toml_content = """
     [tool.poetry.dependencies]
@@ -103,7 +112,7 @@ def test_local_llm_env_vars():
     assert "GSA-04" in rule_ids
 
 def test_vscode_extensions():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     ext_content = """{
         "recommendations": [
@@ -141,7 +150,7 @@ def test_custom_config_filtering():
     assert len(findings_url) == 0
 
 def test_shadow_ai_malformed_manifests():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
 
     # Malformed package.json
     malformed_pkg = """{
@@ -164,7 +173,7 @@ def test_shadow_ai_malformed_manifests():
     assert "fallback" in findings_ext[0]["message"]
 
 def test_shadow_ai_js_namespaces():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     # Test namespace prefix matching
     content = "import { Chat } from '@langchain/openai';"
@@ -173,7 +182,7 @@ def test_shadow_ai_js_namespaces():
     assert findings[0]["rule_id"] == "GSA-02"
 
 def test_shadow_ai_non_matching_files():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     # Text file that isn't a manifest should not run manifest scans
     content = "openai>=1.0.0"
@@ -182,15 +191,16 @@ def test_shadow_ai_non_matching_files():
 
 def test_shadow_ai_empty_config():
     # Explicitly test with None and empty dict config parameter
+    # Under v1.2.12 DX overhaul, default empty config does NOT flag standard AI SDKs
     d1 = ShadowAIDetector(config=None)
     d2 = ShadowAIDetector(config={})
     
     content = "import openai"
-    assert len(d1.scan_file("src/agent.py", content)) == 1
-    assert len(d2.scan_file("src/agent.py", content)) == 1
+    assert len(d1.scan_file("src/agent.py", content)) == 0
+    assert len(d2.scan_file("src/agent.py", content)) == 0
 
 def test_shadow_ai_comment_ignoring():
-    detector = ShadowAIDetector()
+    detector = ShadowAIDetector(config=BLOCKED_CONFIG)
     
     # Python code comments
     py_content = """
