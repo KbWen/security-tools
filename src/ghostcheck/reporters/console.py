@@ -55,8 +55,8 @@ class ConsoleReporter(BaseReporterPlugin):
                 title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
                 loc_file = f.get('file', '')
                 loc_line = f.get('line', 0)
-                msg = f.get('message', '')
-                _print(f"{loc_file}:{loc_line}: [{self._color(sev, sev)}] {title}: {msg}")
+                msg = f.get('message') or f.get('description') or f.get('remediation') or f.get('suggestion') or f.get('value_preview') or ''
+                _print(f"{loc_file}:{loc_line}: [{self._color(sev, sev)}] {title}" + (f": {msg}" if msg else ""))
             return
 
         is_compact = kwargs.get('compact', self.compact)
@@ -74,8 +74,8 @@ class ConsoleReporter(BaseReporterPlugin):
                 title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
                 loc_file = f.get('file', '')
                 loc_line = f.get('line', 0)
-                msg = f.get('message', '')
-                _print(f"{loc_file}:{loc_line}: [{self._color(sev, sev)}] {title}: {msg}")
+                msg = f.get('message') or f.get('description') or f.get('remediation') or f.get('suggestion') or f.get('value_preview') or ''
+                _print(f"{loc_file}:{loc_line}: [{self._color(sev, sev)}] {title}" + (f": {msg}" if msg else ""))
 
             summary = {}
             for f in findings:
