@@ -92,6 +92,8 @@ class HallucinationChecker(BaseScannerPlugin):
         self.opener = opener
         if self.proxy or not self.ssl_verify:
             urllib.request.install_opener(opener)
+        else:
+            urllib.request.install_opener(None)
 
     def _load_cache(self):
         self.cache = {}
@@ -383,7 +385,7 @@ class HallucinationChecker(BaseScannerPlugin):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://crates.io/api/v1/crates/{safe_pkg}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.13'})
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.14'})
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 if status_code == 200:

@@ -20,6 +20,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/scanner.py`, `src/ghostcheck/data/owasp_mapping.json`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/init.py`, `src/ghostcheck/cli.py`, `ghostcheck.toml` → `ship-v1.2.11-comprehensive-audit-remediation-2026-10-16.md` (Comprehensive Tenth-Man Audit Remediation F-01~F-09, OWASP LLM mapping alignment, preset parity, and CI SHA pinning)
 - `src/ghostcheck/cli.py`, `src/ghostcheck/config.py`, `src/ghostcheck/scanner.py`, `src/ghostcheck/reporters/console.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/shadow_ai.py`, `src/ghostcheck/checks/lethal_trifecta_detector.py`, `src/ghostcheck/checks/killswitch_auditor.py`, `src/ghostcheck/checks/tamper_auditor.py`, `src/ghostcheck/checks/silent_installer.py`, `src/ghostcheck/checks/ai_marker.py` → `ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md` (v1.2.12 DX overhaul: fixed HallucinationChecker cache poisoning, added OSV disk cache, set default --fail-on HIGH, added --compact and disabled_rules, and eliminated false positives across 5 noisy checkers)
 - `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/api_linter.py`, `src/ghostcheck/checks/entropy_scanner.py`, `src/ghostcheck/cli.py`, `src/ghostcheck/reporters/console.py` → `ship-v1.2.13-pragmatic-dx-and-circuit-breaker-2026-10-19.md` (v1.2.13 pragmatic DX polish: fast-fail offline circuit breaker, APILinter stateless JWT CSRF & MEDIUM severity, EntropyScanner SRI/DataURI/path exclusions, and -q/--quiet mode)
+- `.agents/skills/*/SKILL.md`, `src/ghostcheck/checks/hallucination.py`, `tests/test_harden_resilience.py`, `tests/test_v1_0_0_presets.py` → `ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md` (v1.2.14 skill YAML frontmatter parity & global urllib opener isolation fix for CI)
 
 ## By Pattern
 
@@ -53,6 +54,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[cache-poisoning-guard]` → `ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`
 - `[pragmatic-sast-defaults]` → `ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`
 - `[offline-circuit-breaker]` → `ship-v1.2.13-pragmatic-dx-and-circuit-breaker-2026-10-19.md`
+- `[global-opener-isolation]` → `ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md`
+- `[skill-frontmatter-parity]` → `ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md`
 
 ## By Decision
 
@@ -84,3 +87,4 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[cache-poisoning-quarantine]` → Isolate online registry cache schema (`hallucination_v2.json`, `osv_cache.json`) and never persist transient HTTP/network errors as `"OK"` (`ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`)
 - `[non-punitive-dx-defaults]` → Default `--fail-on HIGH`, opt-in `blocked_sdks` for `ShadowAIDetector`, support `disabled_rules` in `ghostcheck.toml`, and allow `# ghostcheck-ignore: <rule_id>` across all severities (`ship-v1.2.12-dx-stability-and-fp-overhaul-2026-10-19.md`)
 - `[fast-fail-offline-circuit-breaker]` → Trip `offline = True` after 2 consecutive network/timeout failures in `HallucinationChecker` and `VulnScanner` to avoid air-gapped CI hangs (`ship-v1.2.13-pragmatic-dx-and-circuit-breaker-2026-10-19.md`)
+- `[urllib-opener-reset-and-skill-frontmatter]` → Reset `urllib.request.install_opener(None)` when `HallucinationChecker` is initialized with default `proxy=None, ssl_verify=True` and prepend YAML frontmatter to all domain skills in `.agents/skills/*/SKILL.md` (`ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md`)

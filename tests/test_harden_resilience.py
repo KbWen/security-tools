@@ -29,7 +29,8 @@ def test_config_robust_merge():
     assert patterns[0]["name"] == "P1"
     assert patterns[1]["name"] == "P2"
 
-def test_proxy_propagation():
+@patch('urllib.request.install_opener')
+def test_proxy_propagation(mock_install):
     """Verify that proxy setting is propagated from config to checkers."""
     config_dict = {
         "proxy": "http://test-proxy:8080",
@@ -45,6 +46,18 @@ def test_proxy_propagation():
             plugin2 = next(p for p in scanner.scanners if 'vuln' in getattr(p, 'name', '').lower())
             assert plugin2.proxy == "http://test-proxy:8080"
             assert plugin2.proxies["http"] == "http://test-proxy:8080"
+
+def test_proxy_opener_reset_on_default_checker():
+    """Verify that instantiating a default HallucinationChecker resets urllib's global opener."""
+    import urllib.request
+    try:
+        checker_proxy = HallucinationChecker(proxy="http://bad-proxy:8080")
+        assert urllib.request._opener is not None
+
+        checker_default = HallucinationChecker()
+        assert urllib.request._opener is None
+    finally:
+        urllib.request.install_opener(None)
 
 @patch('urllib.request.install_opener')
 @patch('urllib.request.build_opener')

@@ -1,3 +1,10 @@
+---
+name: database-design
+description: Schema conventions, migration rules, index strategy, query patterns. Ensures safe and consistent database changes per ADR decisions.
+phases: [plan, implement, review, test]
+trigger: auto (when task involves creating tables, modifying schema, or writing migrations)
+---
+
 <!-- This is a SCAFFOLD skill. When /app-init runs in a downstream project, -->
 <!-- it customizes this file based on the project's ADR tech stack. -->
 <!-- If this file has NOT been customized, the AI should treat it as generic guidance. -->

@@ -1,3 +1,10 @@
+---
+name: frontend-patterns
+description: Component structure, state management, data fetching, error handling for UI. Ensures consistent frontend patterns per ADR framework choice.
+phases: [implement, review, test]
+trigger: auto (when task involves creating or modifying UI components, pages, or client-side state)
+---
+
 <!-- This is a SCAFFOLD skill. When /app-init runs in a downstream project, -->
 <!-- it customizes this file based on the project's ADR tech stack. -->
 <!-- If this file has NOT been customized, the AI should treat it as generic guidance. -->

@@ -1,3 +1,10 @@
+---
+name: auth-security
+description: Auth flow, token management, RBAC, session security. Extends security_guardrails.md with APP-specific auth patterns. MANDATORY for any auth-related change.
+phases: [plan, implement, review, test]
+trigger: auto (when task touches login, registration, password, token, session, role, permission, or access control)
+---
+
 <!-- This is a SCAFFOLD skill. When /app-init runs in a downstream project, -->
 <!-- it customizes this file based on the project's ADR tech stack. -->
 <!-- If this file has NOT been customized, the AI should treat it as generic guidance. -->

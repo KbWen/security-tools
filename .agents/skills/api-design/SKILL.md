@@ -1,3 +1,10 @@
+---
+name: api-design
+description: REST/GraphQL endpoint conventions, error format, pagination, input validation. Ensures consistent API design across the project per ADR decisions.
+phases: [implement, review, test]
+trigger: auto (when task involves creating, modifying, or deprecating API endpoints)
+---
+
 <!-- This is a SCAFFOLD skill. When /app-init runs in a downstream project, -->
 <!-- it customizes this file based on the project's ADR tech stack. -->
 <!-- If this file has NOT been customized, the AI should treat it as generic guidance. -->
