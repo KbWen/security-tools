@@ -99,8 +99,18 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Cache-Poisoning-Guard]: Online registry and vulnerability scanners (`HallucinationChecker`, `VulnScanner`) must strictly distinguish authoritative HTTP 200/404 responses from transient network/timeout errors (`None`/`ERROR`), never persisting network failures as `"OK"` in local disk caches.
 - [Pragmatic-SAST-Defaults]: Developer security tools targeting AI workflows should default `--fail-on` to `HIGH`, treat mainstream AI SDKs (`openai`, `anthropic`, `langchain`) as allowed unless `blocked_sdks` is configured, and support granular `disabled_rules` + non-punitive `# ghostcheck-ignore: <rule_id>` to prevent alert fatigue.
 - [Offline-Circuit-Breaker]: Network-dependent static analyzers should track consecutive network failures and trip into offline mode after 2 consecutive connection/timeout errors (`_consecutive_net_failures >= 2`), preventing multi-minute hangs in air-gapped or restricted CI environments without requiring complex state machines.
+- [Global-Opener-Isolation]: Never leave `urllib.request.install_opener()` side effects active when instantiating default network checkers (`proxy=None, ssl_verify=True`); reset with `urllib.request.install_opener(None)` and mock `install_opener` in proxy unit tests to prevent cross-test CI pollution.
+- [Skill-Frontmatter-Parity]: All `.agents/skills/*/SKILL.md` files must begin at line 1 with valid `---` YAML frontmatter (`name`, `description`) before any HTML scaffold comments, otherwise IDE skill loaders attempt to parse Markdown table delimiters (`|---|---|`) as YAML frontmatter.
 
 ## Ship History
+
+### Ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21
+- v1.2.14 Patch Release — Skill Frontmatter Parity & CI Opener Isolation Fix shipped:
+  - Prepended canonical YAML frontmatter (`name`, `description`, `phases`, `trigger`) at line 1 of `.agents/skills/api-design/SKILL.md`, `.agents/skills/auth-security/SKILL.md`, `.agents/skills/database-design/SKILL.md`, and `.agents/skills/frontend-patterns/SKILL.md`, and synchronized `phases`/`trigger` in `.agents/skills/red-team-adversarial/SKILL.md`, eliminating Antigravity IDE `customizations failed to load` YAML unmarshal errors.
+  - Fixed `HallucinationChecker._setup_opener` (`src/ghostcheck/checks/hallucination.py`) to call `urllib.request.install_opener(None)` when `proxy=None` and `ssl_verify=True`, patched `urllib.request.install_opener` in `tests/test_harden_resilience.py::test_proxy_propagation`, added regression test `test_proxy_opener_reset_on_default_checker`, and mocked deterministic HTTP 404 in `tests/test_v1_0_0_presets.py::test_preset_scan_filtering` to resolve GitHub Actions CI failures.
+  - Synchronized version `1.2.14` and `409 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `src/ghostcheck/checks/hallucination.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
+- Tests: Pass (409/409 tests passed, Grade A 100/100 self-scan, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (Independent Pre-Commit Reviewer subagent `a1ab0300-99fa-42ee-aa21-04aaf2d9489f` verdict: PASS).
 
 ### Ship-v1.2.13-pragmatic-dx-and-circuit-breaker-2026-10-19
 - v1.2.13 Patch Release — Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish shipped:

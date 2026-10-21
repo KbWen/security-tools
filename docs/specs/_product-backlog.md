@@ -46,6 +46,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.11 | Comprehensive Tenth-Man Audit Remediation, OWASP Mapping & Preset Parity | ✅ |
 | v1.2.12 | DX, Stability & False-Positive Overhaul | ✅ |
 | v1.2.13 | Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish | ✅ |
+| v1.2.14 | Skill Frontmatter Parity, Proxy Opener Reset & CI Resilience Hardening | ✅ |
 
 ---
 
@@ -289,3 +290,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-10-16 | 完成 v1.2.11 全方位審計修復，同步已實作功能狀態 (E7-F3, E7-F6, E8-F4, E8-F5) 與競品矩陣。 |
 | 2026-10-19 | 完成 v1.2.12 DX、穩定性與誤報大掃除 (快取投毒修復、crates 支援、OSV TTL 快取、--fail-on HIGH 預設、--compact 輸出、disabled_rules 與精準誤報校準)。 |
 | 2026-10-19 | 完成 v1.2.13 實用主義 DX、離線熔斷器與零膨脹打磨 (Hallucination & VulnScanner 離線熔斷器、APILinter/EntropyScanner 務實誤報修剪、-q/--quiet 安靜模式，408 tests 100% 通過)。 |
+| 2026-10-21 | 完成 v1.2.14 Skill Frontmatter 對齊、Proxy Opener Reset 與 CI 韌性強化 (修復 .agents/skills Frontmatter、urllib opener 洩漏重設、409 tests 100% 通過)。 |

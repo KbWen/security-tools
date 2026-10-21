@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.13-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.14-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-408%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-409%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -131,7 +131,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.13
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.14
 ```
 
 ### 🔨 Option B: Install from Source
@@ -194,7 +194,7 @@ ghostcheck scan . -q
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 408 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 409 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -209,7 +209,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 408 passed in 25.11s =============================
+============================= 409 passed in 25.11s =============================
 ```
 
 ---

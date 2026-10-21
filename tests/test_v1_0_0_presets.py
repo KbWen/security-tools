@@ -1,5 +1,8 @@
 import os
 import json
+import urllib.request
+import urllib.error
+from unittest.mock import patch
 
 # Stable TOML support
 _tomllib = None
@@ -54,7 +57,15 @@ def test_preset_scan_filtering(tmp_path):
     config_django = GhostCheckConfig(str(project_dir))
     config_django.config['preset'] = 'django'
     scanner_django = Scanner(str(project_dir), config=config_django)
-    findings_django = scanner_django.scan()
+    mock_404 = urllib.error.HTTPError(
+        "https://pypi.org/pypi/non-existent-pkg-hallucination/json",
+        404,
+        "Not Found",
+        {},
+        None
+    )
+    with patch("urllib.request.urlopen", side_effect=mock_404):
+        findings_django = scanner_django.scan()
     
     finding_names = [str(f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "unknown") for f in findings_django]
     print(f"\nDjango findings: {finding_names}")

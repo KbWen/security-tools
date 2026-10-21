@@ -1,6 +1,8 @@
 ---
 name: red-team-adversarial
 description: Adversarial security and resilience analysis — auto-triggered during /review and /test based on task classification. Provides attack surface analysis, boundary testing, auth bypass attempts, dependency chain attacks, and Beast Mode stress testing.
+phases: [review, test]
+trigger: auto (classification-based)
 ---
 
 # Red Team / Adversarial Testing
