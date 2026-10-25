@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.14-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.15-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-409%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-417%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,20 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛠️ v1.2.15: Tenth-Man Deep Audit, Concurrency Hardening & Baseline Alignment
+*   **Results Cache Metadata Isolation:** `Scanner` cache integrity hash now covers `offline`, `version`, `disabled_rules`, and `exclude_patterns`. Toggling `--offline` or updating GhostCheck versions safely invalidates stale results cache entries.
+*   **Baseline Default Auto-Discovery & Ignore Alignment:** Automatically discovers both `.ghostcheckbaseline` and `.ghostcheck-baseline.json` in project root without explicit flags, and adds `.ghostcheck-baseline.json` to default ignore rules.
+*   **CLI Workflow Flags (`init --hook`, `honeypot --clean`):** Officially implements `ghostcheck init --hook` to scaffold Git pre-commit security hooks, and `ghostcheck honeypot --clean` to safely remove canary honeypots and clean `.gitignore` / `.ghostcheckignore` registrations without requiring `--url`.
+*   **Exclude Patterns Wiring & .env Preservation:** Properly passes configured `exclude_patterns` into `IgnoreMatcher`, unblocking custom exclusions in `ghostcheck.toml`, while swapping default `".env*"` for `"*.canary"` so environment files remain auditable by secret scanners.
+*   **Thread-Safe Concurrency & Atomic File Persistence:** Eliminates shared mutable state race conditions in `HallucinationChecker` and `VulnScanner` via `threading.Lock()` and atomic temporary file replacement (`os.replace`).
+*   **Cross-Platform Case-Safe Ignore Matching:** Normalizes directory prefix matching on case-insensitive filesystems (Windows) while preserving relative file casing.
+*   **Preset Module Parity & SecretValidator Opt-In:** Ensures `entropy`, `vuln`, and `tamper` are active across all application presets (`next.js`, `flutter`, `django`, `fastapi`, `terraform`), and makes live secret validation opt-in with strict whitespace sanitization.
+
+### 🛠️ v1.2.14: Skill Frontmatter Parity, Proxy Opener Reset & CI Resilience Hardening
+*   **Skill Frontmatter Specification Parity:** Aligned metadata frontmatter across all `.agents/skills/*/SKILL.md` files to adhere to specification guidelines.
+*   **Proxy Opener Leak Prevention:** Guaranteed explicit reset of global urllib openers between proxy and direct network scans.
+*   **CI Resilience Hardening:** Hardened CI and test suite execution against transient environment glitches.
 
 ### 🛠️ v1.2.13: Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish
 *   **Network Fast-Fail Circuit Breaker:** Both `HallucinationChecker` and `VulnScanner` incorporate an automatic circuit breaker. When 2 consecutive network timeouts or connection failures occur, the scanner dynamically trips to offline mode, preventing painful hangs in air-gapped or poor-network environments while caching confirmed online responses.
@@ -131,7 +145,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.14
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.15
 ```
 
 ### 🔨 Option B: Install from Source

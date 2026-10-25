@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.2.14-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.2.15-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-409%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-417%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,20 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛠️ v1.2.15: Tenth-Man 深度審計、並行加固與 Baseline 對齊 (Tenth-Man Deep Audit & Concurrency Hardening)
+*   **結果快取隔離 (Results Cache Metadata Isolation)：** `Scanner` 結果快取完整雜湊納入 `offline`、`version`、`disabled_rules` 與 `exclude_patterns`，切換離線模式或版本升級時自動使舊快取失效，杜絕跨環境快取污染。
+*   **Baseline 預設自動偵測與忽略對齊：** 自動發現專案根目錄下之 `.ghostcheckbaseline` 與 `.ghostcheck-baseline.json`，並同步將 `.ghostcheck-baseline.json` 納入預設忽略清單。
+*   **完整 CLI 工作流旗標 (`init --hook`, `honeypot --clean`)：** 正式實作 `ghostcheck init --hook` 自動安裝 Git pre-commit 檢查鉤子；提供 `ghostcheck honeypot --clean` 快速清除誘餌 Canary 檔案並清理 `.gitignore` 與 `.ghostcheckignore` 登記項目。
+*   **排除規則串接與 .env 保留：** 將設定檔中之 `exclude_patterns` 正式串接至 `IgnoreMatcher`，並將預設排除之 `".env*"` 調整為 `"*.canary"`，確保真實 `.env` 能被機密掃描器正常稽核。
+*   **多執行緒並行安全與原子快取寫入：** 為 `HallucinationChecker` 與 `VulnScanner` 導入 `threading.Lock()` 鎖定與獨立狀態處理，並全面採用臨時檔原子取代 (`os.replace`)，防止並行快取損毀與狀態覆蓋。
+*   **跨平台大小寫安全忽略匹配：** 在 Windows 環境下針對目錄前綴比對實現不區分大小寫匹配，同時保留原始路徑大小寫。
+*   **框架 Preset 模組補齊與 SecretValidator 顯式啟用：** 為所有主流框架預設補齊 `entropy`、`vuln`、`tamper` 掃描模組；將線上機密即時驗證調整為顯式啟用 (`validate_secrets`) 並嚴格過濾空白字元防範外洩。
+
+### 🛠️ v1.2.14: Skill Frontmatter 對齊、Proxy Opener Reset 與 CI 韌性強化 (Skill Parity & CI Resilience)
+*   **Skill Frontmatter 規範對齊：** 全面校準 `.agents/skills/*/SKILL.md` 的 metadata frontmatter 格式與結構。
+*   **Proxy Opener 洩漏防護：** 確保在 Proxy 與直連掃描切換時正確重設全域 urllib opener。
+*   **CI 韌性全面強化：** 加固 CI 與測試管線，確保不同環境下 100% 穩定運行。
 
 ### 🛠️ v1.2.13: 實用主義 DX、離線熔斷器與零膨脹打磨 (Pragmatic DX & Offline Circuit Breaker)
 *   **網路快速失敗熔斷器 (Fast-Fail Circuit Breaker)：** `HallucinationChecker` 與 `VulnScanner` 內建自動熔斷保護。當網路發生連續 2 次超時或連線失敗，自動切換至離線模式，徹底告別內網、隔離區或弱網環境下的卡頓與無謂等待。
@@ -130,7 +144,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.14
+pip install git+https://github.com/KbWen/security-tools.git@v1.2.15
 ```
 
 ### 🔨 選項 B: 從原始碼安裝

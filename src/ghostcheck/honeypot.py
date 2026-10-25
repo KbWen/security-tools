@@ -1,5 +1,8 @@
 import os
+import logging
 from typing import Tuple
+
+logger = logging.getLogger(__name__)
 
 class GhostCheckHoneypotGenerator:
 
@@ -92,6 +95,86 @@ class GhostCheckHoneypotGenerator:
         return True, f"Successfully created {len(created_files)} honeypot files: {', '.join(created_files)} and registered them in ignores."
 
     @classmethod
+    def clean(cls, target_path: str) -> Tuple[bool, str]:
+        """
+        Remove deployed decoy canary files and clean ignore entries.
+        """
+        target_abs = os.path.abspath(target_path)
+        removed = []
+        if os.path.exists(target_abs):
+            for filename in cls.DECOY_FILES.keys():
+                file_path = os.path.join(target_abs, filename)
+                if os.path.exists(file_path):
+                    try:
+                        os.remove(file_path)
+                        removed.append(filename)
+                    except Exception as e:
+                        logger.debug(f"Failed to remove honeypot file {file_path}: {e}")
+
+        # Clean from local ignores
+        local_entries = list(cls.DECOY_FILES.keys())
+        cls._clean_ignore_file(target_abs, ".gitignore", local_entries)
+        cls._clean_ignore_file(target_abs, ".ghostcheckignore", local_entries)
+
+        # Clean from root-level ignores if target_path is subdirectory
+        repo_root = cls._find_repo_root(target_abs)
+        if repo_root != target_abs:
+            root_relative_entries = []
+            for fn in cls.DECOY_FILES.keys():
+                rel_path = os.path.relpath(os.path.join(target_abs, fn), repo_root).replace(os.sep, "/")
+                root_relative_entries.append(rel_path)
+            cls._clean_ignore_file(repo_root, ".gitignore", root_relative_entries)
+            cls._clean_ignore_file(repo_root, ".ghostcheckignore", root_relative_entries)
+
+        return True, f"Cleaned {len(removed)} honeypot file(s)."
+
+    @classmethod
+    def _clean_ignore_file(cls, target_dir: str, ignore_filename: str, entries_to_remove: list):
+        ignore_path = os.path.join(target_dir, ignore_filename)
+        if not os.path.exists(ignore_path):
+            return
+        try:
+            with open(ignore_path, "r", encoding="utf-8") as f:
+                lines = [line.rstrip("\r\n") for line in f]
+
+            remove_set = set()
+            for e in entries_to_remove:
+                remove_set.add(e)
+                remove_set.add(f"./{e}")
+                remove_set.add(f"/{e}")
+
+            new_lines = []
+            for line in lines:
+                stripped = line.strip()
+                if stripped in remove_set:
+                    continue
+                new_lines.append(line)
+
+            # Remove isolated "# GhostCheck Canary Honeypots" header if no canary entries remain
+            cleaned_lines = []
+            for i, line in enumerate(new_lines):
+                if line.strip() == "# GhostCheck Canary Honeypots":
+                    has_canary = False
+                    for next_line in new_lines[i+1:]:
+                        st = next_line.strip()
+                        if st.startswith("#"):
+                            break
+                        if any(k in st for k in cls.DECOY_FILES.keys()):
+                            has_canary = True
+                            break
+                    if not has_canary:
+                        continue
+                cleaned_lines.append(line)
+
+            content = "\n".join(cleaned_lines)
+            if cleaned_lines and not content.endswith("\n"):
+                content += "\n"
+            with open(ignore_path, "w", encoding="utf-8") as f:
+                f.write(content)
+        except Exception as e:
+            logger.debug(f"Failed to clean ignore file {ignore_path}: {e}")
+
+    @classmethod
     def _update_ignore_file(cls, target_path: str, ignore_filename: str, files_to_ignore: list):
         ignore_path = os.path.join(target_path, ignore_filename)
         
@@ -101,8 +184,8 @@ class GhostCheckHoneypotGenerator:
             try:
                 with open(ignore_path, "r", encoding="utf-8") as f:
                     existing_lines = [line.strip() for line in f.readlines()]
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to read ignore file {ignore_path}: {e}")
 
         # Append missing files
         missing_ignores = []
@@ -120,6 +203,5 @@ class GhostCheckHoneypotGenerator:
                     f.write("# GhostCheck Canary Honeypots\n")
                     for fn in missing_ignores:
                         f.write(f"{fn}\n")
-            except Exception:
-                pass
-
+            except Exception as e:
+                logger.debug(f"Failed to append to ignore file {ignore_path}: {e}")

@@ -1,6 +1,9 @@
 import os
 import json
+import logging
 from .presets.manager import PresetManager
+
+logger = logging.getLogger(__name__)
 
 class GhostCheckInitializer:
     DEFAULT_CONFIG_TEMPLATE = """# GhostCheck Configuration File
@@ -58,7 +61,7 @@ project_type = "{project_type}"
         # Default excludes based on project type
         excludes = [
             ".git", "__pycache__", "venv", "node_modules", ".ghostcheck", 
-            "ghostcheck-report*", ".env*", "*.lock", "package-lock.json",
+            "ghostcheck-report*", "*.canary", "*.lock", "package-lock.json",
             ".next", ".firebase", ".antigravity*", "dist", "build"
         ]
         if project_type == "python":
@@ -193,3 +196,20 @@ ghostcheck-scan:
         with open(ci_path, "w", encoding='utf-8') as f:
             f.write(content)
         return True, f"GitLab CI generated at {ci_path}"
+
+    def install_pre_commit_hook(self):
+        hooks_dir = os.path.join(self.project_root, ".git", "hooks")
+        try:
+            os.makedirs(hooks_dir, exist_ok=True)
+            hook_path = os.path.join(hooks_dir, "pre-commit")
+            content = "#!/bin/sh\n# GhostCheck Pre-Commit Security Hook\nghostcheck scan --staged\n"
+            with open(hook_path, "w", encoding="utf-8", newline="\n") as f:
+                f.write(content)
+            try:
+                os.chmod(hook_path, 0o755)
+            except OSError as e:
+                logger.debug(f"Could not chmod pre-commit hook: {e}")
+            return True, f"Git pre-commit hook installed at {hook_path}"
+        except OSError as e:
+            logger.debug(f"Failed to install pre-commit hook: {e}")
+            return False, f"Failed to install Git pre-commit hook: {e}"

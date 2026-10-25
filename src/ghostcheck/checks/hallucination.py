@@ -7,8 +7,12 @@ import urllib.parse
 import time
 from datetime import datetime, timedelta
 import hashlib
+import threading
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class HallucinationChecker(BaseScannerPlugin):
 
@@ -66,6 +70,7 @@ class HallucinationChecker(BaseScannerPlugin):
         self.opener = None
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = os.path.join(self.cache_dir, "hallucination_v2.json")
+        self._cache_lock = threading.Lock()
         self._last_status = None
         self._consecutive_net_failures = 0
         self._load_cache()
@@ -96,27 +101,32 @@ class HallucinationChecker(BaseScannerPlugin):
             urllib.request.install_opener(None)
 
     def _load_cache(self):
-        self.cache = {}
-        if os.path.exists(self.cache_file):
-            try:
-                with open(self.cache_file, 'r', encoding='utf-8') as f:
-                    content = f.read()
-                    data = json.loads(content)
-                    # Verify integrity if hash exists
-                    if 'integrity' in data:
-                        clean_data = data.copy()
-                        stored_hash = clean_data.pop('integrity')
-                        current_hash = hashlib.sha256(json.dumps(clean_data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-                        if stored_hash != current_hash:
-                            if self.logger: self.logger.warning("Cache integrity check failed. Involving new cache.")
-                            self.cache = {}
-                            return
-                        data = clean_data
-                    self.cache = data
-            except (json.JSONDecodeError, IOError):
-                pass
+        with self._cache_lock:
+            self.cache = {}
+            if os.path.exists(self.cache_file):
+                try:
+                    with open(self.cache_file, 'r', encoding='utf-8') as f:
+                        content = f.read()
+                        data = json.loads(content)
+                        # Verify integrity if hash exists
+                        if 'integrity' in data:
+                            clean_data = data.copy()
+                            stored_hash = clean_data.pop('integrity')
+                            current_hash = hashlib.sha256(json.dumps(clean_data, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                            if stored_hash != current_hash:
+                                if self.logger: self.logger.warning("Cache integrity check failed. Involving new cache.")
+                                self.cache = {}
+                                return
+                            data = clean_data
+                        self.cache = data
+                except (json.JSONDecodeError, IOError, OSError) as e:
+                    logger.debug(f"Failed to load hallucination cache: {e}")
 
     def _save_cache(self):
+        with self._cache_lock:
+            self._save_cache_unlocked()
+
+    def _save_cache_unlocked(self):
         try:
             if not os.path.exists(self.cache_dir):
                 os.makedirs(self.cache_dir, exist_ok=True)
@@ -129,35 +139,42 @@ class HallucinationChecker(BaseScannerPlugin):
             integrity_hash = hashlib.sha256(json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
             cache_to_save['integrity'] = integrity_hash
 
-            with open(self.cache_file, 'w', encoding='utf-8') as f:
+            tmp_file = f"{self.cache_file}.tmp.{os.getpid()}.{threading.get_ident()}"
+            with open(tmp_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_to_save, f, separators=(',', ':'))
-        except IOError:
-            pass
+            os.replace(tmp_file, self.cache_file)
+        except (IOError, OSError) as e:
+            logger.debug(f"Failed to save hallucination cache: {e}")
 
     def _get_cached(self, registry, pkg_name):
         key = f"{registry}:{pkg_name}"
-        if key in self.cache:
-            entry = self.cache[key]
-            try:
-                cached_time = datetime.fromisoformat(entry['timestamp'])
-                is_stale = datetime.now() - cached_time > timedelta(hours=24)
-                
-                if not is_stale:
-                    return entry['data'], False
-                elif self.offline:
-                    # Stale but in offline mode, return with warning flag
-                    return entry['data'], True
-            except (ValueError, KeyError):
-                pass
+        with self._cache_lock:
+            if key in self.cache:
+                entry = self.cache[key]
+                try:
+                    cached_time = datetime.fromisoformat(entry['timestamp'])
+                    is_stale = datetime.now() - cached_time > timedelta(hours=24)
+
+                    if not is_stale:
+                        return entry['data'], False
+                    elif self.offline:
+                        # Stale but in offline mode, return with warning flag
+                        return entry['data'], True
+                except (ValueError, KeyError, TypeError):
+                    pass
         return None, False
 
     def _set_cached(self, registry, pkg_name, data):
+        with self._cache_lock:
+            self._set_cached_unlocked(registry, pkg_name, data)
+
+    def _set_cached_unlocked(self, registry, pkg_name, data):
         key = f"{registry}:{pkg_name}"
         self.cache[key] = {
             "timestamp": datetime.now().isoformat(),
             "data": data
         }
-        self._save_cache()
+        self._save_cache_unlocked()
 
     def check_requirements(self, file_content):
         findings = []
@@ -246,44 +263,44 @@ class HallucinationChecker(BaseScannerPlugin):
             return None, False
 
         # 3. Perform real network check
-        self._last_status = "ERROR"
+        local_status = "ERROR"
         if registry == "PyPI":
-            result = self._check_pypi_online(pkg_name)
+            result, local_status = self._check_pypi_online_status(pkg_name)
         elif registry == "npm":
-            result = self._check_npm_online(pkg_name)
+            result, local_status = self._check_npm_online_status(pkg_name)
         elif registry == "crates":
-            result = self._check_crates_online(pkg_name)
+            result, local_status = self._check_crates_online_status(pkg_name)
         else:
             result = None
+            local_status = "ERROR"
 
-        if getattr(self, '_last_status', None) == "ERROR":
-            self._consecutive_net_failures += 1
-            if self._consecutive_net_failures >= 2:
-                self.offline = True
-        else:
-            self._consecutive_net_failures = 0
+        with self._cache_lock:
+            self._last_status = local_status
+            if local_status == "ERROR":
+                self._consecutive_net_failures += 1
+                if self._consecutive_net_failures >= 2:
+                    self.offline = True
+            else:
+                self._consecutive_net_failures = 0
 
-        # 4. Update Cache (Only cache confirmed HTTP 200 responses as "OK" and HTTP 404/findings; NEVER cache on network error!)
-        if getattr(self, '_last_status', None) == "OK":
-            self._set_cached(registry, pkg_name, result if result else "OK")
-        elif getattr(self, '_last_status', None) == "NOT_FOUND" and result:
-            self._set_cached(registry, pkg_name, result)
-        elif result is not None:
-            self._set_cached(registry, pkg_name, result)
+            # 4. Update Cache (Only cache confirmed HTTP 200 responses as "OK" and HTTP 404/findings; NEVER cache on network error!)
+            if local_status == "OK":
+                self._set_cached_unlocked(registry, pkg_name, result if result else "OK")
+            elif local_status == "NOT_FOUND" and result:
+                self._set_cached_unlocked(registry, pkg_name, result)
+            elif result is not None:
+                self._set_cached_unlocked(registry, pkg_name, result)
 
         return result, True
 
-    def _check_pypi_online(self, pkg_name):
-        self._last_status = "ERROR"
+    def _check_pypi_online_status(self, pkg_name):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://pypi.org/pypi/{safe_pkg}/json"
         try:
             with urllib.request.urlopen(url, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
-                if status_code == 200:
-                    self._last_status = "OK"
+                status = "OK" if status_code == 200 else "ERROR"
                 data = json.loads(response.read().decode())
-                info = data.get('info', {})
                 releases = data.get('releases', {})
                 
                 upload_times = []
@@ -304,7 +321,7 @@ class HallucinationChecker(BaseScannerPlugin):
                             "severity": "HIGH", 
                             "message": f"Package is very new ({age_days} days old). Potential hallucination or typosquatting.",
                             "suggestion": "Verify the package author and source code before using."
-                        }
+                        }, status
                     elif age_days < 90:
                         return {
                             "package": pkg_name, 
@@ -312,34 +329,37 @@ class HallucinationChecker(BaseScannerPlugin):
                             "severity": "MEDIUM", 
                             "message": f"Package is relatively new ({age_days} days old).",
                             "suggestion": "Monitor for updates and community feedback."
-                        }
+                        }, status
                 
-                return None
+                return None, status
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                self._last_status = "NOT_FOUND"
                 return {
                     "package": pkg_name, 
                     "registry": "PyPI", 
                     "severity": "CRITICAL", 
                     "message": "Package does not exist on PyPI. High risk of AI hallucination.",
                     "suggestion": "Check for typos or hallucinated package names."
-                }
-            self._last_status = "ERROR"
-        except Exception:
-            self._last_status = "ERROR"
-        return None
+                }, "NOT_FOUND"
+            return None, "ERROR"
+        except Exception as e:
+            logger.debug(f"PyPI check failed for {pkg_name}: {e}")
+            return None, "ERROR"
 
-    def _check_npm_online(self, pkg_name):
-        self._last_status = "ERROR"
+    def _check_pypi_online(self, pkg_name):
+        res, status = self._check_pypi_online_status(pkg_name)
+        with self._cache_lock:
+            self._last_status = status
+        return res
+
+    def _check_npm_online_status(self, pkg_name):
         safe_pkg = urllib.parse.quote(pkg_name, safe='@')
         url = f"https://registry.npmjs.org/{safe_pkg}"
         try:
             req = urllib.request.Request(url)
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
-                if status_code == 200:
-                    self._last_status = "OK"
+                status = "OK" if status_code == 200 else "ERROR"
                 data = json.loads(response.read().decode())
                 time_data = data.get('time', {})
                 created_at_str = time_data.get('created')
@@ -354,7 +374,7 @@ class HallucinationChecker(BaseScannerPlugin):
                             "severity": "HIGH", 
                             "message": f"Package is very new ({age_days} days old).",
                             "suggestion": "Verify the package author and source code."
-                        }
+                        }, status
                     elif age_days < 90:
                         return {
                             "package": pkg_name, 
@@ -362,34 +382,37 @@ class HallucinationChecker(BaseScannerPlugin):
                             "severity": "MEDIUM", 
                             "message": f"Package is relatively new ({age_days} days old).",
                             "suggestion": "Check community adoption and issue tracker."
-                        }
+                        }, status
                 
-                return None
+                return None, status
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                self._last_status = "NOT_FOUND"
                 return {
                     "package": pkg_name, 
                     "registry": "npm", 
                     "severity": "CRITICAL", 
                     "message": "Package does not exist on npm registry.",
                     "suggestion": "Check if the package name is correct or hallucinated."
-                }
-            self._last_status = "ERROR"
-        except Exception:
-            self._last_status = "ERROR"
-        return None
+                }, "NOT_FOUND"
+            return None, "ERROR"
+        except Exception as e:
+            logger.debug(f"npm check failed for {pkg_name}: {e}")
+            return None, "ERROR"
 
-    def _check_crates_online(self, pkg_name):
-        self._last_status = "ERROR"
+    def _check_npm_online(self, pkg_name):
+        res, status = self._check_npm_online_status(pkg_name)
+        with self._cache_lock:
+            self._last_status = status
+        return res
+
+    def _check_crates_online_status(self, pkg_name):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://crates.io/api/v1/crates/{safe_pkg}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.14'})
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.15'})
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
-                if status_code == 200:
-                    self._last_status = "OK"
+                status = "OK" if status_code == 200 else "ERROR"
                 data = json.loads(response.read().decode())
                 crate = data.get('crate', {})
                 created_at_str = crate.get('created_at')
@@ -405,21 +428,26 @@ class HallucinationChecker(BaseScannerPlugin):
                                 "severity": "HIGH",
                                 "message": f"Package is very new ({age_days} days old). Potential hallucination or typosquatting.",
                                 "suggestion": "Verify the crate author and source code before using."
-                            }
-                    except Exception:
-                        pass
-                return None
+                            }, status
+                    except Exception as e:
+                        logger.debug(f"Error parsing crate timestamp: {e}")
+                return None, status
         except urllib.error.HTTPError as e:
             if e.code == 404:
-                self._last_status = "NOT_FOUND"
                 return {
                     "package": pkg_name,
                     "registry": "crates",
                     "severity": "CRITICAL",
                     "message": "Package does not exist on crates.io. High risk of AI hallucination.",
                     "suggestion": "Check for typos or hallucinated crate names."
-                }
-            self._last_status = "ERROR"
-        except Exception:
-            self._last_status = "ERROR"
-        return None
+                }, "NOT_FOUND"
+            return None, "ERROR"
+        except Exception as e:
+            logger.debug(f"crates check failed for {pkg_name}: {e}")
+            return None, "ERROR"
+
+    def _check_crates_online(self, pkg_name):
+        res, status = self._check_crates_online_status(pkg_name)
+        with self._cache_lock:
+            self._last_status = status
+        return res

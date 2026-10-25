@@ -47,6 +47,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.12 | DX, Stability & False-Positive Overhaul | ✅ |
 | v1.2.13 | Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish | ✅ |
 | v1.2.14 | Skill Frontmatter Parity, Proxy Opener Reset & CI Resilience Hardening | ✅ |
+| v1.2.15 | Tenth-Man 深度審計、並行加固與 Baseline 對齊 | ✅ |
 
 ---
 
@@ -291,3 +292,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-10-19 | 完成 v1.2.12 DX、穩定性與誤報大掃除 (快取投毒修復、crates 支援、OSV TTL 快取、--fail-on HIGH 預設、--compact 輸出、disabled_rules 與精準誤報校準)。 |
 | 2026-10-19 | 完成 v1.2.13 實用主義 DX、離線熔斷器與零膨脹打磨 (Hallucination & VulnScanner 離線熔斷器、APILinter/EntropyScanner 務實誤報修剪、-q/--quiet 安靜模式，408 tests 100% 通過)。 |
 | 2026-10-21 | 完成 v1.2.14 Skill Frontmatter 對齊、Proxy Opener Reset 與 CI 韌性強化 (修復 .agents/skills Frontmatter、urllib opener 洩漏重設、409 tests 100% 通過)。 |
+| 2026-10-25 | 完成 v1.2.15 Tenth-Man 深度審計與並行加固 (結果快取隔離、Baseline 自動偵測與忽略對齊、init --hook / honeypot --clean CLI 旗標補齊、exclude_patterns 與 .env 保留、CLI 路徑設定解析、多執行緒檢查器鎖定與原子快取寫入、Windows 大小寫安全忽略匹配、Preset 模組補齊與 SecretValidator 顯式啟用，417 tests 100% 通過)。 |

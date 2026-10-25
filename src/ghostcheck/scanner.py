@@ -67,11 +67,13 @@ class Scanner:
         self.ignore_enabled = ignore_enabled
         self.offline = offline
         self.config = config
-        # Load baseline: prefer explicit path, fallback to .ghostcheckbaseline in root
+        # Load baseline: prefer explicit path, fallback to .ghostcheckbaseline or .ghostcheck-baseline.json in root
         if not baseline_path:
-            auto_baseline = os.path.join(self.project_root, '.ghostcheckbaseline')
-            if os.path.exists(auto_baseline):
-                baseline_path = auto_baseline
+            for candidate in ('.ghostcheckbaseline', '.ghostcheck-baseline.json'):
+                auto_baseline = os.path.join(self.project_root, candidate)
+                if os.path.exists(auto_baseline):
+                    baseline_path = auto_baseline
+                    break
                 
         self.baseline_path = baseline_path
         self.baseline_findings = set()
@@ -89,8 +91,8 @@ class Scanner:
                         rfp = fnd.get('robust_fingerprint')
                         if rfp:
                             self.baseline_findings.add(rfp)
-            except (IOError, json.JSONDecodeError, KeyError):
-                pass
+            except (IOError, json.JSONDecodeError, KeyError) as e:
+                logger.debug(f"Failed to load baseline from {baseline_path}: {e}")
 
         self.preset_manager = PresetManager()
         self.active_preset = None
@@ -134,9 +136,15 @@ class Scanner:
 
         # AC-14: Ignore Handling
         ignore_file = os.path.join(self.project_root, '.ghostcheckignore')
+        cfg_excludes = []
+        if self.config and ignore_enabled and hasattr(self.config, 'get'):
+            raw_excludes = self.config.get('exclude_patterns', [])
+            if isinstance(raw_excludes, list):
+                cfg_excludes = [str(p) for p in raw_excludes if p]
         self.ignore_matcher = IgnoreMatcher(
             ignore_file if ignore_enabled else None,
-            base_path=self.project_root
+            base_path=self.project_root,
+            patterns=cfg_excludes
         )
 
         self.plugin_manager = PluginManager()
@@ -171,10 +179,11 @@ class Scanner:
         self.plugin_loader.load_plugins()
         
         self.context_auditor = ContextAuditor(config=self.config)
+        validate_secrets = bool(self.config.get('validate_secrets', False)) if self.config and hasattr(self.config, 'get') else False
         self.secret_validator = SecretValidator(
-            enabled=not offline, 
-            proxy=proxy, 
-            ssl_verify=ssl_verify, 
+            enabled=(not offline and validate_secrets),
+            proxy=proxy,
+            ssl_verify=ssl_verify,
             timeout=timeout
         )
 
@@ -514,6 +523,20 @@ class Scanner:
             
         return False
 
+    def _get_cache_meta(self) -> dict:
+        preset_info = self.config.get("preset", "none") if self.config and hasattr(self.config, "get") else "none"
+        checks = self.config.get("enabled_checks", []) if self.config and hasattr(self.config, "get") else []
+        disabled = self.config.get("disabled_rules", []) if self.config and hasattr(self.config, "get") else []
+        excludes = self.config.get("exclude_patterns", []) if self.config and hasattr(self.config, "get") else []
+        return {
+            "version": str(getattr(self, "version", __version__)),
+            "offline": bool(getattr(self, "offline", False)),
+            "preset": preset_info,
+            "checks": list(checks) if isinstance(checks, (list, tuple)) else [],
+            "disabled_rules": sorted(str(r).strip().lower() for r in disabled if r) if isinstance(disabled, (list, tuple)) else [],
+            "exclude_patterns": sorted(str(p).strip() for p in excludes if p) if isinstance(excludes, (list, tuple)) else [],
+        }
+
     def _load_results_cache(self) -> dict:
         if os.path.exists(self.results_cache_file):
             try:
@@ -522,9 +545,7 @@ class Scanner:
                     # AC-S3: Use same stable separators for verification
                     if 'integrity' in data:
                         stored_hash = data.pop('integrity')
-                        # Include active preset and enabled checks in integrity check to prevent cross-preset cache hits
-                        preset_info = self.config.get("preset", "none") if self.config else "none"
-                        meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", []) if self.config else []}
+                        meta = self._get_cache_meta()
                         current_hash = hashlib.sha256((json.dumps(data, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
                         if stored_hash != current_hash:
                             return {}
@@ -542,9 +563,8 @@ class Scanner:
             if 'integrity' in cache_to_save:
                 del cache_to_save['integrity']
             
-            # Include preset metadata in integrity hash
-            preset_info = self.config.get("preset", "none") if self.config else "none"
-            meta = {"preset": preset_info, "checks": self.config.get("enabled_checks", []) if self.config else []}
+            # Include preset and environment metadata in integrity hash
+            meta = self._get_cache_meta()
             
             integrity_hash = hashlib.sha256((json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
             cache_to_save['integrity'] = integrity_hash

@@ -18,11 +18,14 @@ class SecretValidator:
         if not self.enabled or requests is None:
             return None
             
-        token = finding.get('_raw_value') or finding.get('context')
+        token = finding.get('_raw_value')
+        if not isinstance(token, str) or not token.strip() or any(c in token for c in ('\n', '\r', ' ', '\t')):
+            return None
+
         name = finding.get('name', '')
         
         # Example validation for OpenAI
-        if "openai" in name.lower() or (token and token.startswith("sk-")):
+        if "openai" in name.lower() or token.startswith("sk-"):
             return self._validate_openai(token)
             
         return None

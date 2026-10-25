@@ -1,10 +1,11 @@
 import json
+import os
+import threading
+import logging
 try:
     import requests
 except ImportError:
     requests = None
-import os
-import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 
@@ -44,48 +45,59 @@ class VulnScanner(BaseScannerPlugin):
         self._consecutive_net_failures = 0
         self.cache_dir = os.path.expanduser("~/.ghostcheck/cache")
         self.cache_file = self.cache_file or os.path.join(self.cache_dir, "osv_cache.json")
+        self._cache_lock = threading.Lock()
         self._load_cache()
 
     def _load_cache(self):
-        self.cache = {}
-        if os.path.exists(self.cache_file):
-            try:
-                with open(self.cache_file, 'r', encoding='utf-8') as f:
-                    self.cache = json.load(f)
-            except Exception:
-                self.cache = {}
+        with self._cache_lock:
+            self.cache = {}
+            if os.path.exists(self.cache_file):
+                try:
+                    with open(self.cache_file, 'r', encoding='utf-8') as f:
+                        self.cache = json.load(f)
+                except Exception as e:
+                    logger.debug(f"Failed to load OSV cache: {e}")
+                    self.cache = {}
 
     def _save_cache(self):
+        with self._cache_lock:
+            self._save_cache_unlocked()
+
+    def _save_cache_unlocked(self):
         try:
             if not os.path.exists(self.cache_dir):
                 os.makedirs(self.cache_dir, exist_ok=True)
-            with open(self.cache_file, 'w', encoding='utf-8') as f:
+            tmp_file = f"{self.cache_file}.tmp.{os.getpid()}.{threading.get_ident()}"
+            with open(tmp_file, 'w', encoding='utf-8') as f:
                 json.dump(self.cache, f, separators=(',', ':'))
-        except IOError:
-            pass
+            os.replace(tmp_file, self.cache_file)
+        except (IOError, OSError) as e:
+            logger.debug(f"Failed to save OSV cache: {e}")
 
     def _get_cached(self, ecosystem, package_name, version):
         from datetime import datetime, timedelta
         key = f"{ecosystem}:{package_name}:{version}"
-        if key in self.cache:
-            entry = self.cache[key]
-            try:
-                cached_time = datetime.fromisoformat(entry['timestamp'])
-                is_stale = datetime.now() - cached_time > timedelta(hours=24)
-                if not is_stale or self.offline:
-                    return entry['data']
-            except (ValueError, KeyError, TypeError):
-                pass
+        with self._cache_lock:
+            if key in self.cache:
+                entry = self.cache[key]
+                try:
+                    cached_time = datetime.fromisoformat(entry['timestamp'])
+                    is_stale = datetime.now() - cached_time > timedelta(hours=24)
+                    if not is_stale or self.offline:
+                        return entry['data']
+                except (ValueError, KeyError, TypeError):
+                    pass
         return None
 
     def _set_cached(self, ecosystem, package_name, version, data):
         from datetime import datetime
         key = f"{ecosystem}:{package_name}:{version}"
-        self.cache[key] = {
-            "timestamp": datetime.now().isoformat(),
-            "data": data
-        }
-        self._save_cache()
+        with self._cache_lock:
+            self.cache[key] = {
+                "timestamp": datetime.now().isoformat(),
+                "data": data
+            }
+            self._save_cache_unlocked()
 
     def _query_osv(self, package_name, version, ecosystem):
         cached_data = self._get_cached(ecosystem, package_name, version)
@@ -111,18 +123,21 @@ class VulnScanner(BaseScannerPlugin):
                 verify=self.ssl_verify
             )
             if response.status_code == 200:
-                self._consecutive_net_failures = 0
+                with self._cache_lock:
+                    self._consecutive_net_failures = 0
                 data = response.json()
                 self._set_cached(ecosystem, package_name, version, data)
                 return data
             else:
+                with self._cache_lock:
+                    self._consecutive_net_failures += 1
+                    if self._consecutive_net_failures >= 2:
+                        self.offline = True
+        except requests.RequestException as e:
+            with self._cache_lock:
                 self._consecutive_net_failures += 1
                 if self._consecutive_net_failures >= 2:
                     self.offline = True
-        except requests.RequestException as e:
-            self._consecutive_net_failures += 1
-            if self._consecutive_net_failures >= 2:
-                self.offline = True
             # Silently fail on network errors but could log here in debug mode
             logger.debug(f"OSV API request failed: {e}")
             if os.environ.get("GHOSTCHECK_DEBUG") == "1":

@@ -2,7 +2,7 @@
 # For more info: https://github.com/KbWen/security-tools
 
 severity_threshold = "INFO"
-exclude_patterns = [".git", "__pycache__", "venv", "node_modules", ".ghostcheck", "ghostcheck-report*", ".env*", "*.lock", "package-lock.json", ".next", ".firebase", ".antigravity*", "dist", "build"]
+exclude_patterns = [".git", "__pycache__", "venv", "node_modules", ".ghostcheck", "ghostcheck-report*", "*.canary", "*.lock", "package-lock.json", ".next", ".firebase", ".antigravity*", "dist", "build"]
 enabled_checks = ["hallucination", "secrets", "rules", "docker"]
 offline = false
 preset = "generic"

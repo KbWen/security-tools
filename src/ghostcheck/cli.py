@@ -90,6 +90,7 @@ def main():
     init_parser.add_argument("path", nargs="?", default=".", help="Target path to initialize (default: .)")
     init_parser.add_argument("--force", action="store_true", help="Overwrite existing configuration")
     init_parser.add_argument("--ci", choices=["github", "gitlab"], help="Generate CI pipeline configuration")
+    init_parser.add_argument("--hook", action="store_true", help="Install Git pre-commit hook")
     
     # baseline command
     baseline_parser = subparsers.add_parser("baseline", parents=[parent_parser], help="Manage security check baselines")
@@ -118,6 +119,7 @@ def main():
     # honeypot command
     honeypot_parser = subparsers.add_parser("honeypot", parents=[parent_parser], help="Manage security honeypots")
     honeypot_parser.add_argument("--url", help="CanaryToken URL (DNS/HTTP) to inject into canary files")
+    honeypot_parser.add_argument("--clean", action="store_true", help="Remove deployed decoy canary files")
     honeypot_parser.add_argument("path", nargs="?", default=".", help="Target path to write honeypots (default: .)")
 
     
@@ -151,36 +153,45 @@ def main():
     if args.command == "init":
         initializer = GhostCheckInitializer(args.path)
         success, msg = initializer.initialize(force=args.force)
-        print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
-        if success and args.ci:
+        # If already initialized and user explicitly requested --ci or --hook, still allow installing CI/hook
+        already_init = (not success and "already" in msg.lower())
+        if success or not (args.ci or getattr(args, "hook", False)):
+            print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
+        overall_ok = success or (already_init and bool(args.ci or getattr(args, "hook", False)))
+        if overall_ok and args.ci:
             success_ci, msg_ci = initializer.generate_ci_pipeline(args.ci)
             print(f"{get_icon('ok', use_unicode) if success_ci else get_icon('warn', use_unicode)} {msg_ci}")
-        sys.exit(0 if success else 1)
+            overall_ok = overall_ok and success_ci
+        if overall_ok and getattr(args, "hook", False):
+            success_hook, msg_hook = initializer.install_pre_commit_hook()
+            print(f"{get_icon('ok', use_unicode) if success_hook else get_icon('warn', use_unicode)} {msg_hook}")
+            overall_ok = overall_ok and success_hook
+        sys.exit(0 if overall_ok else 1)
 
     if args.command == "honeypot":
-        config = GhostCheckConfig(".")
+        from .honeypot import GhostCheckHoneypotGenerator
+        if getattr(args, "clean", False):
+            success, msg = GhostCheckHoneypotGenerator.clean(args.path)
+            print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
+            sys.exit(0 if success else 1)
+        config = GhostCheckConfig(getattr(args, "path", "."))
         url = args.url or config.get_canary_url()
         if not url:
             print(f"{get_icon('warn', use_unicode)} Error: CanaryToken URL is required. Please specify it via '--url' or configure 'honeypot.canary_url' in ghostcheck.toml.")
             sys.exit(2)
             
-        from .honeypot import GhostCheckHoneypotGenerator
         success, msg = GhostCheckHoneypotGenerator.initialize(args.path, url)
         print(f"{get_icon('ok', use_unicode) if success else get_icon('warn', use_unicode)} {msg}")
         sys.exit(0 if success else 1)
 
 
-    # Load configuration
-    config = GhostCheckConfig(".")
-    config.update_from_args(args)
-    
-    if not args.command:
-        parser.print_help()
-        sys.exit(0)
-        
     # Determine target and file list
     target_path = getattr(args, "path", ".")
     limit_files = None
+
+    # Load configuration
+    config = GhostCheckConfig(target_path)
+    config.update_from_args(args)
     
     if args.command == "scan":
         git_scanner = GitDiffScanner(target_path)

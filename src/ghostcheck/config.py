@@ -1,5 +1,8 @@
 import os
 import sys
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import tomllib
@@ -81,7 +84,8 @@ class GhostCheckConfig:
         try:
             with open(path, "rb") as f:
                 return tomllib.load(f)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Failed to read TOML from {path}: {e}")
             return {}
 
     def _merge_config(self, new_data: Dict[str, Any]):
@@ -94,6 +98,23 @@ class GhostCheckConfig:
                 if timeout_val is not None:
                     if type(timeout_val) is not int or timeout_val <= 0:
                         raise ValueError("Timeout must be a positive integer.")
+
+            if key == "tool" and isinstance(value, dict) and "ghostcheck" in value and isinstance(value["ghostcheck"], dict):
+                # Also merge settings inside [tool.ghostcheck]
+                for sub_key, sub_val in value["ghostcheck"].items():
+                    if sub_key != "honeypot":
+                        if sub_key in self.config:
+                            if isinstance(self.config[sub_key], list) and isinstance(sub_val, list):
+                                seen = []
+                                combined = self.config[sub_key] + sub_val
+                                for item in combined:
+                                    if item not in seen:
+                                        seen.append(item)
+                                self.config[sub_key] = seen
+                            else:
+                                self.config[sub_key] = sub_val
+                        else:
+                            self.config[sub_key] = sub_val
             
             if key in self.config:
                 if isinstance(self.config[key], list) and isinstance(value, list):

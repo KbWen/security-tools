@@ -28,6 +28,7 @@
   - `[ai-marker] docs/specs/ai_marker.md [Frozen] [Updated: 2026-06-09]`
   - `[data-exfiltration] docs/specs/data-exfiltration.md [Frozen] [Updated: 2026-06-26]`
   - `[context-inflation] docs/specs/context-inflation-detector.md [Frozen] [Updated: 2026-07-01]`
+  - `[tenth-man-audit-v1-2-15] docs/specs/tenth-man-audit-v1-2-15.md [Frozen] [Updated: 2026-10-25]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -101,8 +102,21 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Offline-Circuit-Breaker]: Network-dependent static analyzers should track consecutive network failures and trip into offline mode after 2 consecutive connection/timeout errors (`_consecutive_net_failures >= 2`), preventing multi-minute hangs in air-gapped or restricted CI environments without requiring complex state machines.
 - [Global-Opener-Isolation]: Never leave `urllib.request.install_opener()` side effects active when instantiating default network checkers (`proxy=None, ssl_verify=True`); reset with `urllib.request.install_opener(None)` and mock `install_opener` in proxy unit tests to prevent cross-test CI pollution.
 - [Skill-Frontmatter-Parity]: All `.agents/skills/*/SKILL.md` files must begin at line 1 with valid `---` YAML frontmatter (`name`, `description`) before any HTML scaffold comments, otherwise IDE skill loaders attempt to parse Markdown table delimiters (`|---|---|`) as YAML frontmatter.
+- [Results-Cache-Dimension-Parity]: File-level result caches (`results_cache.json`) must include runtime mode flags (`offline`), tool `version`, `disabled_rules`, and `exclude_patterns` in their integrity metadata hash; otherwise `--offline` runs cache empty dependency results and silently suppress online checks on subsequent runs.
+- [ThreadPool-Plugin-State-Isolation]: Scanner plugins shared across `ThreadPoolExecutor` workers (`HallucinationChecker`, `VulnScanner`) must never store per-request HTTP statuses on unlocked instance attributes (`self._last_status`) and must use `threading.Lock()` with PID+TID-qualified temp files (`os.replace`) when persisting disk caches.
 
 ## Ship History
+
+### Ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25
+- v1.2.15 Patch Release — Tenth-Man Deep Audit & Concurrency Hardening shipped:
+  - Remediated `results_cache.json` cache poisoning (`src/ghostcheck/scanner.py`) by adding `_get_cache_meta()` incorporating `version`, `offline`, `preset`, `checks`, `disabled_rules`, and `exclude_patterns` into the SHA-256 integrity verification.
+  - Aligned baseline auto-discovery (`src/ghostcheck/scanner.py`) to detect both `.ghostcheckbaseline` and `.ghostcheck-baseline.json`, and added `.ghostcheck-baseline.json` to `IgnoreMatcher` default ignores (`src/ghostcheck/ignorefile.py`).
+  - Implemented documented CLI flags `ghostcheck init --hook` (`src/ghostcheck/cli.py`, `src/ghostcheck/init.py`) and `ghostcheck honeypot --clean` (`src/ghostcheck/cli.py`, `src/ghostcheck/honeypot.py`).
+  - Wired `exclude_patterns` into `IgnoreMatcher` (`src/ghostcheck/scanner.py`), added `[tool.ghostcheck]` table merging in `GhostCheckConfig` (`src/ghostcheck/config.py`), replaced `".env*"` with `"*.canary"` in `src/ghostcheck/init.py` and `ghostcheck.toml` so `.env` files are scanned, and resolved `GhostCheckConfig` from the target `path` in `src/ghostcheck/cli.py`.
+  - Hardened `HallucinationChecker` (`src/ghostcheck/checks/hallucination.py`) and `VulnScanner` (`src/ghostcheck/checks/vuln_scanner.py`) with `threading.Lock()`, local `(result, status)` return tuples, and PID+TID-scoped atomic temp-file `os.replace` cache writes; fixed Windows case-insensitive prefix matching in `IgnoreMatcher.is_ignored` (`src/ghostcheck/ignorefile.py`).
+  - Added `entropy`, `vuln`, and `tamper` to application presets in `PresetManager` (`src/ghostcheck/presets/manager.py`), made `SecretValidator` live network verification opt-in (`validate_secrets`) with strict single-token sanitization (`src/ghostcheck/checks/secret_validator.py`), and synchronized version `1.2.15` and `417 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
+- Tests: Pass (417/417 tests passed including 8 new TDD test suites in `tests/test_audit_remediation_v1_2_15.py`, Grade A 100/100 self-scan, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (`independence: isolated-subagent invoke_subagent` — Independent Pre-Commit Reviewer subagent `1f142dd9-f6ac-4450-bc32-367ac4c0a0f7` verdict: PASS across Scope, Regression, Spec AC-1~AC-8, OWASP Security, Full Red Team, and Observability).
 
 ### Ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21
 - v1.2.14 Patch Release — Skill Frontmatter Parity & CI Opener Isolation Fix shipped:
