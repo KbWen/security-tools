@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.2.15-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-417%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-449%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛡️ v1.3.0: Purple Shield & Agentic Boundary Guard
+*   **RAG, Vector DB & Agent Memory Poisoning Auditor (`rag_memory`):** Detects indirect prompt injections, PyRIT-style Base64/Hex/ROT13 encoded jailbreak payloads, and unsanitized Vector DB (`Chroma`, `Pinecone`, `Qdrant`, `Weaviate`) metadata ingestion across `.jsonl` corpora, `knowledge/` docs, and persistent `MEMORY.md` profiles.
+*   **Multimodal Metadata & Polyglot File Guard (`multimodal_polyglot`):** Zero-dependency Magika-inspired magic-byte header verification catching ELF/PE/ZIP/shebang polyglots disguised as benign images/docs, plus PNG (`tEXt`/`zTXt`/`iTXt`), JPEG (`COM`/`APP1`), and hidden SVG (`<desc>`, `font-size="0"`, `opacity="0"`) steganographic prompt injections with binary scanner pass-through.
+*   **Subprocess Env Leakage & Agent Egress Guard (`env_egress`):** Audits Python/JS MCP and agent tool handlers for ambient `os.environ` / `process.env` LLM API credential leakage into child processes, and flags autonomous agent containers (`docker-compose.yml`, `devcontainer.json`) running with `network_mode: host` or unrestricted egress.
 
 ### 🛠️ v1.2.15: Tenth-Man Deep Audit, Concurrency Hardening & Baseline Alignment
 *   **Results Cache Metadata Isolation:** `Scanner` cache integrity hash now covers `offline`, `version`, `disabled_rules`, and `exclude_patterns`. Toggling `--offline` or updating GhostCheck versions safely invalidates stale results cache entries.
@@ -132,7 +137,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 | :--- | :--- | :--- | :--- |
 | **Full Security Scan** | `ghostcheck scan` | Entire Workspace / Git Diffs | Scans for secrets, IaC misconfigurations, MCP configs, and agent rules. |
 | **Project Initialization** | `ghostcheck init` | `.ghostcheckignore`, `ghostcheck.toml` | Auto-detects framework preset and scaffolds config, hooks (`--hook`), or CI (`--ci`). |
-| **Check Catalog** | `ghostcheck list-checks` | Built-in Check Registry | Lists all 24 active security scanner modules and descriptions. |
+| **Check Catalog** | `ghostcheck list-checks` | Built-in Check Registry | Lists all 27 active security scanner modules and descriptions. |
 | **Honeypot Deployment** | `ghostcheck honeypot` | `.env.canary`, `aws_credentials.canary` | Deploys or cleans (`--clean`) decoy canary files to detect rogue agent crawling. |
 | **Dependency Check** | `ghostcheck check-deps` | `requirements.txt`, `package.json` | Detects hallucinated packages or vulnerable dependencies. |
 | **Secret Detection** | `ghostcheck check-secrets` | Logs, Source, Docs | Identifies API keys, tokens, and credentials via AST parsing. |
@@ -145,7 +150,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.15
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.0
 ```
 
 ### 🔨 Option B: Install from Source
@@ -208,7 +213,7 @@ ghostcheck scan . -q
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 409 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 449 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -223,7 +228,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 409 passed in 25.11s =============================
+============================= 449 passed in 17.55s =============================
 ```
 
 ---

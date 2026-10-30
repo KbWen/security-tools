@@ -409,7 +409,7 @@ class HallucinationChecker(BaseScannerPlugin):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://crates.io/api/v1/crates/{safe_pkg}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.2.15'})
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.3.0'})
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 status = "OK" if status_code == 200 else "ERROR"

@@ -48,6 +48,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.13 | Pragmatic DX, Offline Circuit Breaker & Zero-Bloat Polish | ✅ |
 | v1.2.14 | Skill Frontmatter Parity, Proxy Opener Reset & CI Resilience Hardening | ✅ |
 | v1.2.15 | Tenth-Man 深度審計、並行加固與 Baseline 對齊 | ✅ |
+| v1.3.0 | Purple Shield & Agentic Boundary Guard (RAG/Memory, Multimodal/Polyglot, Env/Egress) | ✅ |
 
 ---
 
@@ -145,10 +146,10 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E7-F1 | **RAG Data Poisoning Scanner** | P1 | v1.1.0 | 🟡 | 掃描被作為 context 的文件/知識庫，偵測隱藏的 injection patterns 阻止透過檢索觸發攻擊。 |
+| E7-F1 | **RAG Data Poisoning Scanner** | P1 | v1.3.0 | ✅ | 掃描被作為 context 的文件/知識庫，偵測隱藏的 injection patterns 與 PyRIT 編碼混淆阻止透過檢索觸發攻擊 (`rag_memory_auditor.py`)。 |
 | E7-F2 | **Agent Least Privilege Audit** | P0 | v1.1.0 | ✅ | 自動化審計 AI 專案中的 Token 權限範圍（GitHub/OpenAI/MCP），確保符合最小權限原則。 |
 | E7-F3 | **Prompt Injection Honeypot** | P2 | v1.1.0 | ✅ | 自動在專案中生成偽造的敏感檔案，回傳誘標資訊以偵測不誠實或被操控的 Agent 行為 (`ghostcheck honeypot`)。 |
-| E7-F4 | **Multi-modal Injection Detection** | P1 | v1.2.0 | 🟡 | 針對 Vision-capable agents，掃描圖像/媒體檔案中藏匿的隱現指令（Steganographic prompt injection）。 |
+| E7-F4 | **Multi-modal Injection Detection** | P1 | v1.3.0 | ✅ | 針對 Vision-capable agents，進行二進位 Magic-Byte 偽裝校驗與 PNG/JPEG/SVG 隱寫提示注入偵測 (`multimodal_polyglot_scanner.py`)。 |
 | E7-F5 | **Shadow AI Detection** | P1 | v1.1.0 | ✅ | 偵測專案原始碼中私自引入的未授權 AI SDK、Local LLM 配置或第三方 AI Plugin。 |
 | E7-F6 | **LLM Cost/DoS Guard** | P1 | v1.1.0 | ✅ | 偵測可能導致 Agent 陷入無限循環、遞迴呼叫或過度消費 Token 的邏輯漏洞 (`killswitch.py`)。 |
 
@@ -160,7 +161,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E8-F1 | **Memory Poisoning Audit** | P1 | v1.2.0 | 🟡 | 掃描 Agent 的持久化記憶系統（Vector DB / JSON Profile），偵測潛伏中的惡意指令或偏見。 |
+| E8-F1 | **Memory Poisoning Audit** | P1 | v1.3.0 | ✅ | 掃描 Agent 的持久化記憶系統（`MEMORY.md` / JSON Profile），偵測潛伏中的惡意指令與編碼混淆 (`rag_memory_auditor.py`)。 |
 | E8-F2 | **Swarm Cascading Risk Analysis** | P2 | v1.3.0 | 🟡 | 分析 Multi-agent 工作流中的通訊拓補，找出單點 Agent 被劫持後可能導致的級聯失效點。 |
 | E8-F3 | **Lethal Trifecta Detector** | P0 | v1.1.0 | ✅ | 自動偵測「私有資料存取+不受信輸入+工具執行」的危險組合，強制調高安全等級與審核要求 (`trifecta.py`)。 |
 | E8-F4 | **Tool Metadata Poisoning Linter** | P1 | v1.1.0 | ✅ | 深度掃描 MCP Server 或 Plugin 的 Metadata/Description，防止 Hidden Prompt 注入至 LLM 推理過程 (`mcp_scanner.py`)。 |
@@ -176,8 +177,8 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
 | E9-F1 | **Silent Package Installation Detector** | P0 | v1.2.0 | ✅ | 偵測 AI Agent 是否在背景靜默執行套件安裝（如 `pip install` / `npm install` 且未鎖定版本），防範相依性劫持。 |
-| E9-F2 | **LLM Egress Firewall Auditor** | P1 | v1.2.0 | 🟡 | 審計專案是否設定了出站流量限制（Egress Firewall），防範 Agent 透過未授權的 HTTP 請求外洩資料。 |
-| E9-F3 | **Shadow AI Env Leakage Scanner** | P1 | v1.3.0 | 🟡 | 掃描環境變數，偵測是否有敏感的 LLM API Keys 在子程序中被意外匯出或暴露給非特權指令。 |
+| E9-F2 | **LLM Egress Firewall Auditor** | P1 | v1.3.0 | ✅ | 審計專案容器 (`docker-compose.yml` / `devcontainer.json`) 是否啟用 `network_mode: host` 或缺乏出站隔離 (`env_egress_guard.py`)。 |
+| E9-F3 | **Shadow AI Env Leakage Scanner** | P1 | v1.3.0 | ✅ | AST 掃描子程序呼叫是否未過濾環境變數，導致敏感的 LLM API Keys 在子程序中暴露給非特權指令 (`env_egress_guard.py`)。 |
 
 ---
 
@@ -187,7 +188,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 | # | Feature | 優先 | 版本 | 狀態 | 說明 |
 |---|---------|------|------|------|------|
-| E10-F1 | **Vector DB Metadata Poisoning Auditor** | P1 | v1.2.0 | 🟡 | 偵測匯入向量資料庫（如 Chroma, Pinecone）的 metadata 中是否夾帶 Prompt Injection 指令。 |
+| E10-F1 | **Vector DB Metadata Poisoning Auditor** | P1 | v1.3.0 | ✅ | 偵測匯入向量資料庫（Chroma, Pinecone, Qdrant, Weaviate）的 metadata 是否未經清理即帶入外部輸入 (`rag_memory_auditor.py`)。 |
 | E10-F2 | **Context Inflation / Prompt Flooding Detector** | P0 | v1.2.0 | ✅ | 偵測利用重複大量垃圾字元意圖撐滿上下文視窗（Context Window），以使模型遺忘 System Prompt 的攻擊。 |
 
 ---
@@ -293,3 +294,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-10-19 | 完成 v1.2.13 實用主義 DX、離線熔斷器與零膨脹打磨 (Hallucination & VulnScanner 離線熔斷器、APILinter/EntropyScanner 務實誤報修剪、-q/--quiet 安靜模式，408 tests 100% 通過)。 |
 | 2026-10-21 | 完成 v1.2.14 Skill Frontmatter 對齊、Proxy Opener Reset 與 CI 韌性強化 (修復 .agents/skills Frontmatter、urllib opener 洩漏重設、409 tests 100% 通過)。 |
 | 2026-10-25 | 完成 v1.2.15 Tenth-Man 深度審計與並行加固 (結果快取隔離、Baseline 自動偵測與忽略對齊、init --hook / honeypot --clean CLI 旗標補齊、exclude_patterns 與 .env 保留、CLI 路徑設定解析、多執行緒檢查器鎖定與原子快取寫入、Windows 大小寫安全忽略匹配、Preset 模組補齊與 SecretValidator 顯式啟用，417 tests 100% 通過)。 |
+| 2026-10-30 | 完成 v1.3.0 Purple Shield & Agentic Boundary Guard (新增 RagMemoryAuditor、MultimodalPolyglotScanner、EnvEgressGuard 三大防禦檢查器，涵蓋 E7-F1、E7-F4、E8-F1、E9-F2、E9-F3、E10-F1，支援二進位穿透掃描與 OWASP LLM 映射，449 tests 100% 通過)。 |

@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.2.15-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-417%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-449%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛡️ v1.3.0: Purple Shield 護欄與 Agent 邊界防護 (Purple Shield & Agentic Boundary Guard)
+*   **RAG、向量資料庫與 Agent 記憶投毒審計 (`rag_memory`)：** 借鏡 Meta Prompt Guard 與 Microsoft PyRIT 混淆技術，自動掃描 `.jsonl` 語料、`knowledge/` 知識庫與 `MEMORY.md` 持久化記憶中的間接提示注入、Base64/Hex/ROT13 編碼越獄 Payload，以及 `Chroma`/`Pinecone`/`Qdrant` 未過濾外部 Metadata 的寫入風險。
+*   **多模態隱寫與 Polyglot 偽裝檔案防護 (`multimodal_polyglot`)：** 零外部依賴、借鏡 Google Magika 的二進位 Magic-Byte 標頭校驗（攔截偽裝成圖檔/文件的 ELF/PE/ZIP/Shebang 多態執行檔），並深度解析 PNG (`tEXt`/`zTXt`/`iTXt`)、JPEG (`COM`/`APP1`) 與 SVG 隱藏節點 (`<desc>`, `font-size="0"`, `opacity="0"`) 針對 Vision Agent 的隱寫指令注入。
+*   **子程序環境變數外洩與容器出站守衛 (`env_egress`)：** 借鏡 Meta Code Shield 與 Google Mantis 隔離原則，透過 AST 偵測 MCP/Agent 工具呼叫子程序時未以白名單過濾 `os.environ` / `process.env` 導致 LLM API 金鑰外洩，並審計 `docker-compose.yml` / `devcontainer.json` 中自主 Agent 啟用 `network_mode: host` 或缺乏網路出站隔離的高風險配置。
 
 ### 🛠️ v1.2.15: Tenth-Man 深度審計、並行加固與 Baseline 對齊 (Tenth-Man Deep Audit & Concurrency Hardening)
 *   **結果快取隔離 (Results Cache Metadata Isolation)：** `Scanner` 結果快取完整雜湊納入 `offline`、`version`、`disabled_rules` 與 `exclude_patterns`，切換離線模式或版本升級時自動使舊快取失效，杜絕跨環境快取污染。
@@ -131,7 +136,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 | :--- | :--- | :--- | :--- |
 | **完整安全掃描** | `ghostcheck scan` | 整個工作區 / Git 變更 | 掃描金鑰、IaC 錯誤配置、MCP 設定以及 Agent 規則安全性。 |
 | **專案規則初始化** | `ghostcheck init` | `.ghostcheckignore`, `ghostcheck.toml` | 自動偵測框架 Preset 並生成設定檔、Git Hooks (`--hook`) 或 CI 範本 (`--ci`)。 |
-| **檢查模組清單** | `ghostcheck list-checks` | 內建 24 項檢查器註冊表 | 列出所有支援的 24 大安全檢查模組與說明。 |
+| **檢查模組清單** | `ghostcheck list-checks` | 內建 27 項檢查器註冊表 | 列出所有支援的 27 大安全檢查模組與說明。 |
 | **本地誘捕部署** | `ghostcheck honeypot` | `.env.canary`, `aws_credentials.canary` | 一鍵部署或清理 (`--clean`) 誘捕憑證檔，偵測異常 Agent 讀取行為。 |
 | **依賴項真實性檢查** | `ghostcheck check-deps` | `requirements.txt`, `package.json` | 偵測 AI 幻覺套件與不安全的安全依賴。 |
 | **機密資訊偵測** | `ghostcheck check-secrets` | 日誌、純文字、源碼 | 透過 AST 語法樹分析，精準識別 API Key 與憑證。 |
@@ -144,7 +149,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.2.15
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.0
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -207,7 +212,7 @@ ghostcheck scan . -q
 
 ## 🧪 執行測試與驗證
 
-透過執行 409 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 449 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -222,7 +227,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 409 passed in 25.11s =============================
+============================= 449 passed in 17.55s =============================
 ```
 
 ---

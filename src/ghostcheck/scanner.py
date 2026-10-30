@@ -37,6 +37,9 @@ from .checks.prompt_template_scanner import PromptTemplateScanner
 from .checks.ai_marker import AIMarker
 from .checks.data_exfiltration_detector import DataExfiltrationDetector
 from .checks.context_inflation_detector import ContextInflationDetector
+from .checks.rag_memory_auditor import RagMemoryAuditor
+from .checks.multimodal_polyglot_scanner import MultimodalPolyglotScanner
+from .checks.env_egress_guard import EnvEgressGuard
 from .scoring import ScoringEngine
 from .plugins.loader import PluginLoader
 from .ignorefile import IgnoreMatcher
@@ -270,7 +273,7 @@ class Scanner:
 
     def scan_secrets(self, limit_files=None):
         findings = []
-        plugins = [p for p in self.scanners if any(x in getattr(p, 'name', '').lower() for x in ['secret', 'env', 'ast'])]
+        plugins = [p for p in self.scanners if any(x in getattr(p, 'name', '').lower() for x in ['secret', 'envscanner', 'ast'])]
         for root, files in self._iter_files(limit_files):
             for file in files:
                 file_path = os.path.join(root, file)
@@ -473,7 +476,10 @@ class Scanner:
             return True
             
         # Test files containing deliberate security patterns for testing
-        if 'tests/' in file_path and any(x in fnd_id.lower() for x in ['secret', 'hallucination', 'rule']):
+        if 'tests/' in file_path and any(x in fnd_id.lower() for x in [
+            'secret', 'hallucination', 'rule', 'rag_poisoning', 'memory_poisoning',
+            'vectordb_metadata', 'polyglot_', 'multimodal_', 'shadow_env', 'agent_egress'
+        ]):
             return True
 
         # Repo-level findings on our own repository (e.g. AI-assisted development commits)
@@ -508,7 +514,8 @@ class Scanner:
                 'elevated agent privilege', 'hardcoded_identity_bypass',
                 'api_csrf_disabled', 'api_cors_wildcard', 'missing recursive kill-switch',
                 'client_side_only_entitlement', 'generic secret key', 'evasion: excessive ignores',
-                'context_inflation'
+                'context_inflation', 'rag_poisoning', 'memory_poisoning',
+                'vectordb_metadata', 'polyglot_', 'multimodal_', 'shadow_env', 'agent_egress'
             ]
             if any(x in fnd_id.lower() for x in exempt_rules):
                 return True
@@ -675,15 +682,61 @@ class Scanner:
                 "iac", "ci_cd", "mobile", "api", "mcp", "supply_chain", 
                 "logic", "privilege", "shadow_ai", "entropy", "vuln", "tamper",
                 "context_inflation", "data_exfiltration", "killswitch",
-                "lethal_trifecta", "silent_install", "prompt_template", "ai_marker"
+                "lethal_trifecta", "silent_install", "prompt_template", "ai_marker",
+                "rag_memory", "multimodal_polyglot", "env_egress"
             ]
         
         if os.environ.get("GHOSTCHECK_DEBUG") == "1":
             # Extra logs if needed later
             pass
 
+        def _plugin_allowed(plugin):
+            default_enabled = ["hallucination", "secrets", "rules", "docker"]
+            enabled_checks = self.config.get("enabled_checks", []) if self.config else []
+            if enabled_checks and set(enabled_checks) != set(default_enabled):
+                pname_lower = getattr(plugin, 'name', '').lower()
+                matched_cfg = False
+                for c in checks_iter(enabled_checks):
+                    if c in pname_lower:
+                        matched_cfg = True
+                        break
+                if not matched_cfg:
+                    return False
+
+            if enabled_modules:
+                pname_lower = getattr(plugin, 'name', '').lower()
+                matched_mod = False
+                for m in checks_iter(enabled_modules):
+                    if m in pname_lower:
+                        matched_mod = True
+                        break
+                if not matched_mod:
+                    return False
+            return True
+
+        def checks_iter(items):
+            for item in items:
+                clean = item.lower().replace("secrets", "secret").replace("ci_cd", "ciauditor").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                if clean == "ci":
+                    clean = "ciauditor"
+                elif clean == "env":
+                    clean = "envscanner"
+                yield clean
+
         content = self._read_file_safe(file_path)
         if not content:
+            if self._is_safe_path(file_path):
+                for plugin in self.scanners:
+                    if not getattr(plugin, 'supports_binary', False):
+                        continue
+                    if not _plugin_allowed(plugin):
+                        continue
+                    try:
+                        plugin_findings = plugin.scan([file_path], self.config)
+                        if plugin_findings:
+                            findings.extend(plugin_findings)
+                    except Exception as e:
+                        logger.debug(f"Binary plugin {getattr(plugin, 'name', 'unknown')} error on {file_path}: {e}")
             return findings
 
         # AC-S8: Chaos Protection - Truncate long lines to prevent regex/parser DoS 
@@ -702,37 +755,8 @@ class Scanner:
 
         # Run dynamic plugins
         for plugin in self.scanners:
-            # Config-level check filtering (only filter if user has explicitly customized it)
-            default_enabled = ["hallucination", "secrets", "rules", "docker"]
-            enabled_checks = self.config.get("enabled_checks", []) if self.config else []
-            if enabled_checks and set(enabled_checks) != set(default_enabled):
-                def _matches_config(plugin, checks):
-                    pname_lower = getattr(plugin, 'name', '').lower()
-                    for c in checks:
-                        c_clean = c.lower().replace("secrets", "secret").replace("ci_cd", "ciauditor").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
-                        if c_clean == "ci":
-                            c_clean = "ciauditor"
-                        if c_clean in pname_lower:
-                            return True
-                    return False
-                if not _matches_config(plugin, enabled_checks):
-                    continue
-
-            # Module filtering
-            if enabled_modules:
-                # Basic matching: if any enabled module string is in the plugin name
-                def _matches(plugin, modules):
-                    pname_lower = getattr(plugin, 'name', '').lower()
-                    for m in modules:
-                        m_clean = m.lower().replace("secrets", "secret").replace("ci_cd", "ciauditor").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
-                        if m_clean == "ci":
-                            m_clean = "ciauditor"
-                        if m_clean in pname_lower:
-                            return True
-                    return False
-                    
-                if not _matches(plugin, enabled_modules):
-                    continue
+            if not _plugin_allowed(plugin):
+                continue
             
             try:
                 # Plugins read the file themselves now.
@@ -890,22 +914,34 @@ class Scanner:
             
             if "ghostcheck-ignore" in ctx_str:
                 import re
+                untrusted_asset_rules = {
+                    "rag_poisoning_encoded_payload", "memory_poisoning_directive",
+                    "multimodal_metadata_injection", "multimodal_svg_hidden_injection",
+                    "polyglot_magic_byte_mismatch"
+                }
                 ignore_match = re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore(?::\s*([^\r\n*#]+))?', ctx_str, re.IGNORECASE)
                 if ignore_match:
                     target_rules_str = ignore_match.group(2)
                     if target_rules_str:
+                        target_rules_str = re.sub(r'\s*(?:-->|\*/)\s*$', '', target_rules_str)
                         target_rules = [r.strip().lower() for r in target_rules_str.split(',') if r.strip()]
                         fnd_identifiers = [str(x).strip().lower() for x in [
                             fnd.get('name'), fnd.get('rule_id'), fnd.get('rule_name'), fnd.get('pattern_name'), fnd_id
                         ] if x]
                         if any(tid in target_rules or any(tr == tid for tr in target_rules) for tid in fnd_identifiers):
                             continue
-                    else:
-                        # Bare ignore suppresses all severities without punitive tamper flags
+                    elif fnd_id.lower() not in untrusted_asset_rules:
+                        # Bare ignore suppresses developer-code findings, but untrusted RAG/multimodal
+                        # payloads require explicit rule-ID targeting to prevent payload self-suppression
                         continue
 
             # Context Intelligence: Filter examples and negative constraints in docs
-            if fnd_id != "high_entropy_secret": # Entropy has its own logic
+            if fnd_id not in (
+                "high_entropy_secret", "rag_poisoning_encoded_payload",
+                "memory_poisoning_directive", "polyglot_magic_byte_mismatch",
+                "multimodal_metadata_injection", "multimodal_svg_hidden_injection",
+                "hidden_prompt_injection"
+            ):
                 abs_file_path = fnd.get('file', '')
                 if abs_file_path and line > 0 and abs_file_path not in file_content_cache:
                     file_content_cache[abs_file_path] = self._read_file_safe(abs_file_path)

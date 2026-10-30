@@ -78,5 +78,14 @@
     "insecure_jinja_safe_filter": "LLM01: Prompt Injection",
     "suspicious_jailbreak_phrasing": "LLM01: Prompt Injection",
     "ai_unreviewed_commit": "LLM06: Excessive Agency",
-    "ai_comment_signature": "LLM06: Excessive Agency"
+    "ai_comment_signature": "LLM06: Excessive Agency",
+    "rag_poisoning_encoded_payload": "LLM01: Prompt Injection",
+    "memory_poisoning_directive": "LLM01: Prompt Injection",
+    "vectordb_metadata_poisoning_risk": "LLM01: Prompt Injection",
+    "multimodal_metadata_injection": "LLM01: Prompt Injection",
+    "multimodal_svg_hidden_injection": "LLM01: Prompt Injection",
+    "shadow_env_subprocess_leak": "LLM02: Sensitive Information Disclosure",
+    "polyglot_magic_byte_mismatch": "LLM06: Excessive Agency",
+    "agent_egress_host_network": "LLM06: Excessive Agency",
+    "agent_egress_unrestricted": "LLM06: Excessive Agency"
 }

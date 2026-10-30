@@ -213,7 +213,9 @@ def main():
                 sys.exit(0)
 
     if args.debug:
+        import logging
         os.environ["GHOSTCHECK_DEBUG"] = "1"
+        logging.basicConfig(level=logging.DEBUG, stream=sys.stderr, format="[%(levelname)s] %(name)s: %(message)s")
 
     if args.command == "list-checks":
         print(f"{get_icon('info', use_unicode)} Available Checks (v{__version__}):")
@@ -242,6 +244,9 @@ def main():
             ("silent_install",    "Detect silent or unpinned dynamic background package installations"),
             ("prompt_template",   "Scan prompt templates (.prompt, .jinja2) for injection and missing delimiters"),
             ("ai_marker",         "Track AI-generated code markers and unreviewed AI commit trailers"),
+            ("rag_memory",        "Audit RAG corpora, persistent agent memory, and Vector DB metadata for poisoning"),
+            ("multimodal_polyglot", "Detect polyglot magic-byte spoofing and PNG/JPEG/SVG hidden prompt injections"),
+            ("env_egress",        "Audit subprocess LLM credential leakage and agent container network egress"),
         ]
         for name, desc in checks:
             print(f"  - {name:<18}: {desc}")
@@ -343,7 +348,14 @@ def main():
                 sys.exit(2)
         
         try:
-            reporter.report(findings, stream=output_file, grade=grade, score_val=score_val, output_path=args.output, quiet=getattr(args, 'quiet', False))
+            report_kwargs = {
+                "grade": grade,
+                "score_val": score_val,
+                "quiet": getattr(args, 'quiet', False),
+            }
+            if args.output:
+                report_kwargs["output_path"] = args.output
+            reporter.report(findings, stream=output_file, **report_kwargs)
             
             # If console and we have cache hits
             if not getattr(args, 'quiet', False) and args.format == "console" and hasattr(scanner, 'cache_hits') and scanner.cache_hits > 0:

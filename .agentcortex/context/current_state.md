@@ -29,6 +29,7 @@
   - `[data-exfiltration] docs/specs/data-exfiltration.md [Frozen] [Updated: 2026-06-26]`
   - `[context-inflation] docs/specs/context-inflation-detector.md [Frozen] [Updated: 2026-07-01]`
   - `[tenth-man-audit-v1-2-15] docs/specs/tenth-man-audit-v1-2-15.md [Frozen] [Updated: 2026-10-25]`
+  - `[v1-3-0-purple-shield-guardrails] docs/specs/v1-3-0-purple-shield-guardrails.md [Frozen] [Updated: 2026-10-30]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -104,8 +105,21 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Skill-Frontmatter-Parity]: All `.agents/skills/*/SKILL.md` files must begin at line 1 with valid `---` YAML frontmatter (`name`, `description`) before any HTML scaffold comments, otherwise IDE skill loaders attempt to parse Markdown table delimiters (`|---|---|`) as YAML frontmatter.
 - [Results-Cache-Dimension-Parity]: File-level result caches (`results_cache.json`) must include runtime mode flags (`offline`), tool `version`, `disabled_rules`, and `exclude_patterns` in their integrity metadata hash; otherwise `--offline` runs cache empty dependency results and silently suppress online checks on subsequent runs.
 - [ThreadPool-Plugin-State-Isolation]: Scanner plugins shared across `ThreadPoolExecutor` workers (`HallucinationChecker`, `VulnScanner`) must never store per-request HTTP statuses on unlocked instance attributes (`self._last_status`) and must use `threading.Lock()` with PID+TID-qualified temp files (`os.replace`) when persisting disk caches.
+- [Untrusted-Asset-Ignore-Guard]: Scanner rules auditing untrusted external data or multimodal assets (RAG `.jsonl`, `MEMORY.md`, `.svg`, image metadata) must reject bare `ghostcheck-ignore` comments so attacker-controlled payloads cannot self-suppress, and inline suppression parsers must match exact rule IDs rather than raw `"ghostcheck-ignore" in line` substrings.
+- [SVG-Linear-Traversal]: Never apply `re.DOTALL` with non-greedy `(.*?)` tag regexes on multi-megabyte XML/SVG inputs due to quadratic `O(N^2)` backtracking on unclosed tags and missed nested `<tspan>`/`<g>` inheritance; use `ElementTree` traversal (with `<!ENTITY`/`<!DOCTYPE` guards) paired with `O(N)` `str.find` fallback.
+- [JS-Exec-Method-Disambiguation]: Static rules targeting Node.js `child_process.exec` must gate on `child_process` import presence and apply negative lookbehind `(?<![\.\w$])` (or tracked module aliases) so `RegExp.prototype.exec()` and ORM `.exec()` calls never trigger false positives.
 
 ## Ship History
+
+### Ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30
+- v1.3.0 Minor Release — Purple Shield & Agentic Boundary Guard shipped:
+  - Implemented `RagMemoryAuditor` (`src/ghostcheck/checks/rag_memory_auditor.py`) covering Backlog `E7-F1`, `E8-F1`, `E10-F1`: detects PyRIT-style Base64/Hex (`>= 24` chars)/ROT13 encoded prompt injections (`rag_poisoning_encoded_payload`), zero-width-aware persistent memory directive overrides (`memory_poisoning_directive`), and unsanitized Vector DB (`Chroma`, `Pinecone`, `Qdrant`, `Weaviate`) metadata ingestion (`vectordb_metadata_poisoning_risk`).
+  - Implemented `MultimodalPolyglotScanner` (`src/ghostcheck/checks/multimodal_polyglot_scanner.py`) covering Backlog `E7-F4`: zero-dependency magic-byte header & trailer verification (`polyglot_magic_byte_mismatch`), bounded PNG `tEXt`/`zTXt`/`iTXt` and JPEG `COM`/`APP1` metadata injection scanning (`multimodal_metadata_injection`), and linear `O(N)` + `ElementTree` parent-attribute-inheriting SVG hidden command scanning (`multimodal_svg_hidden_injection`).
+  - Implemented `EnvEgressGuard` (`src/ghostcheck/checks/env_egress_guard.py`) covering Backlog `E9-F2`, `E9-F3`: audits Python (`subprocess.*`, `asyncio.create_subprocess_*`, `os.environ` aliases) and JS/TS (`child_process` scoped with `RegExp.exec` disambiguation) ambient LLM credential leakage (`shadow_env_subprocess_leak`), plus autonomous agent container `network_mode: host` (`agent_egress_host_network`) and unrestricted egress (`agent_egress_unrestricted`).
+  - Wired `supports_binary = True` binary pass-through, `"env"` → `"envscanner"` collision guard, untrusted-asset bare `ghostcheck-ignore` rejection, and `ContextAuditor` skip rules in `src/ghostcheck/scanner.py`; updated `src/ghostcheck/presets/manager.py`, `src/ghostcheck/data/owasp_mapping.json` (all 9 new rule IDs), and `src/ghostcheck/cli.py` (`27` checks in `list-checks`, `--debug` `stderr` logger, and `output_path` guard fixing `--format sarif` without `--output`).
+  - Synchronized version `1.3.0` and `449 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `src/ghostcheck/checks/hallucination.py`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`.
+- Tests: Pass (449/449 tests passed including 32 TDD & adversarial regression tests in `tests/test_v1_3_0_purple_shield.py`, Grade A 100/100 self-scan, wheel/sdist build verified, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (`independence: isolated-subagent invoke_subagent` — Independent Pre-Commit & Tenth-Man Reviewer subagent `2330a475-d874-42d6-80b6-40f078aea451` Round-2 verdict: PASS across Scope, Regression, Spec AC-1~AC-6, OWASP Security, Full Red Team, and Observability).
 
 ### Ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25
 - v1.2.15 Patch Release — Tenth-Man Deep Audit & Concurrency Hardening shipped:

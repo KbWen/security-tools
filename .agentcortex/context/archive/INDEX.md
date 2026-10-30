@@ -22,6 +22,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/api_linter.py`, `src/ghostcheck/checks/entropy_scanner.py`, `src/ghostcheck/cli.py`, `src/ghostcheck/reporters/console.py` → `ship-v1.2.13-pragmatic-dx-and-circuit-breaker-2026-10-19.md` (v1.2.13 pragmatic DX polish: fast-fail offline circuit breaker, APILinter stateless JWT CSRF & MEDIUM severity, EntropyScanner SRI/DataURI/path exclusions, and -q/--quiet mode)
 - `.agents/skills/*/SKILL.md`, `src/ghostcheck/checks/hallucination.py`, `tests/test_harden_resilience.py`, `tests/test_v1_0_0_presets.py` → `ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md` (v1.2.14 skill YAML frontmatter parity & global urllib opener isolation fix for CI)
 - `src/ghostcheck/scanner.py`, `src/ghostcheck/cli.py`, `src/ghostcheck/config.py`, `src/ghostcheck/init.py`, `src/ghostcheck/honeypot.py`, `src/ghostcheck/ignorefile.py`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/secret_validator.py`, `tests/test_audit_remediation_v1_2_15.py` → `ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25.md` (v1.2.15 Tenth-Man deep audit remediation: results cache metadata isolation, baseline filename alignment, `init --hook` & `honeypot --clean`, `exclude_patterns` wiring, thread-safe network checkers with atomic `os.replace`, Windows prefix case-insensitivity, and opt-in `SecretValidator`)
+- `src/ghostcheck/checks/rag_memory_auditor.py`, `src/ghostcheck/checks/multimodal_polyglot_scanner.py`, `src/ghostcheck/checks/env_egress_guard.py`, `src/ghostcheck/scanner.py`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/data/owasp_mapping.json`, `src/ghostcheck/cli.py`, `tests/test_v1_3_0_purple_shield.py` → `ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30.md` (v1.3.0 Purple Shield & Agentic Boundary Guard: RAG/Memory poisoning auditor, binary/SVG multimodal polyglot scanner with binary pass-through, subprocess env & container egress guard, and CLI SARIF default output fix)
 
 ## By Pattern
 
@@ -59,6 +60,9 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[skill-frontmatter-parity]` → `ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md`
 - `[results-cache-dimension-parity]` → `ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25.md`
 - `[threadpool-plugin-state-isolation]` → `ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25.md`
+- `[untrusted-asset-ignore-guard]` → `ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30.md`
+- `[svg-linear-traversal]` → `ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30.md`
+- `[js-exec-method-disambiguation]` → `ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30.md`
 
 ## By Decision
 
@@ -93,3 +97,4 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[urllib-opener-reset-and-skill-frontmatter]` → Reset `urllib.request.install_opener(None)` when `HallucinationChecker` is initialized with default `proxy=None, ssl_verify=True` and prepend YAML frontmatter to all domain skills in `.agents/skills/*/SKILL.md` (`ship-v1.2.14-skill-frontmatter-and-ci-fix-2026-10-21.md`)
 - `[results-cache-meta-isolation]` → Hash `version`, `offline`, `preset`, `checks`, `disabled_rules`, and `exclude_patterns` in `Scanner._get_cache_meta()` so `--offline` scans never poison subsequent online scans (`ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25.md`)
 - `[thread-safe-checker-status]` → Use `threading.Lock()` and PID+TID-scoped atomic `os.replace` in `HallucinationChecker` and `VulnScanner`, and default `SecretValidator` live network verification to opt-in (`validate_secrets = True`) (`ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25.md`)
+- `[binary-scanner-passthrough]` → Route `supports_binary = True` plugins when `Scanner._read_file_safe` returns `None`, map `"env"` explicitly to `"envscanner"`, and reject bare `ghostcheck-ignore` on untrusted RAG/multimodal rules (`ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30.md`)
