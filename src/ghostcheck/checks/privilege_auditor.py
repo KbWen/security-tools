@@ -1,9 +1,12 @@
 import re
 import os
 import json
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
 from .secrets import _is_placeholder_value
+
+logger = logging.getLogger(__name__)
 
 class PrivilegeAuditor(BaseScannerPlugin):
 
@@ -31,8 +34,8 @@ class PrivilegeAuditor(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def __init__(self):

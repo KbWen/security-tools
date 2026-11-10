@@ -2,8 +2,11 @@ import json
 import re
 import os
 import math
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 def _get_secret_value_part(match_str: str) -> str:
     # If the match contains = or :, take the right part
@@ -125,8 +128,8 @@ class SecretScanner(BaseScannerPlugin):
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     findings.extend(self.scan_file(file_path, content))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("SecretScanner error on %s: %s", file_path, e)
         return findings
 
     def scan_file(self, file_path, content):

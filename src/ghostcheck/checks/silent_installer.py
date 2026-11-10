@@ -1,8 +1,11 @@
 import ast
 import os
 import re
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 
 class SilentInstaller(BaseScannerPlugin):
@@ -50,8 +53,8 @@ class SilentInstaller(BaseScannerPlugin):
                         visitor = PackageInstallVisitor(file_path)
                         visitor.visit(tree)
                         findings.extend(visitor.findings)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Failed AST parse in %s: %s", file_path, e)
                     # Ensure text regex check runs to capture obfuscated installation code (eval, getattr, etc.)
                     text_findings = self._scan_text(content, file_path)
                     for tf in text_findings:
@@ -59,8 +62,8 @@ class SilentInstaller(BaseScannerPlugin):
                             findings.append(tf)
                 else:
                     findings.extend(self._scan_text(content, file_path))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def _scan_text(self, content: str, file_path: str) -> List[Dict[str, Any]]:

@@ -139,6 +139,12 @@ def main():
     # Respect ascii-only flag, and fallback to ASCII if terminal does not natively support UTF-8 (e.g. CP950)
     use_unicode = not args.ascii_only and 'utf-8' in original_encoding
 
+    if args.command is None:
+        args.command = "scan"
+        args.path = getattr(args, "path", None) or "."
+        args.staged = getattr(args, "staged", False)
+        args.diff = getattr(args, "diff", None)
+
 
     if args.command == "version":
         print(f"GhostCheck version: {__version__}")

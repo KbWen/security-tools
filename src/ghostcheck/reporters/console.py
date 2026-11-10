@@ -66,11 +66,11 @@ class ConsoleReporter(BaseReporterPlugin):
             return
 
         severity_order = {"CRITICAL": 0, "HIGH": 1, "MEDIUM": 2, "LOW": 3, "INFO": 4}
-        sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity', 'INFO'), 5))
+        sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity') or 'INFO', 5))
 
         if is_compact:
             for f in sorted_findings:
-                sev = f.get('severity', 'INFO')
+                sev = f.get('severity') or 'INFO'
                 title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
                 loc_file = f.get('file', '')
                 loc_line = f.get('line', 0)
@@ -79,7 +79,7 @@ class ConsoleReporter(BaseReporterPlugin):
 
             summary = {}
             for f in findings:
-                sev = f.get('severity', 'INFO')
+                sev = f.get('severity') or 'INFO'
                 summary[sev] = summary.get(sev, 0) + 1
             summary_line = []
             for sev in ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"]:
@@ -90,10 +90,10 @@ class ConsoleReporter(BaseReporterPlugin):
 
         _print(f"\n{self._color(' --- GhostCheck Scan Results --- ', 'CRITICAL')}")
         _print(self._dim('='*self.terminal_width))
-        sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity', 'INFO'), 5))
+        sorted_findings = sorted(findings, key=lambda x: severity_order.get(x.get('severity') or 'INFO', 5))
 
         for f in sorted_findings:
-            sev = f.get('severity', 'INFO')
+            sev = f.get('severity') or 'INFO'
             title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
             loc = f"{f.get('file')}:{f.get('line')}" if f.get('line') else f.get('file', 'N/A')
             owasp = f.get('owasp_llm', 'N/A')

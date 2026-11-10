@@ -4,6 +4,6 @@ authors:
 - family-names: "Wen"
   given-names: "Kb"
 title: "GhostCheck: AI-era security scanner for developers"
-version: 0.9.0
-date-released: 2026-04-12
+version: 1.3.1
+date-released: 2026-11-10
 url: "https://github.com/KbWen/security-tools"

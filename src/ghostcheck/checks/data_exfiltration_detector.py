@@ -17,6 +17,13 @@ except ImportError:
 # Match potential key/token candidates (base64, hex, or typical high-density strings)
 TOKEN_CANDIDATE_PAT = re.compile(r'\b[a-zA-Z0-9+/=_-]{20,512}\b')
 
+BENIGN_TOKEN_NAMES = {
+    'max_tokens', 'max_output_tokens', 'max_completion_tokens',
+    'min_tokens', 'prompt_tokens', 'completion_tokens', 'total_tokens',
+    'token_count', 'num_tokens', 'tokenizer', 'tokens_used',
+    'input_tokens', 'output_tokens', 'cached_tokens', 'reasoning_tokens',
+}
+
 def calculate_entropy(text: str) -> float:
     if not text:
         return 0.0
@@ -106,8 +113,8 @@ def parse_ipv4_to_int(host: str) -> Optional[int]:
             val = values[0]
             val_u32 = val & 0xFFFFFFFF
             return val_u32
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Failed to convert val_u32: %s", e)
     return None
 
 def is_metadata_ip_or_host(text: str) -> bool:
@@ -301,6 +308,8 @@ class PythonDataExfiltrationVisitor(ast.NodeVisitor):
 
     def _is_sensitive_name(self, name: str) -> bool:
         name_lower = name.lower()
+        if name_lower in BENIGN_TOKEN_NAMES or name_lower.endswith('_token_count') or name_lower.endswith('_token_limit'):
+            return False
         return any(k in name_lower for k in ['api_key', 'secret', 'password', 'token', 'private_key', 'passphrase', 'credentials'])
 
     def _is_sensitive_path(self, path: str) -> bool:
@@ -1686,6 +1695,8 @@ class DataExfiltrationDetector(BaseScannerPlugin):
 
     def _is_sensitive_name(self, name: str) -> bool:
         name_lower = name.lower()
+        if name_lower in BENIGN_TOKEN_NAMES or name_lower.endswith('_token_count') or name_lower.endswith('_token_limit'):
+            return False
         return any(k in name_lower for k in ['api_key', 'secret', 'password', 'token', 'private_key'])
 
     def _is_sensitive_path(self, path: str) -> bool:

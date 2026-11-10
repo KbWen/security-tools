@@ -75,9 +75,9 @@ class OWASPLLMReporter(BaseReporterPlugin):
             
             if not is_passed:
                 # Group by severity
-                sorted_f = sorted(cat_findings, key=lambda x: {"CRITICAL":0, "HIGH":1, "MEDIUM":2, "LOW":3, "INFO":4}.get(x.get('severity'), 5))
+                sorted_f = sorted(cat_findings, key=lambda x: {"CRITICAL":0, "HIGH":1, "MEDIUM":2, "LOW":3, "INFO":4}.get(x.get('severity') or 'INFO', 5))
                 for f in sorted_f:
-                    sev = f.get('severity', 'INFO')
+                    sev = f.get('severity') or 'INFO'
                     title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('package') or "Issue"
                     loc = f"{f.get('file')}:{f.get('line')}" if f.get('line') else f.get('file', 'N/A')
                     _print(f"  {self._color(f' {sev:<8} ', sev)} {title} ({loc})")
@@ -87,8 +87,8 @@ class OWASPLLMReporter(BaseReporterPlugin):
 
         if others:
             _print(f"\n{self.colors['BOLD']}Other Security Findings{self.colors['RESET']}")
-            for f in sorted(others, key=lambda x: x.get('severity', 'INFO'))[:10]: # Limit to 10
-                sev = f.get('severity', 'INFO')
+            for f in sorted(others, key=lambda x: x.get('severity') or 'INFO')[:10]: # Limit to 10
+                sev = f.get('severity') or 'INFO'
                 title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or "Issue"
                 _print(f"  {self._color(f' {sev:<8} ', sev)} {title} ({f.get('file')})")
             if len(others) > 10:

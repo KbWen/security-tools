@@ -1,7 +1,9 @@
 import re
-
 import json
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 def _has_keyword(text: str, keyword: str) -> bool:
     keyword_lower = keyword.lower()
@@ -30,7 +32,8 @@ class ContextAuditor:
                 data = json.load(f)
                 self.negative_keywords = data.get("negative_keywords", [])
                 self.example_keywords = data.get("example_keywords", [])
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to load context_keywords.json, falling back: %s", e)
             # Fallback to English and Chinese if file is missing
             self.negative_keywords = ["forbidden", "don't", "do not", "never", "avoid", "避免", "嚴禁", "不可", "請勿", "禁止"]
             self.example_keywords = ["example:", "sample:", "placeholder", "mock", "例如", "範例", "如："]
@@ -90,23 +93,21 @@ class ContextAuditor:
         in_code_block = code_block_count % 2 != 0
         
         non_blank_count = 0
-        for prev_line in reversed(context_window):
+        for curr_idx in range(target_idx - 1, start_idx - 1, -1):
+            prev_line = lines[curr_idx]
             stripped = prev_line.strip()
             
             # If we were in a code block, and we hit the opening block markdown ```
             # We check the lines immediately before this code block, but stop traversing further to avoid cross-boundary false positives.
             if in_code_block and stripped.startswith("```"):
-                try:
-                    line_pos = lines.index(prev_line)
-                    above_window = lines[max(0, line_pos - 5):line_pos]
-                    for ab_line in reversed(above_window):
-                        if ab_line.strip():
-                            if any(_has_keyword(ab_line.lower(), kw) for kw in self.negative_keywords + self.example_keywords):
-                                return True
-                            if re.match(r'^#+\s', ab_line) or ab_line.strip().startswith("```"):
-                                break
-                except ValueError:
-                    pass
+                line_pos = curr_idx
+                above_window = lines[max(0, line_pos - 5):line_pos]
+                for ab_line in reversed(above_window):
+                    if ab_line.strip():
+                        if any(_has_keyword(ab_line.lower(), kw) for kw in self.negative_keywords + self.example_keywords):
+                            return True
+                        if re.match(r'^#+\s', ab_line) or ab_line.strip().startswith("```"):
+                            break
                 break
                 
             if not stripped:

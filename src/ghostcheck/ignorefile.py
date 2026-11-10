@@ -1,5 +1,8 @@
 import fnmatch
 import os
+import logging
+
+logger = logging.getLogger(__name__)
 
 class IgnoreMatcher:
     def __init__(self, ignore_file_path=None, base_path=None, patterns=None):
@@ -20,13 +23,21 @@ class IgnoreMatcher:
                 
         self.base_path = os.path.realpath(base_path) if base_path else None
         self.base_path_norm = os.path.normcase(self.base_path) if self.base_path else None
-        if ignore_file_path and os.path.exists(ignore_file_path):
-            with open(ignore_file_path, 'r', encoding='utf-8') as f:
+        if ignore_file_path:
+            self._load_ignore_file(ignore_file_path)
+
+    def _load_ignore_file(self, ignore_file_path):
+        if not ignore_file_path or not os.path.exists(ignore_file_path):
+            return
+        try:
+            with open(ignore_file_path, 'r', encoding='utf-8-sig', errors='replace') as f:
                 for line in f:
                     line = line.strip()
                     if line and not line.startswith('#'):
                         if line not in self.patterns:
                             self.patterns.append(line)
+        except OSError as e:
+            logger.debug(f"Failed to read ignore file {ignore_file_path}: {e}")
 
     def is_ignored(self, path):
         real_path = os.path.realpath(path)

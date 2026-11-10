@@ -1,7 +1,10 @@
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class MobileConfigAuditor(BaseScannerPlugin):
 
@@ -26,8 +29,8 @@ class MobileConfigAuditor(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def __init__(self):

@@ -1,6 +1,9 @@
 import re
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class AISupplyChainScanner(BaseScannerPlugin):
 
@@ -21,15 +24,15 @@ class AISupplyChainScanner(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def __init__(self):
         self.patterns = [
             {
                 "name": "mcp_npm_package_unfixed",
-                "pattern": r'("command"|"args")\s*:\s*\[??"(npx|-y|@[a-z0-9-]+/[a-z0-9-]+)(?!"|@)',
+                "pattern": r'("command"|"args")\s*:\s*\[??"(npx|-y|@[a-z0-9-]+/[a-z0-9-]+)(?![a-z0-9_-]|"|@)',
                 "severity": "HIGH",
                 "suggestion": "Pin MCP server versions using @version (e.g., npx @modelcontextprotocol/server-everything@0.1.0) to prevent rug pull attacks."
             },

@@ -1,8 +1,11 @@
 import re
 import os
 import json
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_AI_SDKS_PYTHON = {
     'openai', 'anthropic', 'langchain', 'llamaindex', 'google.generativeai',
@@ -46,8 +49,8 @@ class ShadowAIDetector(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def __init__(self, config=None):

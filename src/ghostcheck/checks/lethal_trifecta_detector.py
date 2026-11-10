@@ -1,7 +1,10 @@
 import ast
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 try:
     import esprima
@@ -44,8 +47,8 @@ class LethalTrifectaDetector(BaseScannerPlugin):
                     visitor.visit(tree)
                     findings.extend(visitor.findings)
 
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to scan Python file %s: %s", file_path, e)
             elif ext in ['.js', '.ts', '.jsx', '.tsx'] and esprima is not None:
                 try:
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
@@ -74,8 +77,8 @@ class LethalTrifectaDetector(BaseScannerPlugin):
                         visitor.evaluate_scope(global_scope, 1)
                         
                     findings.extend(visitor.findings)
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to scan JS/TS file %s: %s", file_path, e)
         return findings
 
 

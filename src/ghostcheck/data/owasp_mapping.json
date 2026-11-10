@@ -54,6 +54,7 @@
     "gha_secret_exposure_in_run": "LLM02: Sensitive Information Disclosure",
     "gitlab_secret_exposure_in_run": "LLM02: Sensitive Information Disclosure",
     "fastlane_hardcoded_password": "LLM02: Sensitive Information Disclosure",
+    "fastlane_match_git_url_missing": "LLM02: Sensitive Information Disclosure",
     "sensitive_mobile_config_found": "LLM02: Sensitive Information Disclosure",
     "mcp_npm_package_unfixed": "LLM03: Supply Chain Vulnerabilities",
     "mcp_unpinned_package_exec": "LLM03: Supply Chain Vulnerabilities",

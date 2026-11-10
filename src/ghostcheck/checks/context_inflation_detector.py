@@ -1,8 +1,11 @@
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from collections import Counter
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class ContextInflationDetector(BaseScannerPlugin):
     @property
@@ -37,7 +40,8 @@ class ContextInflationDetector(BaseScannerPlugin):
             # Chaos Protection: Split long lines (>10,000 chars) to prevent ReDoS via regex replace
             content = re.sub(r'([^\n]{10000})', r'\1\n', content)
             return content
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed reading file safely %s: %s", file_path, e)
             return ""
 
     def scan(self, files: List[str], config: Any) -> List[Dict[str, Any]]:

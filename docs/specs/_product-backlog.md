@@ -49,6 +49,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.2.14 | Skill Frontmatter Parity, Proxy Opener Reset & CI Resilience Hardening | ✅ |
 | v1.2.15 | Tenth-Man 深度審計、並行加固與 Baseline 對齊 | ✅ |
 | v1.3.0 | Purple Shield & Agentic Boundary Guard (RAG/Memory, Multimodal/Polyglot, Env/Egress) | ✅ |
+| v1.3.1 | Core Engine Wiring, False-Positive Elimination & Concurrency Hardening | ✅ |
 
 ---
 
@@ -295,3 +296,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-10-21 | 完成 v1.2.14 Skill Frontmatter 對齊、Proxy Opener Reset 與 CI 韌性強化 (修復 .agents/skills Frontmatter、urllib opener 洩漏重設、409 tests 100% 通過)。 |
 | 2026-10-25 | 完成 v1.2.15 Tenth-Man 深度審計與並行加固 (結果快取隔離、Baseline 自動偵測與忽略對齊、init --hook / honeypot --clean CLI 旗標補齊、exclude_patterns 與 .env 保留、CLI 路徑設定解析、多執行緒檢查器鎖定與原子快取寫入、Windows 大小寫安全忽略匹配、Preset 模組補齊與 SecretValidator 顯式啟用，417 tests 100% 通過)。 |
 | 2026-10-30 | 完成 v1.3.0 Purple Shield & Agentic Boundary Guard (新增 RagMemoryAuditor、MultimodalPolyglotScanner、EnvEgressGuard 三大防禦檢查器，涵蓋 E7-F1、E7-F4、E8-F1、E9-F2、E9-F3、E10-F1，支援二進位穿透掃描與 OWASP LLM 映射，449 tests 100% 通過)。 |
+| 2026-11-10 | 完成 v1.3.1 核心引擎串接對齊、誤報掃除與並行加固 (CIAuditor/SilentInstaller/AgencyAuditor 模組串接修復、DataExfiltrationDetector max_tokens 誤報消除、MCPAuditor 官方 registry 與 BOM 支援、EnvEgressGuard Compose 服務層級作用域隔離、RagMemoryAuditor 防禦前綴順序驗證、VulnScanner requirements 解析與 4xx 熔斷隔離、CLI 空參數自動掃描專案根目錄，469 tests 100% 通過)。 |

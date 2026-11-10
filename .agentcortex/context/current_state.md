@@ -30,6 +30,7 @@
   - `[context-inflation] docs/specs/context-inflation-detector.md [Frozen] [Updated: 2026-07-01]`
   - `[tenth-man-audit-v1-2-15] docs/specs/tenth-man-audit-v1-2-15.md [Frozen] [Updated: 2026-10-25]`
   - `[v1-3-0-purple-shield-guardrails] docs/specs/v1-3-0-purple-shield-guardrails.md [Frozen] [Updated: 2026-10-30]`
+  - `[v1-3-1-audit-remediation] docs/specs/v1-3-1-audit-remediation.md [Frozen] [Updated: 2026-11-10]`
   - When reading specs: only open files tagged with the current task's module.
 - **Canonical Commands**:
   - `/spec-intake`: Import external specs (from other LLMs, documents, or natural language). Handles large product specs via decomposition. Runs before `/bootstrap`.
@@ -108,8 +109,22 @@ GLOBAL-CANDIDATE [Patch Path Fallback]: When `apply_patch` is unstable on this W
 - [Untrusted-Asset-Ignore-Guard]: Scanner rules auditing untrusted external data or multimodal assets (RAG `.jsonl`, `MEMORY.md`, `.svg`, image metadata) must reject bare `ghostcheck-ignore` comments so attacker-controlled payloads cannot self-suppress, and inline suppression parsers must match exact rule IDs rather than raw `"ghostcheck-ignore" in line` substrings.
 - [SVG-Linear-Traversal]: Never apply `re.DOTALL` with non-greedy `(.*?)` tag regexes on multi-megabyte XML/SVG inputs due to quadratic `O(N^2)` backtracking on unclosed tags and missed nested `<tspan>`/`<g>` inheritance; use `ElementTree` traversal (with `<!ENTITY`/`<!DOCTYPE` guards) paired with `O(N)` `str.find` fallback.
 - [JS-Exec-Method-Disambiguation]: Static rules targeting Node.js `child_process.exec` must gate on `child_process` import presence and apply negative lookbehind `(?<![\.\w$])` (or tracked module aliases) so `RegExp.prototype.exec()` and ORM `.exec()` calls never trigger false positives.
+- [Plugin-Alias-Completeness]: When remapping CLI check category names in `Scanner._process_single_file` (`checks_iter`), yield both the underscore and non-underscore plugin identifiers (`"ci_auditor"` and `"ciauditor"`) and explicitly map composite plugin names (`"silent_package_install_rules_detector"`, `"agencyauditor"`) so plugins never silently go dark during standard scans.
+- [LLM-Token-Parameter-Disambiguation]: Static data-exfiltration rules matching `'token' in identifier` must explicitly exempt standard LLM token-accounting parameters (`max_tokens`, `max_output_tokens`, `max_completion_tokens`, `prompt_tokens`, `completion_tokens`, `tokenizer`, `*_tokens`) to prevent false positives on standard OpenAI/Anthropic SDK calls.
+- [Defensive-Prefix-Positioning]: Natural-language prompt injection exemptions for defensive keywords (`"never"`, `"do not"`) must verify the defensive keyword appears in the prefix before the matched directive (`line[:match.start()]`), preventing attackers from appending `"and do not tell the user"` to bypass detection.
 
 ## Ship History
+
+### Ship-v1.3.1-core-wiring-and-fp-remediation-2026-11-10
+- v1.3.1 Patch Release — Core Engine Wiring, False-Positive Elimination & Concurrency Hardening shipped:
+  - Fixed dead plugin mappings in `Scanner._process_single_file` (`src/ghostcheck/scanner.py`) so `CIAuditor` (`"ci_auditor"`), `SilentPackageInstallRulesDetector` (`"silent_package_install_rules_detector"`), and `AgencyAuditor` (`"agencyauditor"`) execute properly during `ghostcheck scan`; added `enabled_checks` parameter to `Scanner.__init__`, shallow-copied cached findings to prevent in-place `_post_process` path mutation, and refined `_is_self_scan_exempt` so real leaked secrets in `ghostcheck.toml` are caught.
+  - Defaulted bare CLI invocation (`ghostcheck` or `ghostcheck --offline` with `args.command is None`) in `src/ghostcheck/cli.py` to execute `scan` on `"."`, eliminating the false `Grade A (100/100)` empty scan bug.
+  - Eliminated `max_tokens` / `max_completion_tokens` / `prompt_tokens` / `tokenizer` false positives in `DataExfiltrationDetector` (`src/ghostcheck/checks/data_exfiltration_detector.py`).
+  - Hardened `MCPAuditor` (`src/ghostcheck/checks/mcp_auditor.py`) to allow official `registry.npmjs.org`, `*.pypi.org`, and `files.pythonhosted.org` registries and ignore leading UTF-8 BOM (`\uFEFF` at index 0); scoped `EnvEgressGuard` (`src/ghostcheck/checks/env_egress_guard.py`) `docker-compose` volume checks to the AI service block; and required defensive words in `RagMemoryAuditor` (`src/ghostcheck/checks/rag_memory_auditor.py`) to precede directive matches.
+  - Hardened `VulnScanner._scan_requirements` (`src/ghostcheck/checks/vuln_scanner.py`) to strip comments, PEP 508 markers, and `--hash` flags and ignore HTTP 4xx in circuit-breaker counting; added seconds-only ISO timestamp fallback in `HallucinationChecker` (`src/ghostcheck/checks/hallucination.py`); replaced remaining silent `except Exception: pass` blocks with `logger.debug`.
+  - Synchronized version `1.3.1` and `469 passed` across `pyproject.toml`, `src/ghostcheck/__init__.py`, `src/ghostcheck/checks/hallucination.py`, `CITATION.cff`, `uv.lock`, `README.md`, `README_zh-TW.md`, and `docs/specs/_product-backlog.md`; purged untracked test clutter from workspace root.
+- Tests: Pass (469/469 tests passed including 20 TDD & adversarial regression tests in `tests/test_v1_3_1_audit_fixes.py`, Grade A 100/100 self-scan, wheel/sdist build verified, `uv lock --check` passed, `validate.ps1` passed).
+- Review: Pass (`independence: isolated-subagent invoke_subagent` — Independent Pre-Commit & Tenth-Man Reviewer subagent `08b54c3d-f954-45b6-a703-6a4601a2e874` verdict: PASS across Scope, Regression, Spec AC-1~AC-6, OWASP Security, Full Red Team, and Observability).
 
 ### Ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30
 - v1.3.0 Minor Release — Purple Shield & Agentic Boundary Guard shipped:

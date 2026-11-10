@@ -1,8 +1,11 @@
 import json
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 def _has_keyword(text: str, keyword: str) -> bool:
     keyword_lower = keyword.lower()
@@ -67,8 +70,8 @@ class AgentRulesLinter(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def __init__(self, risky_rules_path):
@@ -83,7 +86,8 @@ class AgentRulesLinter(BaseScannerPlugin):
                 negative = data.get("negative_keywords", [])
                 example = data.get("example_keywords", [])
                 self.safe_keywords = list(set(negative + example))
-        except Exception:
+        except Exception as e:
+            logger.debug("Failed to load context_keywords.json, falling back: %s", e)
             # Fallback to English and Chinese if file is missing
             self.safe_keywords = [
                 "forbidden", "prohibited", "not allowed", "don't", "dont", "do not", 

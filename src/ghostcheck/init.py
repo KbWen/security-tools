@@ -90,6 +90,7 @@ project_type = "{project_type}"
             project_type=project_type
         )
 
+        os.makedirs(self.project_root, exist_ok=True)
         with open(config_path, "w", encoding='utf-8') as f:
             f.write(content)
 

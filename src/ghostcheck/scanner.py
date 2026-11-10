@@ -49,7 +49,7 @@ from . import __version__
 class Scanner:
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
-    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version=None):
+    def __init__(self, root_path, ignore_enabled=True, offline=False, config=None, baseline_path=None, version=None, enabled_checks=None):
         self.version = version or __version__
         # Normalize and store absolute path for boundary checks
         # AC-H3: 使用 realpath 以確保符號連結下的一致性
@@ -69,6 +69,17 @@ class Scanner:
             curr = parent
         self.ignore_enabled = ignore_enabled
         self.offline = offline
+        self.enabled_checks = enabled_checks
+        if enabled_checks is not None:
+            if config is None:
+                config = {"enabled_checks": enabled_checks}
+            elif isinstance(config, dict):
+                config = dict(config)
+                config["enabled_checks"] = enabled_checks
+            elif hasattr(config, "config") and isinstance(config.config, dict):
+                config.config["enabled_checks"] = enabled_checks
+            else:
+                config = {"enabled_checks": enabled_checks}
         self.config = config
         # Load baseline: prefer explicit path, fallback to .ghostcheckbaseline or .ghostcheck-baseline.json in root
         if not baseline_path:
@@ -465,10 +476,23 @@ class Scanner:
         file_path = fnd.get('file', '').replace('\\', '/')
         fnd_id = self._get_fnd_id(fnd)
         
+        if file_path.endswith('ghostcheck.toml'):
+            name = str(fnd.get('name') or fnd.get('pattern_name') or '')
+            ctx = str(fnd.get('context', ''))
+            is_secret = (
+                name.startswith('Secret Leaked:')
+                or any(k in name.lower() for k in ['key', 'secret', 'token', 'credential', 'password', 'api_key', 'openai', 'anthropic', 'aws'])
+                or fnd.get('severity') in ('CRITICAL', 'HIGH')
+            )
+            if is_secret and 'regex' not in ctx.lower() and 'pattern' not in ctx.lower():
+                if not fnd.get('name'):
+                    fnd['name'] = f"Secret Leaked: {name}"
+                return False
+            return True
+
         # Narrow exemption: Only specific known data/config files
         exempt_files = [
             'src/ghostcheck/data/secret_patterns.json',
-            'ghostcheck.toml',
             'src/ghostcheck/scanner.py',
             'src/ghostcheck/honeypot.py'
         ]
@@ -693,7 +717,8 @@ class Scanner:
         def _plugin_allowed(plugin):
             default_enabled = ["hallucination", "secrets", "rules", "docker"]
             enabled_checks = self.config.get("enabled_checks", []) if self.config else []
-            if enabled_checks and set(enabled_checks) != set(default_enabled):
+            is_explicit = self.enabled_checks is not None
+            if enabled_checks and (is_explicit or set(enabled_checks) != set(default_enabled)):
                 pname_lower = getattr(plugin, 'name', '').lower()
                 matched_cfg = False
                 for c in checks_iter(enabled_checks):
@@ -716,12 +741,27 @@ class Scanner:
 
         def checks_iter(items):
             for item in items:
-                clean = item.lower().replace("secrets", "secret").replace("ci_cd", "ciauditor").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
-                if clean == "ci":
-                    clean = "ciauditor"
-                elif clean == "env":
-                    clean = "envscanner"
-                yield clean
+                norm = str(item).lower()
+                if norm in ("ci_cd", "ci"):
+                    yield "ci_auditor"
+                    yield "ciauditor"
+                elif norm == "env":
+                    yield "envscanner"
+                elif norm == "ast_python":
+                    yield "astsecretchecker"
+                elif norm == "ast_js":
+                    yield "jsastsecretchecker"
+                elif norm == "silent_install":
+                    yield "silent_install"
+                    yield "silent_package_install_rules_detector"
+                elif norm == "privilege":
+                    yield "privilege"
+                    yield "agencyauditor"
+                else:
+                    clean = norm.replace("secrets", "secret").replace("supply_chain", "supplychain").replace("shadow_ai", "shadowai")
+                    yield clean
+                    if clean != item and clean != norm:
+                        yield norm
 
         content = self._read_file_safe(file_path)
         if not content:
@@ -1006,7 +1046,8 @@ class Scanner:
                     self.cache_hits += 1
                     if os.getenv("GHOSTCHECK_DEBUG") == "1":
                         print(f"[DEBUG] Cache hit for {file_path}")
-                    cached_results.extend(self.results_cache[fp])
+                    cached_findings = self.results_cache.get(fp, [])
+                    cached_results.extend([dict(f) for f in cached_findings])
                 else:
                     files_to_scan.append(file_path)
                 all_files.append(file_path)
@@ -1029,7 +1070,7 @@ class Scanner:
                         fp = self._get_file_fingerprint(f_path)
                         if fp:
                             with self._cache_lock:
-                                self.results_cache[fp] = result or []
+                                self.results_cache[fp] = [dict(f) for f in result] if result else []
                     except Exception as e:
                         print(f"Error scanning {f_path}: {e}")
             

@@ -1,7 +1,10 @@
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class CIAuditor(BaseScannerPlugin):
     def __init__(self):
@@ -27,7 +30,7 @@ class CIAuditor(BaseScannerPlugin):
             },
             {
                 "name": "gha_secret_exposure_in_run",
-                "pattern": r'echo\s+(?:["\']?\$[^"\'\s]+["\']?|\$\{\{\s*secrets\.[^\}]+\s*\}\})', # Potential secret echo, quoted or unquoted or GHA expression
+                "pattern": r'echo\s+(?:["\']?\$[A-Za-z0-9_]*(?:SECRET|TOKEN|KEY|PASSWORD|CREDENTIAL|AUTH|PRIVATE)[A-Za-z0-9_]*["\']?|["\']?\$\{\{\s*secrets\.[^\}]+\s*\}\}["\']?)',
                 "severity": "MEDIUM",
                 "suggestion": "Avoid echoing secrets or using them directly in shell scripts. Use them as env vars if needed."
             }
@@ -86,8 +89,8 @@ class CIAuditor(BaseScannerPlugin):
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
                     findings.extend(self.scan_file(file_path, content))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def scan_file(self, file_path, content):

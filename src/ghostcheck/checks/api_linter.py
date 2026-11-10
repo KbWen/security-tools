@@ -1,7 +1,10 @@
 import os
 import re
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class APILinter(BaseScannerPlugin):
     def __init__(self):
@@ -50,8 +53,8 @@ class APILinter(BaseScannerPlugin):
                 with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                     content = f.read()
                 findings.extend(self.scan_content(file_path, content))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def _clean_comments(self, content: str, file_path: str) -> str:

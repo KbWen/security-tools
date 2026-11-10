@@ -1,6 +1,9 @@
 import re
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class DockerRiskChecker(BaseScannerPlugin):
     def __init__(self):
@@ -51,8 +54,8 @@ class DockerRiskChecker(BaseScannerPlugin):
                         findings.extend(self.check_dockerfile(content, file_path))
                     elif "docker-compose" in filename:
                         findings.extend(self.scan_file(file_path, content))
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def check_dockerfile(self, content, file_path="Dockerfile"):
@@ -101,8 +104,7 @@ class DockerRiskChecker(BaseScannerPlugin):
             env_block = match.group(0)
             # If there's another Docker instruction in the matched block, it's not a multiline ENV
             if re.search(r'\n[A-Z]+\s+', env_block[1:]): 
-                # Re-do search line by line just in case if it spans commands
-                pass 
+                continue 
             start_offset = match.start()
             line_idx = content.count('\n', 0, start_offset)
             findings.append({

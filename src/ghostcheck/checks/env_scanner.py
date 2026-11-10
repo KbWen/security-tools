@@ -1,7 +1,10 @@
 import os
 import re
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class EnvScanner(BaseScannerPlugin):
 
@@ -31,8 +34,8 @@ class EnvScanner(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     """

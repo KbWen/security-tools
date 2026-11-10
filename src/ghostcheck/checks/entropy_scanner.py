@@ -1,8 +1,11 @@
 import math
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 def _is_kebab_case_false_positive(token: str) -> bool:
     if '-' not in token:
@@ -89,8 +92,8 @@ class EntropyScanner(BaseScannerPlugin):
 
                 findings.extend(self.scan_content(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     def __init__(self, threshold=4.5, min_length=16):

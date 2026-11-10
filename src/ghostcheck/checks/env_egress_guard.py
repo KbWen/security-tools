@@ -24,7 +24,8 @@ JS_AI_INDICATORS = (
 
 AI_CONTAINER_WORKLOADS = (
     "openhands", "swe-agent", "autogen", "crewai", "mcp", "langchain",
-    "ollama", "vllm", "claude-code", "codex", "ai-agent", "agent-runner"
+    "ollama", "vllm", "claude-code", "codex", "ai-agent", "agent-runner",
+    "chromadb", "chroma"
 )
 
 SUBPROCESS_TARGETS = {
@@ -661,80 +662,153 @@ class EnvEgressGuard(BaseScannerPlugin):
                     })
 
         if not host_network_directive_present:
-            has_volumes = False
+            has_isolation = False
             for line in lines:
                 stripped = line.strip()
                 if stripped.startswith("#"):
                     continue
-                if re.search(r"^\s*volumes\s*:", line):
-                    has_volumes = True
+                if re.search(r"internal:\s*true", stripped, re.IGNORECASE):
+                    has_isolation = True
+                    break
+                if re.search(r"network_mode:\s*[\"']?none[\"']?", stripped, re.IGNORECASE):
+                    has_isolation = True
+                    break
+                if re.search(r"\b(?:egress_firewall|egress-network|squid|egress-proxy)\b", stripped, re.IGNORECASE):
+                    has_isolation = True
                     break
 
-            if has_volumes:
-                has_isolation = False
-                for line in lines:
-                    stripped = line.strip()
-                    if stripped.startswith("#"):
-                        continue
-                    if re.search(r"internal:\s*true", stripped, re.IGNORECASE):
-                        has_isolation = True
-                        break
-                    if re.search(r"network_mode:\s*[\"']?none[\"']?", stripped, re.IGNORECASE):
-                        has_isolation = True
-                        break
-                    if re.search(r"\b(?:egress_firewall|egress-network|squid|egress-proxy)\b", stripped, re.IGNORECASE):
-                        has_isolation = True
-                        break
+            if not has_isolation:
+                is_compose = (
+                    filename_lower in ("docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml")
+                    or filename_lower.startswith(("docker-compose.", "compose."))
+                    or re.search(r"^\s*services\s*:", content, re.MULTILINE) is not None
+                )
 
-                if not has_isolation:
-                    target_line = None
-                    target_line_text = ""
-
+                if is_compose:
+                    # Docker Compose: check all service blocks containing AI image or AI service
+                    services_line_idx = -1
                     for idx, line in enumerate(lines):
                         stripped = line.strip()
-                        if stripped.startswith("#"):
-                            continue
-                        m = re.match(r"^\s{2,4}([a-zA-Z0-9_-]+)\s*:", line)
-                        if m:
-                            svc_name = m.group(1).lower()
-                            if any(workload in svc_name for workload in AI_CONTAINER_WORKLOADS):
-                                target_line = idx + 1
-                                target_line_text = stripped
-                                break
+                        if not stripped.startswith("#") and re.match(r"^services\s*:", stripped):
+                            services_line_idx = idx
+                            break
 
-                    if target_line is None:
+                    services = []
+                    svc_indent = None
+                    search_start = services_line_idx + 1 if services_line_idx != -1 else 0
+
+                    for idx in range(search_start, len(lines)):
+                        line = lines[idx]
+                        stripped = line.strip()
+                        if not stripped or stripped.startswith("#"):
+                            continue
+                        if services_line_idx != -1 and not line.startswith(" ") and not line.startswith("\t"):
+                            break
+                        m = re.match(r"^(\s{2,4})([a-zA-Z0-9_-]+)\s*:", line)
+                        if m:
+                            cur_indent = len(m.group(1))
+                            if svc_indent is None:
+                                svc_indent = cur_indent
+                            if cur_indent == svc_indent:
+                                svc_name = m.group(2).lower()
+                                services.append((idx, svc_name, cur_indent))
+
+                    if not services:
                         for idx, line in enumerate(lines):
                             stripped = line.strip()
                             if stripped.startswith("#"):
                                 continue
                             if re.search(r"image:\s*.*(?:" + "|".join(AI_CONTAINER_WORKLOADS) + ")", stripped, re.IGNORECASE):
-                                target_line = idx + 1
-                                target_line_text = stripped
+                                fallback_start = idx
+                                fallback_indent = len(line) - len(line.lstrip())
+                                for up_idx in range(idx - 1, -1, -1):
+                                    m_up = re.match(r"^(\s{2,4})([a-zA-Z0-9_-]+)\s*:", lines[up_idx])
+                                    if m_up:
+                                        fallback_start = up_idx
+                                        fallback_indent = len(m_up.group(1))
+                                        break
+                                services.append((fallback_start, "", fallback_indent))
                                 break
 
-                    if target_line is None:
+                    for s_i, (svc_start_idx, svc_name, s_indent) in enumerate(services):
+                        if s_i + 1 < len(services):
+                            svc_end_idx = services[s_i + 1][0]
+                        else:
+                            svc_end_idx = len(lines)
+                            for idx in range(svc_start_idx + 1, len(lines)):
+                                line_str = lines[idx]
+                                stripped = line_str.strip()
+                                if not stripped or stripped.startswith("#"):
+                                    continue
+                                cur_indent = len(line_str) - len(line_str.lstrip())
+                                if cur_indent <= s_indent:
+                                    svc_end_idx = idx
+                                    break
+
+                        service_block_lines = lines[svc_start_idx:svc_end_idx]
+                        is_ai_service = False
+                        target_line = svc_start_idx + 1
+                        target_line_text = lines[svc_start_idx].strip()
+
+                        if svc_name and any(workload in svc_name for workload in AI_CONTAINER_WORKLOADS):
+                            is_ai_service = True
+                        else:
+                            for rel_idx, s_line in enumerate(service_block_lines):
+                                stripped_s = s_line.strip()
+                                if stripped_s.startswith("#"):
+                                    continue
+                                if re.search(r"image:\s*.*(?:" + "|".join(AI_CONTAINER_WORKLOADS) + ")", stripped_s, re.IGNORECASE):
+                                    is_ai_service = True
+                                    target_line = svc_start_idx + rel_idx + 1
+                                    target_line_text = stripped_s
+                                    break
+
+                        if is_ai_service:
+                            has_volume_mount = any(
+                                re.search(r"^\s*volumes\s*:", s_line) or re.search(r"\btype:\s*bind\b", s_line)
+                                for s_line in service_block_lines
+                                if not s_line.strip().startswith("#")
+                            )
+
+                            if has_volume_mount:
+                                if not _is_line_suppressed(lines[target_line - 1], "agent_egress_unrestricted"):
+                                    findings.append({
+                                        "file": file_path,
+                                        "line": target_line,
+                                        "name": "agent_egress_unrestricted",
+                                        "severity": "MEDIUM",
+                                        "message": "AI agent container mounts host volumes without network egress isolation (lacks internal: true or network_mode: none).",
+                                        "context": target_line_text[:120]
+                                    })
+                else:
+                    # Non-compose file (e.g. Dockerfile / devcontainer where entire file represents one container)
+                    has_volume_mount = any(
+                        re.search(r"^\s*volumes\s*:", line) or re.search(r"\bVOLUME\b", line, re.IGNORECASE) or re.search(r"\btype:\s*bind\b", line)
+                        for line in lines
+                        if not line.strip().startswith("#")
+                    )
+
+                    if has_volume_mount:
+                        target_line = 1
+                        target_line_text = lines[0].strip() if lines else ""
                         for idx, line in enumerate(lines):
                             stripped = line.strip()
                             if stripped.startswith("#"):
                                 continue
-                            if re.match(r"^\s*services\s*:", line):
+                            if re.search(r"image:\s*.*(?:" + "|".join(AI_CONTAINER_WORKLOADS) + ")", stripped, re.IGNORECASE) or re.search(r"FROM\s+.*(?:" + "|".join(AI_CONTAINER_WORKLOADS) + ")", stripped, re.IGNORECASE):
                                 target_line = idx + 1
                                 target_line_text = stripped
                                 break
 
-                    if target_line is None:
-                        target_line = 1
-                        target_line_text = lines[0].strip() if lines else ""
-
-                    if target_line <= len(lines):
-                        if not _is_line_suppressed(lines[target_line - 1], "agent_egress_unrestricted"):
-                            findings.append({
-                                "file": file_path,
-                                "line": target_line,
-                                "name": "agent_egress_unrestricted",
-                                "severity": "MEDIUM",
-                                "message": "AI agent container mounts host volumes without network egress isolation (lacks internal: true or network_mode: none).",
-                                "context": target_line_text[:120]
-                            })
+                        if target_line <= len(lines):
+                            if not _is_line_suppressed(lines[target_line - 1], "agent_egress_unrestricted"):
+                                findings.append({
+                                    "file": file_path,
+                                    "line": target_line,
+                                    "name": "agent_egress_unrestricted",
+                                    "severity": "MEDIUM",
+                                    "message": "AI agent container mounts host volumes without network egress isolation (lacks internal: true or network_mode: none).",
+                                    "context": target_line_text[:120]
+                                })
 
         return findings

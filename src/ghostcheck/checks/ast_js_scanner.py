@@ -4,8 +4,11 @@ except ImportError:
     esprima = None
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class JsAstSecretChecker(BaseScannerPlugin):
 
@@ -31,8 +34,8 @@ class JsAstSecretChecker(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed to scan %s: %s", file_path, e)
         return findings
 
     """
@@ -154,5 +157,6 @@ class JsAstSecretChecker(BaseScannerPlugin):
                         "_raw_value": val,
                         "suggestion": p.get('remediation', "Rotate or revoke this secret.")
                     })
-            except Exception:
+            except Exception as e:
+                logger.debug("Failed matching pattern %s against string in %s: %s", p.get('name'), file_path, e)
                 continue

@@ -1,8 +1,11 @@
 import json
 import re
 import os
+import logging
 from typing import List, Dict, Any
 from ..interfaces import BaseScannerPlugin
+
+logger = logging.getLogger(__name__)
 
 class MCPAuditor(BaseScannerPlugin):
 
@@ -23,8 +26,8 @@ class MCPAuditor(BaseScannerPlugin):
 
                 findings.extend(self.scan_file(file_path, content))
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("MCPAuditor error on %s: %s", file_path, e)
         return findings
 
     def __init__(self):
@@ -42,7 +45,7 @@ class MCPAuditor(BaseScannerPlugin):
             },
             {
                 "name": "mcp_custom_registry",
-                "pattern": r'--(registry|index-url|extra-index-url)["\']?\s*[=,:]?\s*["\']?https?://(?!npmjs\.org|pypi\.org|python\.org)[^"\'\s]+',
+                "pattern": r'(--registry|--index-url|--extra-index-url|-i)["\']?\s*[=,:]?\s*["\']?https?://(?!(?:[a-zA-Z0-9-]+\.)*(?:npmjs\.org|pypi\.org|python\.org|pythonhosted\.org)(?:[:/\s"\']|$))[^"\'\s]+',
                 "severity": "HIGH",
                 "suggestion": "MCP server uses a custom package registry. This is a common vector for dependency confusion and rug pull attacks."
             }
@@ -91,8 +94,9 @@ class MCPAuditor(BaseScannerPlugin):
     def _check_tool_poisoning(self, text: str) -> bool:
         if not text or not isinstance(text, str):
             return False
-        # 1. Zero-width character hiding
-        if re.search(r'[\u200B-\u200D\uFEFF]', text):
+        # 1. Zero-width character hiding (ignore leading UTF-8 BOM \uFEFF at start)
+        text_to_check = text[1:] if text.startswith('\ufeff') else text
+        if re.search(r'[\u200B-\u200D\uFEFF]', text_to_check):
             return True
         # 2. HTML comment prompt injection
         if re.search(r'<!--\s*(?:system|instruction|important|override|ignore|prompt|disregard)\b', text, re.IGNORECASE):
@@ -388,7 +392,7 @@ class MCPAuditor(BaseScannerPlugin):
             # 2.5 Fallback / line patterns for custom registry & unstructured files
             for i, line in enumerate(lines):
                 # Custom registry
-                m_reg = re.search(r'--(registry|index-url|extra-index-url)["\']?\s*[=,:]?\s*["\']?https?://(?!npmjs\.org|pypi\.org|python\.org)[^"\'\s]+', line, re.IGNORECASE)
+                m_reg = re.search(r'(--registry|--index-url|--extra-index-url|-i)["\']?\s*[=,:]?\s*["\']?https?://(?!(?:[a-zA-Z0-9-]+\.)*(?:npmjs\.org|pypi\.org|python\.org|pythonhosted\.org)(?:[:/\s"\']|$))[^"\'\s]+', line, re.IGNORECASE)
                 if m_reg:
                     findings.append({
                         "file": file_path,

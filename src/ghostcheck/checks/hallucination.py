@@ -57,8 +57,8 @@ class HallucinationChecker(BaseScannerPlugin):
                         fnd_copy.setdefault('name', 'hallucinated_package')
                         findings.append(fnd_copy)
 
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("HallucinationChecker error on %s: %s", file_path, e)
         return findings
 
     def __init__(self, logger=None, offline=False, proxy=None, ssl_verify=True, timeout=10):
@@ -365,7 +365,10 @@ class HallucinationChecker(BaseScannerPlugin):
                 created_at_str = time_data.get('created')
                 
                 if created_at_str:
-                    created_at = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+                    try:
+                        created_at = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%S.%fZ')
+                    except ValueError:
+                        created_at = datetime.strptime(created_at_str, '%Y-%m-%dT%H:%M:%SZ')
                     age_days = (datetime.now() - created_at).days
                     if age_days < 30:
                         return {
@@ -409,7 +412,7 @@ class HallucinationChecker(BaseScannerPlugin):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://crates.io/api/v1/crates/{safe_pkg}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.3.0'})
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.3.1'})
             with urllib.request.urlopen(req, timeout=self.timeout) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 status = "OK" if status_code == 200 else "ERROR"

@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-449%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-469%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🛡️ v1.3.1: 核心引擎串接對齊、誤報掃除與並行加固 (Core Engine Wiring & FP Elimination)
+*   **生產級引擎串接對齊：** 全面校準單次掃描模組解析 (`checks_iter`)，修復 `CIAuditor`、`SilentInstaller` 與 `AgencyAuditor` 於標準掃描中遺漏之問題，確保 CI/CD 與 Agent 越權規則如實執行。
+*   **精準誤報消除與邊界防護：** 在 `DataExfiltrationDetector` 精準排除 LLM 常見 Token 參數（`max_tokens`、`prompt_tokens` 等），`MCPAuditor` 允許官方 Registry (`registry.npmjs.org`, `pypi.org`) 並忽略 UTF-8 BOM，`EnvEgressGuard` 實作 Compose 服務層級 Volume 作用域隔離，`RagMemoryAuditor` 導入前綴防禦順序驗證防範注入繞過。
+*   **CLI 空參數預設掃描與機密防護：** 無子命令時預設啟動專案根目錄掃描，杜絕誤報 Grade A 假象；確保 `ghostcheck.toml` 內部洩漏之金鑰不被豁免，並將網路熔斷器嚴格限制於真正連線超時而非 4xx 請求。
 
 ### 🛡️ v1.3.0: Purple Shield 護欄與 Agent 邊界防護 (Purple Shield & Agentic Boundary Guard)
 *   **RAG、向量資料庫與 Agent 記憶投毒審計 (`rag_memory`)：** 借鏡 Meta Prompt Guard 與 Microsoft PyRIT 混淆技術，自動掃描 `.jsonl` 語料、`knowledge/` 知識庫與 `MEMORY.md` 持久化記憶中的間接提示注入、Base64/Hex/ROT13 編碼越獄 Payload，以及 `Chroma`/`Pinecone`/`Qdrant` 未過濾外部 Metadata 的寫入風險。
@@ -149,7 +154,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.3.0
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.1
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -212,7 +217,7 @@ ghostcheck scan . -q
 
 ## 🧪 執行測試與驗證
 
-透過執行 449 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 469 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -227,7 +232,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 449 passed in 17.55s =============================
+============================= 469 passed in 17.55s =============================
 ```
 
 ---

@@ -2,6 +2,7 @@ import json
 import os
 import threading
 import logging
+import urllib.error
 try:
     import requests
 except ImportError:
@@ -29,8 +30,8 @@ class VulnScanner(BaseScannerPlugin):
                 continue
             try:
                 findings.extend(self.scan_file(file_path))
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("VulnScanner error on %s: %s", file_path, e)
         return findings
 
     OSV_API_URL = "https://api.osv.dev/v1/query"
@@ -128,12 +129,28 @@ class VulnScanner(BaseScannerPlugin):
                 data = response.json()
                 self._set_cached(ecosystem, package_name, version, data)
                 return data
+            elif 400 <= response.status_code < 500:
+                logger.debug("OSV client error %s for %s==%s", response.status_code, package_name, version)
+                return []
             else:
                 with self._cache_lock:
                     self._consecutive_net_failures += 1
                     if self._consecutive_net_failures >= 2:
                         self.offline = True
+        except urllib.error.HTTPError as e:
+            if 400 <= e.code < 500:
+                logger.debug("OSV HTTP client error %s for %s==%s: %s", e.code, package_name, version, e)
+                return []
+            with self._cache_lock:
+                self._consecutive_net_failures += 1
+                if self._consecutive_net_failures >= 2:
+                    self.offline = True
+            logger.debug("OSV API request failed with HTTP %s: %s", e.code, e)
         except requests.RequestException as e:
+            resp = getattr(e, 'response', None)
+            if resp is not None and hasattr(resp, 'status_code') and 400 <= resp.status_code < 500:
+                logger.debug("OSV request client error %s for %s==%s: %s", resp.status_code, package_name, version, e)
+                return []
             with self._cache_lock:
                 self._consecutive_net_failures += 1
                 if self._consecutive_net_failures >= 2:
@@ -142,6 +159,16 @@ class VulnScanner(BaseScannerPlugin):
             logger.debug(f"OSV API request failed: {e}")
             if os.environ.get("GHOSTCHECK_DEBUG") == "1":
                 print(f"[DEBUG] Vulnerability scan network error. If you are offline, use --offline. Error: {e}")
+        except Exception as e:
+            code = getattr(e, 'code', None) or getattr(e, 'status_code', None)
+            if code and isinstance(code, int) and 400 <= code < 500:
+                logger.debug("OSV error %s for %s==%s: %s", code, package_name, version, e)
+                return []
+            with self._cache_lock:
+                self._consecutive_net_failures += 1
+                if self._consecutive_net_failures >= 2:
+                    self.offline = True
+            logger.debug("OSV API error: %s", e)
         return None
 
     def scan_file(self, file_path):
@@ -163,24 +190,34 @@ class VulnScanner(BaseScannerPlugin):
                 if not line or line.startswith('#'):
                     continue
                 
+                # Strip inline comments, environment markers, and --hash options
+                line = line.split('#', 1)[0].strip()
+                line = line.split(';', 1)[0].strip()
+                line = line.split('--hash', 1)[0].strip()
+                if not line:
+                    continue
+
                 # Simple parser for name==version
-                parts = line.split('==')
-                if len(parts) == 2:
-                    name, version = parts[0].strip(), parts[1].strip()
-                    res = self._query_osv(name, version, "PyPI")
-                    if res and 'vulns' in res:
-                        for v in res['vulns']:
-                            findings.append({
-                                "file": file_path,
-                                "line": i + 1,
-                                "name": "cve_dependency_vulnerability",
-                                "severity": "HIGH",
-                                "package": name,
-                                "version": version,
-                                "vuln_id": v.get('id'),
-                                "message": f"Vulnerability {v.get('id')} found in {name}=={version}: {v.get('summary', 'No summary available')}",
-                                "remediation": f"Update {name} to a fixed version."
-                            })
+                if '==' in line:
+                    parts = line.split('==')
+                    if len(parts) == 2:
+                        name, version = parts[0].strip(), parts[1].strip()
+                        name = name.split('[', 1)[0].strip()
+                        version = version.strip(" \t'\"")
+                        res = self._query_osv(name, version, "PyPI")
+                        if res and 'vulns' in res:
+                            for v in res['vulns']:
+                                findings.append({
+                                    "file": file_path,
+                                    "line": i + 1,
+                                    "name": "cve_dependency_vulnerability",
+                                    "severity": "HIGH",
+                                    "package": name,
+                                    "version": version,
+                                    "vuln_id": v.get('id'),
+                                    "message": f"Vulnerability {v.get('id')} found in {name}=={version}: {v.get('summary', 'No summary available')}",
+                                    "remediation": f"Update {name} to a fixed version."
+                                })
         return findings
 
     def _scan_package_json(self, file_path):

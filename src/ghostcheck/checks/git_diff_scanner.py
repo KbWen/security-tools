@@ -105,9 +105,10 @@ class GitDiffScanner:
             safe_env = os.environ.copy()
             safe_env.pop("GIT_EXTERNAL_DIFF", None)
             safe_env.pop("GIT_PAGER", None)
+            cwd = os.path.dirname(os.path.abspath(self.project_root)) or "." if os.path.isfile(self.project_root) else self.project_root
             subprocess.run(
                 [git_bin, "rev-parse", "--is-inside-work-tree"],
-                cwd=self.project_root,
+                cwd=cwd,
                 capture_output=True,
                 check=True,
                 env=safe_env

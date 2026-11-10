@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.3.0-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-449%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-469%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🛡️ v1.3.1: Core Engine Wiring, False-Positive Elimination & Concurrency Hardening
+*   **Production Engine Wiring Parity:** Fully wired `CIAuditor`, `SilentInstaller`, and `AgencyAuditor` into single-pass scanner module resolution (`checks_iter`), eliminating silent audit omission during standard project scans.
+*   **Precision False-Positive Elimination:** Disambiguated benign LLM token identifiers (`max_tokens`, `prompt_tokens`, `tokenizer`) in `DataExfiltrationDetector` and official registries (`registry.npmjs.org`, `pypi.org`) in `MCPAuditor`, scoped container volume audits to AI service blocks, and added defensive directive ordering in `RagMemoryAuditor`.
+*   **CLI Bare Invocation & Secret Hardening:** Default bare `ghostcheck` invocations to scan project root, ensure leaked credentials in `ghostcheck.toml` are never suppressed, and isolate network circuit breakers to transport timeouts without tripping on 4xx responses.
 
 ### 🛡️ v1.3.0: Purple Shield & Agentic Boundary Guard
 *   **RAG, Vector DB & Agent Memory Poisoning Auditor (`rag_memory`):** Detects indirect prompt injections, PyRIT-style Base64/Hex/ROT13 encoded jailbreak payloads, and unsanitized Vector DB (`Chroma`, `Pinecone`, `Qdrant`, `Weaviate`) metadata ingestion across `.jsonl` corpora, `knowledge/` docs, and persistent `MEMORY.md` profiles.
@@ -150,7 +155,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.3.0
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.1
 ```
 
 ### 🔨 Option B: Install from Source
@@ -213,7 +218,7 @@ ghostcheck scan . -q
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 449 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 469 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -228,7 +233,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 449 passed in 17.55s =============================
+============================= 469 passed in 17.55s =============================
 ```
 
 ---

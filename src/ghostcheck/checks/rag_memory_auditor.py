@@ -394,9 +394,11 @@ class RagMemoryAuditor(BaseScannerPlugin):
                 # Strip hidden unicode to detect evasion attempts that break regex tokens
                 line_unhidden = HIDDEN_UNICODE_PATTERN.sub("", line) if has_hidden_unicode else line
 
-                if PLAINTEXT_DIRECTIVE_PATTERN.search(line_unhidden):
+                m = PLAINTEXT_DIRECTIVE_PATTERN.search(line_unhidden)
+                if m:
                     line_unhidden_lower = line_unhidden.lower()
-                    has_defensive = any(dw in line_unhidden_lower for dw in DEFENSIVE_WORDS)
+                    clause_prefix = re.split(r'(?:[.!?;]|(?<!like)(?<!such as)(?<!example):)\s+', line_unhidden_lower[:m.start()])[-1]
+                    has_defensive = any(dw in clause_prefix for dw in DEFENSIVE_WORDS)
 
                     # Defensive zero-FP guard: exempt only if defensive words exist without hidden unicode
                     if not has_defensive or has_hidden_unicode:
