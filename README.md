@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-469%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-479%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🔐 v1.3.2: SecretScanner Multi-Secret Hardening, Modern AI Key Precision & Context Masking Safety
+*   **Modern AI Key Format Precision:** Updated OpenAI (`sk-proj-...`) and Anthropic (`sk-ant-api03-...`) patterns with underscore/hyphen support, word-boundary false-positive guards, and negative lookahead `(?!ant-)` to prevent cross-provider misclassification across regex and AST scanners.
+*   **Multi-Secret Same-Line Scanning & Full-Line Context Masking:** Upgraded `SecretScanner.scan_file` from single-match `.search()` to `.finditer()` with specific-over-generic deduplication, ensuring placeholder tokens no longer mask subsequent real keys on the same line and all sibling secrets are safely redacted from report `context`.
+*   **Delimiter-Safe Secret Extraction & Hot-Path Optimization:** Hardened `_get_secret_value_part` to preserve `://` URI credentials and split on the earliest `=`/`:` delimiter (preventing plaintext report leaks on Base64 `=`-padded YAML keys and DB URIs), added `secret_val or val` fallback guards, removed dead regex checks, and precompiled module-level patterns.
 
 ### 🛡️ v1.3.1: Core Engine Wiring, False-Positive Elimination & Concurrency Hardening
 *   **Production Engine Wiring Parity:** Fully wired `CIAuditor`, `SilentInstaller`, and `AgencyAuditor` into single-pass scanner module resolution (`checks_iter`), eliminating silent audit omission during standard project scans.
@@ -155,7 +160,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.3.1
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.2
 ```
 
 ### 🔨 Option B: Install from Source
@@ -218,7 +223,7 @@ ghostcheck scan . -q
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 469 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 479 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -233,7 +238,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 469 passed in 17.55s =============================
+============================= 479 passed in 31.63s =============================
 ```
 
 ---

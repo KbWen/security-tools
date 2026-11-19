@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.3.1-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-469%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-479%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🔐 v1.3.2: SecretScanner 同行多密鑰強化、現代 AI 金鑰精度與防洩漏遮罩加固
+*   **現代 AI 金鑰格式精準匹配：** 升級 OpenAI (`sk-proj-...`) 與 Anthropic (`sk-ant-api03-...`) 偵測規則支援 `-`/`_`，導入字詞邊界防誤報與 `(?!ant-)` 負向前瞻，跨正則與 AST 掃描器徹底消除跨供應商誤分類與漏報。
+*   **同行多密鑰掃描與全行安全遮罩：** `SecretScanner.scan_file` 全面升級為 `finditer()` 並引入特定供應商優先去重，杜絕同行 Placeholder 遮蔽後續真實金鑰，並確保同行的所有兄弟密鑰皆完整遮罩不於報告 `context` 外洩明文。
+*   **分隔符安全擷取與熱路徑優化：** 加固 `_get_secret_value_part` 保留 `://` URI 完整憑證並依最早出現之 `=`/`:` 分隔（根治 YAML Base64 `=` 填充金鑰與含 `=` 之資料庫 URI 明文外洩風險），補齊 `secret_val or val` 保底防線、移除死碼並預編譯模組層正則。
 
 ### 🛡️ v1.3.1: 核心引擎串接對齊、誤報掃除與並行加固 (Core Engine Wiring & FP Elimination)
 *   **生產級引擎串接對齊：** 全面校準單次掃描模組解析 (`checks_iter`)，修復 `CIAuditor`、`SilentInstaller` 與 `AgencyAuditor` 於標準掃描中遺漏之問題，確保 CI/CD 與 Agent 越權規則如實執行。
@@ -154,7 +159,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.3.1
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.2
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -217,7 +222,7 @@ ghostcheck scan . -q
 
 ## 🧪 執行測試與驗證
 
-透過執行 469 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 479 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -232,7 +237,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 469 passed in 17.55s =============================
+============================= 479 passed in 31.63s =============================
 ```
 
 ---

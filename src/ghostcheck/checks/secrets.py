@@ -8,19 +8,47 @@ from ..interfaces import BaseScannerPlugin
 
 logger = logging.getLogger(__name__)
 
+_BASE_PLACEHOLDERS = (
+    "your-key-here", "your_key_here", "your-token-here", "your_token_here",
+    "insert-key-here", "insert_key_here", "your-api-key", "your_api_key", "your-api-key-here", "your_api_key_here",
+    "dummy-value", "dummy_value", "mock-value", "mock_value",
+    "placeholder-value", "placeholder_value", "insert-secret-here", "insert_secret_here",
+    "your-password", "your_password", "your-password-here", "your_password_here", "mypassword", "my-password", "my_password",
+    "your-secret", "your_secret", "your-secret-here", "your_secret_here", "your-client-secret", "your_client_secret",
+    "your-hash-key", "your_hash_key",
+)
+_PLACEHOLDER_EXACT_SET = frozenset(
+    item
+    for p in _BASE_PLACEHOLDERS
+    for item in (p, f"<{p}>", f"{{{p}}}")
+)
+_PLACEHOLDER_TEMPLATE_RE = re.compile(
+    r'^[\{\<\[\(]?(your|insert|dummy)[_-]?(key|token|api[_-]?key|secret|password|client[_-]?secret|hash[_-]?key)[_-]?(here|value|token|key)?[\}\>\]\)]?$'
+)
+_NON_ALNUM_RE = re.compile(r'[^a-zA-Z0-9]')
+_JSON_KEY_SUFFIX_RE = re.compile(r'["\']?\s*:')
+_ALNUM_DASH_UNDERSCORE_RE = re.compile(r'^[a-zA-Z0-9_-]+$')
+_COMMON_KEY_NAMES = frozenset({"aws_key", "aws_secret", "secret", "api_key", "apikey", "token", "password", "pass"})
+
+
+def _mask_token(token: str) -> str:
+    return token[:4] + "*" * (len(token) - 8) + token[-4:] if len(token) > 8 else "****"
+
+
 def _get_secret_value_part(match_str: str) -> str:
-    # If the match contains = or :, take the right part
-    if "=" in match_str:
-        val = match_str.split("=", 1)[1]
-    elif ":" in match_str:
-        parts = match_str.split(":", 1)
-        if parts[0].strip().lower() in ["http", "https"]:
-            val = match_str
-        else:
-            val = parts[1]
-    else:
+    # Preserve URI schemes (e.g., http://, https://, postgres://) so '=' inside URI credentials is not split off
+    if "://" in match_str:
         val = match_str
-    
+    else:
+        eq_idx = match_str.find("=")
+        colon_idx = match_str.find(":")
+        if eq_idx != -1 and (colon_idx == -1 or eq_idx < colon_idx):
+            val = match_str[eq_idx + 1:]
+        elif colon_idx != -1:
+            val = match_str[colon_idx + 1:]
+        else:
+            val = match_str
+
     # Strip quotes and spaces
     val = val.strip().strip("'\"").strip()
     return val
@@ -29,25 +57,16 @@ def _is_placeholder_value(val: str) -> bool:
     val_lower = val.lower().strip()
     
     # 1. Exact or delimited token match for common placeholder keywords
-    placeholders = [
-        "your-key-here", "your_key_here", "your-token-here", "your_token_here",
-        "insert-key-here", "insert_key_here", "your-api-key", "your_api_key", "your-api-key-here", "your_api_key_here",
-        "dummy-value", "dummy_value", "mock-value", "mock_value",
-        "placeholder-value", "placeholder_value", "insert-secret-here", "insert_secret_here",
-        "your-password", "your_password", "your-password-here", "your_password_here", "mypassword", "my-password", "my_password",
-        "your-secret", "your_secret", "your-secret-here", "your_secret_here", "your-client-secret", "your_client_secret",
-        "your-hash-key", "your_hash_key"
-    ]
-    if val_lower in placeholders or any(val_lower == f"<{p}>" or val_lower == f"{{{p}}}" for p in placeholders):
+    if val_lower in _PLACEHOLDER_EXACT_SET:
         return True
         
     # 2. Check if the value is a trivial template placeholder (e.g. <your-api-key>, {YOUR_TOKEN}, your-password-here)
-    if re.match(r'^[\{\<\[\(]?(your|insert|dummy)[_-]?(key|token|api[_-]?key|secret|password|client[_-]?secret|hash[_-]?key)[_-]?(here|value|token|key)?[\}\>\]\)]?$', val_lower):
+    if _PLACEHOLDER_TEMPLATE_RE.match(val_lower):
         return True
         
     # 3. Check if the value is mostly repeated dummy chars (e.g., "xxxxxxxx", "00000000", "*******")
     # We strip common non-alphanumeric chars like -, _, *, space
-    cleaned = re.sub(r'[^a-zA-Z0-9]', '', val_lower)
+    cleaned = _NON_ALNUM_RE.sub('', val_lower)
     if len(cleaned) >= 4:
         if len(set(cleaned)) == 1 and cleaned[0] in ['x', 'y', 'z', '0', '1', 'a', '*']:
             return True
@@ -148,53 +167,61 @@ class SecretScanner(BaseScannerPlugin):
         for i, line in enumerate(lines):
             # We must not skip lines entirely just because they are long.
             # If ReDoS is a concern, we should slice the line into chunks, but for now we scan it fully.
-            # Skip property-like keys in JS/TS/JSON: confidenceKey: "...", audienceKey: "..."
-            # Regex to detect common property key patterns that aren't secrets
-            if re.search(r'["\']?[a-zA-Z0-9]+Key["\']?\s*[:=]', line):
-                # If it's a generic word + Key, it's likely a config property name, not a secret value
-                # We check if it followed by a long high-entropy string later
-                pass
+            line_candidates = []
+            seen_line_keys = set()
+            specific_raw_values = set()
 
             for p in self.patterns:
-                match = p['_compiled'].search(line)
-                if match:
+                for match in p['_compiled'].finditer(line):
                     val = match.group(0)
-                    
+
                     # Extract and check the actual secret value part
                     secret_val = _get_secret_value_part(val)
                     if _is_placeholder_value(secret_val):
                         continue
-                        
-                    if p['name'] == "Generic Secret Key":
-                        if _is_likely_generic_false_positive(secret_val):
-                            continue
-                    
+
+                    if p['name'] == "Generic Secret Key" and _is_likely_generic_false_positive(secret_val):
+                        continue
+
                     # Heuristic: if the match is the KEY of a JSON/JS object, skip
-                    # e.g. "aws_key": "..." -> the "aws_key" string itself might trigger regex 
+                    # e.g. "aws_key": "..." -> the "aws_key" string itself might trigger regex
                     # but we only care about the VALUE.
-                    is_json_key = False
-                    escaped_val = re.escape(val)
-                    if re.search(r'["\']?' + escaped_val + r'["\']?\s*:', line):
-                        is_json_key = True
-                        
+                    is_json_key = bool(_JSON_KEY_SUFFIX_RE.match(line, match.end()))
                     if is_json_key:
                         val_lower = val.lower()
                         # Skip if it is a common parameter/config name and not high entropy or starting with secret markers
-                        if val_lower in ["aws_key", "aws_secret", "secret", "api_key", "apikey", "token", "password", "pass"]:
+                        if val_lower in _COMMON_KEY_NAMES:
                             continue
-                        if re.match(r'^[a-zA-Z0-9_-]+$', val) and len(val) < 20 and _calculate_entropy(val) < 4.0:
+                        if _ALNUM_DASH_UNDERSCORE_RE.match(val) and len(val) < 20 and _calculate_entropy(val) < 4.0:
                             continue
 
-                    original_severity = p['severity']
-                    final_severity = self._adjust_severity(original_severity, severity_modifier)
-                    
-                    # Mask the value for reporting
-                    masked = val[:4] + "*" * (len(val) - 8) + val[-4:] if len(val) > 8 else "****"
-                    
-                    # Safely mask the secret inside the line context to prevent leakage in reporters
-                    masked_secret_val = secret_val[:4] + "*" * (len(secret_val) - 8) + secret_val[-4:] if len(secret_val) > 8 else "****"
-                    masked_context = line.replace(secret_val, masked_secret_val).strip()
-                    
+                    line_key = (p['name'], secret_val or val)
+                    if line_key in seen_line_keys:
+                        continue
+                    seen_line_keys.add(line_key)
+
+                    if p['name'] != "Generic Secret Key":
+                        specific_raw_values.add(secret_val)
+
+                    line_candidates.append((p, val, secret_val))
+
+            accepted_candidates = [
+                (p, val, secret_val)
+                for (p, val, secret_val) in line_candidates
+                if not (p['name'] == "Generic Secret Key" and secret_val in specific_raw_values)
+            ]
+
+            if accepted_candidates:
+                # Safely mask all accepted secrets inside the line context to prevent sibling secret leakage
+                masked_context = line
+                for sv in sorted({c[2] or c[1] for c in accepted_candidates if (c[2] or c[1])}, key=len, reverse=True):
+                    masked_context = masked_context.replace(sv, _mask_token(sv))
+                masked_context = masked_context.strip()
+
+                for p, val, secret_val in accepted_candidates:
+                    final_severity = self._adjust_severity(p['severity'], severity_modifier)
+                    masked = _mask_token(val)
+
                     findings.append({
                         "file": file_path,
                         "line": i + 1,

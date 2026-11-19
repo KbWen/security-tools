@@ -24,6 +24,7 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `src/ghostcheck/scanner.py`, `src/ghostcheck/cli.py`, `src/ghostcheck/config.py`, `src/ghostcheck/init.py`, `src/ghostcheck/honeypot.py`, `src/ghostcheck/ignorefile.py`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/secret_validator.py`, `tests/test_audit_remediation_v1_2_15.py` → `ship-v1.2.15-tenth-man-audit-and-concurrency-hardening-2026-10-25.md` (v1.2.15 Tenth-Man deep audit remediation: results cache metadata isolation, baseline filename alignment, `init --hook` & `honeypot --clean`, `exclude_patterns` wiring, thread-safe network checkers with atomic `os.replace`, Windows prefix case-insensitivity, and opt-in `SecretValidator`)
 - `src/ghostcheck/checks/rag_memory_auditor.py`, `src/ghostcheck/checks/multimodal_polyglot_scanner.py`, `src/ghostcheck/checks/env_egress_guard.py`, `src/ghostcheck/scanner.py`, `src/ghostcheck/presets/manager.py`, `src/ghostcheck/data/owasp_mapping.json`, `src/ghostcheck/cli.py`, `tests/test_v1_3_0_purple_shield.py` → `ship-v1.3.0-purple-shield-and-agentic-boundary-guard-2026-10-30.md` (v1.3.0 Purple Shield & Agentic Boundary Guard: RAG/Memory poisoning auditor, binary/SVG multimodal polyglot scanner with binary pass-through, subprocess env & container egress guard, and CLI SARIF default output fix)
 - `src/ghostcheck/scanner.py`, `src/ghostcheck/cli.py`, `src/ghostcheck/checks/data_exfiltration_detector.py`, `src/ghostcheck/checks/mcp_auditor.py`, `src/ghostcheck/checks/env_egress_guard.py`, `src/ghostcheck/checks/rag_memory_auditor.py`, `src/ghostcheck/checks/vuln_scanner.py`, `src/ghostcheck/checks/hallucination.py`, `src/ghostcheck/checks/secrets.py`, `tests/test_v1_3_1_audit_fixes.py` → `ship-v1.3.1-core-wiring-and-fp-remediation-2026-11-10.md` (v1.3.1 Core Engine Wiring, False-Positive Elimination & Concurrency Hardening: wired CIAuditor/SilentInstaller/AgencyAuditor, disambiguated max_tokens, defaulted bare CLI to scan, scoped compose volume checks, and hardened defensive prefix checks)
+- `src/ghostcheck/checks/secrets.py`, `src/ghostcheck/data/secret_patterns.json`, `tests/test_secrets.py` → `ship-v1.3.2-secret-scanner-hardening-2026-11-19.md` (v1.3.2 SecretScanner Multi-Secret Hardening: finditer multi-secret same-line scanning & full-line sibling masking, modern OpenAI/Anthropic key precision with `(?!ant-)`, delimiter-safe URI/YAML `_get_secret_value_part`, and `secret_val or val` fallback guards)
 
 ## By Pattern
 
@@ -67,6 +68,8 @@ Index of all archived work logs, categorized by module, pattern, and key decisio
 - `[plugin-alias-completeness]` → `ship-v1.3.1-core-wiring-and-fp-remediation-2026-11-10.md`
 - `[llm-token-parameter-disambiguation]` → `ship-v1.3.1-core-wiring-and-fp-remediation-2026-11-10.md`
 - `[defensive-prefix-positioning]` → `ship-v1.3.1-core-wiring-and-fp-remediation-2026-11-10.md`
+- `[secret-value-delimiter-precedence]` → `ship-v1.3.2-secret-scanner-hardening-2026-11-19.md`
+- `[masking-fallback-guard]` → `ship-v1.3.2-secret-scanner-hardening-2026-11-19.md`
 
 ## By Decision
 
