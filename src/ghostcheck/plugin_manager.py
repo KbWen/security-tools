@@ -3,9 +3,12 @@ import sys
 import importlib
 import pkgutil
 import inspect
+import logging
 from typing import Dict, Type, List, Any
 
 from .interfaces import BaseScannerPlugin, BaseReporterPlugin
+
+logger = logging.getLogger(__name__)
 
 class PluginManager:
     def __init__(self):
@@ -40,8 +43,7 @@ class PluginManager:
                             # Fallback to class name if instantiation requires args
                             registry[name.lower()] = obj
             except Exception as e:
-                # Log or ignore bad modules
-                pass
+                logger.debug("Failed to load plugin module %s: %s", full_module_name, e)
 
     def get_scanner(self, name: str) -> Type[BaseScannerPlugin]:
         return self._scanners.get(name)

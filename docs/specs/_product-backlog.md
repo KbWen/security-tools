@@ -51,6 +51,7 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | v1.3.0 | Purple Shield & Agentic Boundary Guard (RAG/Memory, Multimodal/Polyglot, Env/Egress) | ✅ |
 | v1.3.1 | Core Engine Wiring, False-Positive Elimination & Concurrency Hardening | ✅ |
 | v1.3.2 | SecretScanner Multi-Secret Hardening, Modern AI Key Precision & Context Masking Safety | ✅ |
+| v1.3.3 | Security Hardening, Zero-Leak Secret Stripping, Report XSS/SARIF Compliance & Core Isolation | ✅ |
 
 ---
 
@@ -195,6 +196,21 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 
 ---
 
+### 🏷️ Epic 11: Wave 2 Audit Remediation Backlog (v1.3.4 預定修復項目)
+
+> **來源**: 2026-11-26 全專案深度審查（Wave 1 重點安全與核心隔離已於 v1.3.3 修復，以下為延後至下波 v1.3.4 處理之檢查器重構、性能與體驗項目）。
+
+| # | Feature / Fix | 優先 | 目標版本 | 狀態 | 說明 |
+|---|---|---|---|---|---|
+| E11-F1 | **SilentInstaller 解析器與 AST 遞迴防禦重構** | P1 | v1.3.4 | 🟢 | 消除整檔 `input(`/`confirm(` 繞過、`--user`/`--no-deps` 誤觸靜默旗標、`poetry add`/`npm install` 硬寫偏移切片錯位，並為 `PackageInstallVisitor._resolve_command` 加入循環/深度上限防 `RecursionError`。 |
+| E11-F2 | **跨行/跨規則 `re.DOTALL` 正則重寫與 O(N²) 防護** | P1 | v1.3.4 | 🟢 | 重寫 `CIAuditor`（`write-all`/`pull_request_target`）、`IaCScanner`（`kind: Secret` 跨 `---` 邊界）、`FirebaseRulesAuditor`（`!= null && == null` 誤報）與 `DockerRiskChecker`（多行 `ENV` 跨指令漏報），消除跨規則誤報與二次回溯。 |
+| E11-F3 | **AISupplyChainScanner & EnvEgressGuard 規則補齊** | P1 | v1.3.4 | 🟢 | 修復 `mcp_npm_package_unfixed` 結尾引號前瞻與多行 JSON 支援、消除 Dockerfile `FROM org/image` 誤報；接通 `EnvEgressGuard` Dockerfile Egress 分支與 Compose 服務級網路隔離檢查。 |
+| E11-F4 | **Multimodal SVG Fallback & DataExfiltration 精準化** | P1 | v1.3.4 | 🟢 | 補齊 SVG `<text>`/`<tspan>` `child.tail` 掃描與 `<!ENTITY` fallback 繼承隱藏樣式；校準 `DataExfiltrationDetector` 字串字面量 `"metadata"`/`"password"`/`"token"` 誤報與 JS `writeFile` 大小寫比對。 |
+| E11-F5 | **Config 覆寫語意、Cache 隔離與 Subcommand 一致性** | P1 | v1.3.4 | 🟢 | 支援 TOML `enabled_checks` 覆寫預設檢查、補齊 `[tool.ghostcheck]` `timeout` 驗證；分離 `AIMarker` repo-level commit 掃描避免綁定單檔快取；統一 `scan_*` 子命令套用安全大小上限與 `EntropyScanner`。 |
+| E11-F6 | **嚴重度對齊、CLI 細節與 AST 檢查器打磨** | P2 | v1.3.4 | 🟢 | 將 `LethalTrifectaDetector` 的 `"WARNING"` 統一對齊為標準嚴重度；修正 `cli.py` `severity_threshold` 大小寫、裸 `ghostcheck baseline`、硬寫 `💡` 與 `OWASPLLMReporter` `--no-color` ANSI 外洩；支援 `AstSecretChecker` `.join()` 分隔符、`JavaASTScanner` `@Value` SpEL 豁免、`AgencyAuditor` Windows `.agent\rules\` 路徑正規化與 `EnvScanner` 獨立 `.gitignore` 檢查。 |
+
+---
+
 ## 版本規劃 (AI-Era Features 歸屬)
 
 ### v0.8.0 — AI Agent Security Foundation ⭐
@@ -299,3 +315,4 @@ GhostCheck 的核心差異化：**不只是另一個 SAST 工具，而是第一�
 | 2026-10-30 | 完成 v1.3.0 Purple Shield & Agentic Boundary Guard (新增 RagMemoryAuditor、MultimodalPolyglotScanner、EnvEgressGuard 三大防禦檢查器，涵蓋 E7-F1、E7-F4、E8-F1、E9-F2、E9-F3、E10-F1，支援二進位穿透掃描與 OWASP LLM 映射，449 tests 100% 通過)。 |
 | 2026-11-10 | 完成 v1.3.1 核心引擎串接對齊、誤報掃除與並行加固 (CIAuditor/SilentInstaller/AgencyAuditor 模組串接修復、DataExfiltrationDetector max_tokens 誤報消除、MCPAuditor 官方 registry 與 BOM 支援、EnvEgressGuard Compose 服務層級作用域隔離、RagMemoryAuditor 防禦前綴順序驗證、VulnScanner requirements 解析與 4xx 熔斷隔離、CLI 空參數自動掃描專案根目錄，469 tests 100% 通過)。 |
 | 2026-11-19 | 完成 v1.3.2 SecretScanner 深度強化 (Anthropic `sk-ant-api03-...` / OpenAI `sk-proj-...` 格式支援與 `(?!ant-)` 負向前瞻去重、同行多密鑰 `finditer()` 掃描與全行兄弟密鑰安全遮罩、`_get_secret_value_part` 保留 `://` URI 與最早分隔符解析根治 Base64 `=` 明文外洩與碰撞、熱路徑死碼移除與模組層正則預編譯，479 tests 100% 通過)。 |
+| 2026-11-26 | 完成 v1.3.3 第一波安全強化與核心審計修復 (全管線剝除 `_raw_value` 根治 JSON/Baseline/Cache 明文外洩、GPA-06 與 AST/Cache 命中遮罩加固、`HTMLReporter` XSS 跳脫與 `SarifReporter` `startLine >= 1`/`rule_name` 合規、`SecretValidator` 串接與跨供應商隔離、`PluginLoader` 命名空間與 `project_root` 隔離、`HallucinationChecker` 實例 Opener 與 `upload_time: None` 防護、`GitDiffScanner`/`AIMarker` 子目錄劫持阻斷與 `timeout=15`、`Scanner` `config` 注入與完整行 `ghostcheck-ignore`、`MCPAuditor`/`EnvScanner`/`PrivilegeAuditor`/`RagMemoryAuditor`/`IaCScanner`/`ContextAuditor` 高衝擊誤報與死碼修復，516 tests 100% 通過)；其餘第二波項目已登錄至 Epic 11 (v1.3.4)。 |

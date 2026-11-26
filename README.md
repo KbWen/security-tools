@@ -4,10 +4,10 @@
 
 **The ultra-fast, zero-dependency safety net for AI-assisted coding. Because AI agents are like toddlers with leaf blowers—highly productive, but prone to blowing your lawn furniture into the pool.**
 
-[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.3-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Tests Status](https://img.shields.io/badge/tests-479%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![Tests Status](https://img.shields.io/badge/tests-516%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *Spot high-risk vulnerabilities, rogue agent prompts, and "ghost" security threats before your AI-generated code ships to production.*
 
@@ -42,6 +42,11 @@ By embedding zero-dependency, AST-powered safety checks right in your developer 
 ---
 
 ## ✨ Key Features & Highlights
+
+### 🔒 v1.3.3: Zero-Leak Secret Stripping, Report XSS/SARIF Hardening & Core Isolation
+*   **Zero Plaintext Secret Leakage:** Stripped internal `_raw_value` fields across `Scanner._post_process`, `JsonReporter`, `baseline create`, and `results_cache.json`, masked `PrivilegeAuditor` GPA-06 CLI key arguments, and hardened AST/cache-hit context redaction so raw credentials never leak into reports, baselines, or disk caches.
+*   **Report Security & SARIF 2.1.0 Compliance:** Escaped `severity`, `grade`, and `score_val` in `HTMLReporter` to prevent XSS/HTML injection, clamped SARIF `region.startLine >= 1`, and added `rule_name` fallback resolution across SARIF and HTML reporters.
+*   **Isolation & Precision Hardening:** Isolated `PluginLoader` `sys.modules` namespaces and `project_root` resolution, removed process-global `urllib.request.install_opener()` side effects in `HallucinationChecker`, hardened `SecretValidator` against sending Anthropic/OpenRouter `sk-` keys to OpenAI, blocked subdirectory `git` hijacking with `timeout=15`, wired `config` into `ShadowAIDetector`/`EnvEgressGuard`, fixed full-line inline `ghostcheck-ignore`, and eliminated high-severity false positives/dead code across `MCPAuditor` (`::1`, `--api`), `EnvScanner`, `PrivilegeAuditor` (`...`), `RagMemoryAuditor`, `IaCScanner` (`.tfstate`), and `ContextAuditor`.
 
 ### 🔐 v1.3.2: SecretScanner Multi-Secret Hardening, Modern AI Key Precision & Context Masking Safety
 *   **Modern AI Key Format Precision:** Updated OpenAI (`sk-proj-...`) and Anthropic (`sk-ant-api03-...`) patterns with underscore/hyphen support, word-boundary false-positive guards, and negative lookahead `(?!ant-)` to prevent cross-provider misclassification across regex and AST scanners.
@@ -160,7 +165,7 @@ GhostCheck provides dedicated commands to check specific risk vectors:
 ### 📦 Option A: Install from GitHub (Standard)
 Recommended for most users to get the latest stable release:
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.3.2
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.3
 ```
 
 ### 🔨 Option B: Install from Source
@@ -223,7 +228,7 @@ ghostcheck scan . -q
 
 ## 🧪 Running Tests & Verification
 
-Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 479 unit and integration tests.
+Verify that your installation is complete and all core scanners are functioning correctly by running the suite of 516 unit and integration tests.
 
 ### Using Pytest
 With your virtual environment active, execute `pytest`:
@@ -238,7 +243,7 @@ make test
 
 Expected output should show all tests passing:
 ```text
-============================= 479 passed in 31.63s =============================
+============================= 516 passed in 32.16s =============================
 ```
 
 ---

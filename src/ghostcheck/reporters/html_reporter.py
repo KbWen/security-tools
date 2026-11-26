@@ -15,6 +15,9 @@ class HTMLReporter(BaseReporterPlugin):
     def report(self, findings, stream=None, **kwargs):
         grade = kwargs.get('grade', 'F')
         score_val = kwargs.get('score_val', 0)
+        safe_grade_class = str(grade).upper() if str(grade).upper() in {'A', 'B', 'C', 'D', 'F'} else 'F'
+        escaped_grade = html.escape(str(grade))
+        escaped_score = html.escape(str(score_val))
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
         severity_colors = {
@@ -58,10 +61,10 @@ class HTMLReporter(BaseReporterPlugin):
                 <h1>GhostCheck Scan Dashboard</h1>
                 <p>Generated at: {now}</p>
             </div>
-            <div class="score-box grade-{grade}">
+            <div class="score-box grade-{safe_grade_class}">
                 <p style="margin:0; font-size:14px;">Security Grade</p>
-                <div class="grade-text">{grade}</div>
-                <p style="margin:0; font-size:14px;">Score: {score_val}/100</p>
+                <div class="grade-text">{escaped_grade}</div>
+                <p style="margin:0; font-size:14px;">Score: {escaped_score}/100</p>
             </div>
         </div>
 
@@ -72,8 +75,10 @@ class HTMLReporter(BaseReporterPlugin):
         
         for f in findings:
             sev = f.get('severity', 'INFO')
-            color = severity_colors.get(sev, "#8c8c8c")
-            title = f.get('name') or f.get('pattern_name') or "Security Issue"
+            sev_str = str(sev)
+            color = severity_colors.get(sev_str, "#8c8c8c")
+            escaped_sev = html.escape(sev_str)
+            title = f.get('name') or f.get('pattern_name') or f.get('rule_name') or "Security Issue"
             loc = f"{f.get('file')}:{f.get('line')}" if f.get('line') else f.get('file', 'N/A')
             owasp = f.get('owasp_llm', '')
             
@@ -90,14 +95,16 @@ class HTMLReporter(BaseReporterPlugin):
             escaped_context = ""
             if context_val:
                 context_str = str(context_val)
-                if raw_val and str(raw_val) in context_str:
-                    masked_val = raw_val[:4] + "*" * (len(raw_val) - 8) + raw_val[-4:] if len(raw_val) > 8 else "****"
-                    context_str = context_str.replace(str(raw_val), masked_val)
+                if raw_val is not None and str(raw_val) != "":
+                    raw_str = str(raw_val)
+                    if raw_str in context_str:
+                        masked_val = raw_str[:4] + "*" * (len(raw_str) - 8) + raw_str[-4:] if len(raw_str) > 8 else "****"
+                        context_str = context_str.replace(raw_str, masked_val)
                 escaped_context = html.escape(context_str)
                 
             html_content += f"""
                 <div class="finding" style="border-left-color: {color}">
-                    <div class="severity" style="background: {color}">{sev}</div>
+                    <div class="severity" style="background: {color}">{escaped_sev}</div>
                     {f'<span class="severity" style="background: #1f1f1f; margin-left: 8px;">{escaped_owasp}</span>' if escaped_owasp else ''}
                     <div class="finding-title">{escaped_title}</div>
                     <div class="finding-loc">Location: {escaped_loc}</div>

@@ -6,7 +6,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 def _has_keyword(text: str, keyword: str) -> bool:
-    keyword_lower = keyword.lower()
+    if not keyword or not isinstance(keyword, str):
+        return False
+    keyword_lower = keyword.strip().lower()
+    if not keyword_lower:
+        return False
     text_lower = text.lower()
     if any(ord(char) > 0x2e80 for char in keyword_lower):
         return keyword_lower in text_lower

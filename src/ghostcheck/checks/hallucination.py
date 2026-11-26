@@ -80,25 +80,24 @@ class HallucinationChecker(BaseScannerPlugin):
         handlers = []
         if self.proxy:
             handlers.append(urllib.request.ProxyHandler({'http': self.proxy, 'https': self.proxy}))
-        
-        opener = urllib.request.build_opener(*handlers)
-        
+
         # AC-S1: Handle insecure SSL context
         if not self.ssl_verify:
             import ssl
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
-            
+
             # Note: We need a custom handler for this
             https_handler = urllib.request.HTTPSHandler(context=context)
-            opener.add_handler(https_handler)
-            
-        self.opener = opener
-        if self.proxy or not self.ssl_verify:
-            urllib.request.install_opener(opener)
-        else:
-            urllib.request.install_opener(None)
+            handlers.append(https_handler)
+
+        self.opener = urllib.request.build_opener(*handlers)
+
+    def _open_url(self, req_or_url):
+        if (self.proxy or not self.ssl_verify) and self.opener is not None:
+            return self.opener.open(req_or_url, timeout=self.timeout)
+        return urllib.request.urlopen(req_or_url, timeout=self.timeout)
 
     def _load_cache(self):
         with self._cache_lock:
@@ -297,7 +296,7 @@ class HallucinationChecker(BaseScannerPlugin):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://pypi.org/pypi/{safe_pkg}/json"
         try:
-            with urllib.request.urlopen(url, timeout=self.timeout) as response:
+            with self._open_url(url) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 status = "OK" if status_code == 200 else "ERROR"
                 data = json.loads(response.read().decode())
@@ -305,8 +304,14 @@ class HallucinationChecker(BaseScannerPlugin):
                 
                 upload_times = []
                 for rel in releases.values():
+                    if not isinstance(rel, list):
+                        continue
                     for entry in rel:
-                        upload_times.append(entry.get('upload_time'))
+                        if not isinstance(entry, dict):
+                            continue
+                        upload_time = entry.get('upload_time')
+                        if isinstance(upload_time, str) and upload_time:
+                            upload_times.append(upload_time)
                 
                 created_at = None
                 if upload_times:
@@ -357,7 +362,7 @@ class HallucinationChecker(BaseScannerPlugin):
         url = f"https://registry.npmjs.org/{safe_pkg}"
         try:
             req = urllib.request.Request(url)
-            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+            with self._open_url(req) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 status = "OK" if status_code == 200 else "ERROR"
                 data = json.loads(response.read().decode())
@@ -412,8 +417,8 @@ class HallucinationChecker(BaseScannerPlugin):
         safe_pkg = urllib.parse.quote(pkg_name)
         url = f"https://crates.io/api/v1/crates/{safe_pkg}"
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.3.2'})
-            with urllib.request.urlopen(req, timeout=self.timeout) as response:
+            req = urllib.request.Request(url, headers={'User-Agent': 'ghostcheck/1.3.3'})
+            with self._open_url(req) as response:
                 status_code = getattr(response, 'status', getattr(response, 'code', 200))
                 status = "OK" if status_code == 200 else "ERROR"
                 data = json.loads(response.read().decode())

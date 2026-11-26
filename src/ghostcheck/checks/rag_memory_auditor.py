@@ -41,7 +41,7 @@ ROT13_CANONICAL_STRINGS = (
     "vtaber nyy cerivbhf",
     "vtaber cerivbhf vafgehpgvbaf",
     "flfgrz bireevqr",
-    "qvferneq nyy cerivbhf",
+    "qvfertneq nyy cerivbhf",
 )
 
 DEFENSIVE_WORDS = (

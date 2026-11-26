@@ -1,3 +1,4 @@
+import ipaddress
 import json
 import re
 import os
@@ -36,6 +37,7 @@ class MCPAuditor(BaseScannerPlugin):
             "0:0:0:0:0:0:0:0", "[0:0:0:0:0:0:0:0]",
             "::ffff:0.0.0.0", "[::ffff:0.0.0.0]"
         ]
+        self.custom_registry_pattern = r'(?:^|[\s,"\'(\[=])(--registry|--index-url|--extra-index-url|-i)(?:["\']?\s*[=,:]?\s*["\']?)https?://(?!(?:[a-zA-Z0-9-]+\.)*(?:npmjs\.org|pypi\.org|python\.org|pythonhosted\.org)(?::\d+)?(?:/|\s|["\']|$))[^"\'\s]+'
         self.patterns = [
             {
                 "name": "mcp_insecure_binding",
@@ -45,7 +47,7 @@ class MCPAuditor(BaseScannerPlugin):
             },
             {
                 "name": "mcp_custom_registry",
-                "pattern": r'(--registry|--index-url|--extra-index-url|-i)["\']?\s*[=,:]?\s*["\']?https?://(?!(?:[a-zA-Z0-9-]+\.)*(?:npmjs\.org|pypi\.org|python\.org|pythonhosted\.org)(?:[:/\s"\']|$))[^"\'\s]+',
+                "pattern": self.custom_registry_pattern,
                 "severity": "HIGH",
                 "suggestion": "MCP server uses a custom package registry. This is a common vector for dependency confusion and rug pull attacks."
             }
@@ -55,11 +57,20 @@ class MCPAuditor(BaseScannerPlugin):
         if not val or not isinstance(val, str):
             return False
         clean_val = val.strip().lower()
-        # Handle port suffix like 0.0.0.0:8000 or [::]:8000
-        clean_host = clean_val.split(":")[0] if ":" in clean_val and not clean_val.startswith("[") and not clean_val.startswith("::") else clean_val
-        if any(b in clean_val for b in self.insecure_bindings):
+        if "://" in clean_val:
+            clean_val = clean_val.split("://", 1)[1].split("/", 1)[0]
+        if clean_val.startswith("[") and "]" in clean_val:
+            clean_host = clean_val[1:clean_val.index("]")]
+        elif clean_val.count(":") == 1:
+            clean_host = clean_val.split(":", 1)[0]
+        else:
+            clean_host = clean_val
+        if clean_host == "*":
             return True
-        return False
+        try:
+            return ipaddress.ip_address(clean_host).is_unspecified
+        except ValueError:
+            return clean_host in {"0.0.0.0", "::", "0:0:0:0:0:0:0:0", "::ffff:0.0.0.0"}
 
     def _is_env_placeholder(self, val: str) -> bool:
         if not val or not isinstance(val, str):
@@ -392,7 +403,7 @@ class MCPAuditor(BaseScannerPlugin):
             # 2.5 Fallback / line patterns for custom registry & unstructured files
             for i, line in enumerate(lines):
                 # Custom registry
-                m_reg = re.search(r'(--registry|--index-url|--extra-index-url|-i)["\']?\s*[=,:]?\s*["\']?https?://(?!(?:[a-zA-Z0-9-]+\.)*(?:npmjs\.org|pypi\.org|python\.org|pythonhosted\.org)(?:[:/\s"\']|$))[^"\'\s]+', line, re.IGNORECASE)
+                m_reg = re.search(self.custom_registry_pattern, line, re.IGNORECASE)
                 if m_reg:
                     findings.append({
                         "file": file_path,

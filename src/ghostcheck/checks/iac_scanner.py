@@ -70,7 +70,7 @@ class IaCScanner(BaseScannerPlugin):
         findings = []
         for file_path in files:
             filename = file_path.replace('\\', '/').split('/')[-1]
-            if any(filename.endswith(ext) for ext in ['.tf', '.yaml', '.yml']):
+            if any(filename.lower().endswith(ext) for ext in ['.tf', '.yaml', '.yml', '.tfstate', '.tfstate.backup']):
                 try:
                     with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
                         content = f.read()
@@ -115,7 +115,7 @@ class IaCScanner(BaseScannerPlugin):
                 })
         
         # Special check: prevent committing tfstate
-        if ".tfstate" in file_path and not file_path.endswith(".gitignore"):
+        if ".tfstate" in file_path.lower() and not file_path.lower().endswith(".gitignore"):
              findings.append({
                 "file": file_path,
                 "line": 1,

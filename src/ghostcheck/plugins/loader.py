@@ -1,16 +1,22 @@
 import os
+import re
+import hashlib
+import logging
 import importlib.util
 import sys
 from .base import BasePlugin
 
+logger = logging.getLogger(__name__)
+
 class PluginLoader:
-    def __init__(self, load_local=False, plugin_dirs=None):
+    def __init__(self, load_local=False, plugin_dirs=None, project_root=None):
         if plugin_dirs is not None:
             self.plugin_dirs = plugin_dirs
         else:
             self.plugin_dirs = [os.path.expanduser("~/.ghostcheck/plugins")]
             if load_local and os.environ.get("GHOSTCHECK_TRUST_WORKSPACE") == "1":
-                self.plugin_dirs.append(os.path.join(os.getcwd(), ".ghostcheck", "plugins"))
+                base_root = os.path.abspath(project_root) if project_root else os.getcwd()
+                self.plugin_dirs.append(os.path.join(base_root, ".ghostcheck", "plugins"))
             elif load_local:
                 print("WARNING: Local plugins are disabled by default to prevent RCE. Set GHOSTCHECK_TRUST_WORKSPACE=1 to enable.", file=sys.stderr)
         self.plugins = []
@@ -30,8 +36,11 @@ class PluginLoader:
         return self.plugins
 
     def _load_from_file(self, file_path):
+        module_name = None
         try:
-            module_name = os.path.splitext(os.path.basename(file_path))[0]
+            safe_stem = re.sub(r'[^a-zA-Z0-9_]', '_', os.path.splitext(os.path.basename(file_path))[0])
+            path_hash = hashlib.sha256(os.path.abspath(file_path).encode('utf-8')).hexdigest()[:8]
+            module_name = f"ghostcheck_user_plugin_{safe_stem}_{path_hash}"
             spec = importlib.util.spec_from_file_location(module_name, file_path)
             if not spec or not spec.loader:
                 return None
@@ -48,9 +57,11 @@ class PluginLoader:
                     attr is not BasePlugin):
                     return attr()
         except Exception as e:
+            if module_name:
+                sys.modules.pop(module_name, None)
+            logger.debug("Failed to load plugin %s: %s", file_path, e)
             if os.environ.get("GHOSTCHECK_DEBUG") == "1":
                 print(f"[DEBUG] Failed to load plugin {file_path}: {e}")
-            pass
         return None
 
     def run_all(self, file_path, content):

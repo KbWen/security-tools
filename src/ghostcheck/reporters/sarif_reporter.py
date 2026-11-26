@@ -40,7 +40,7 @@ class SarifReporter(BaseReporterPlugin):
             print(f"SARIF report generated at {output_path}")
 
     def _get_rule_id(self, f):
-        return f.get('name', f.get('pattern_name', f.get('rule_id', 'generic-security-finding')))
+        return f.get('name') or f.get('pattern_name') or f.get('rule_name') or f.get('rule_id') or 'generic-security-finding'
 
     def _get_rules(self, findings):
         rules = {}
@@ -62,6 +62,11 @@ class SarifReporter(BaseReporterPlugin):
         results = []
         for f in findings:
             rule_id = self._get_rule_id(f)
+            raw_line = f.get('line', 1)
+            try:
+                start_line = max(1, int(raw_line))
+            except (ValueError, TypeError):
+                start_line = 1
             results.append({
                 "ruleId": rule_id,
                 "message": {
@@ -74,7 +79,7 @@ class SarifReporter(BaseReporterPlugin):
                                 "uri": str(f.get('file', 'unknown')).replace('\\', '/')
                             },
                             "region": {
-                                "startLine": f.get('line', 1)
+                                "startLine": start_line
                             }
                         }
                     }

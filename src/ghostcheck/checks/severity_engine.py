@@ -21,7 +21,7 @@ class SeverityEngine:
         # 1. Entropy-based adjustment (High entropy -> High severity/priority)
         entropy_source = finding.get("_raw_value")
         if not entropy_source and "value_preview" in finding:
-            entropy_source = finding["value_preview"].replace("*", "")
+            entropy_source = str(finding["value_preview"]).replace("*", "")
             
         if entropy_source:
             entropy = self._calculate_entropy(entropy_source)
@@ -37,6 +37,9 @@ class SeverityEngine:
             self._upgrade(finding, "AI generated output")
 
     def _calculate_entropy(self, s):
+        if not s:
+            return 0
+        s = str(s)
         if not s:
             return 0
         counts = {}

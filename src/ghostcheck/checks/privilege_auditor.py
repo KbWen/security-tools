@@ -64,9 +64,9 @@ class PrivilegeAuditor(BaseScannerPlugin):
         norm_val = val_lower.replace('\\', '/')
         if norm_val in ["/users", "/home", "/root", "/etc", "/var"]:
             return True
-        if ".." in norm_val:
-            return True
         parts = [p for p in norm_val.split('/') if p]
+        if '..' in parts:
+            return True
         if len(parts) == 2 and parts[0] in ['users', 'home']:
             return True
         if len(parts) == 3 and parts[0].endswith(':') and parts[1] in ['users', 'home']:
@@ -237,13 +237,15 @@ class PrivilegeAuditor(BaseScannerPlugin):
                                 check_key = check_key[len(prefix):]
                                 break
                         if not (_is_placeholder_value(check_key) or _is_placeholder_value(raw_key)):
+                            masked_context = self._mask_line_keys(line)
                             findings.append({
                                 "file": file_path,
                                 "line": i + 1,
                                 "name": "api_key_command_arg",
                                 "severity": "HIGH",
                                 "suggestion": "API key passed as a command-line argument. Pass API keys through environment variables instead.",
-                                "context": line.strip()
+                                "context": masked_context,
+                                "_raw_value": raw_key
                             })
 
                 # GPA-07: api_key_hardcoded
@@ -258,8 +260,7 @@ class PrivilegeAuditor(BaseScannerPlugin):
                     if _is_placeholder_value(check_key) or _is_placeholder_value(raw_key):
                         continue
 
-                    masked_key = raw_key[:4] + "*" * (len(raw_key) - 8) + raw_key[-4:] if len(raw_key) > 8 else "****"
-                    masked_context = line.replace(raw_key, masked_key).strip()
+                    masked_context = self._mask_line_keys(line)
                     
                     if is_client_side:
                         findings.append({
@@ -283,6 +284,19 @@ class PrivilegeAuditor(BaseScannerPlugin):
                         })
 
         return findings
+
+    def _mask_line_keys(self, line: str) -> str:
+        """Mask all API keys matching api_key_regex in a line, longest-first."""
+        masked_line = line
+        matched_keys = sorted(
+            {m.group(1) for m in self.api_key_regex.finditer(line)},
+            key=len,
+            reverse=True,
+        )
+        for key in matched_keys:
+            masked_key = key[:4] + "*" * (len(key) - 8) + key[-4:] if len(key) > 8 else "****"
+            masked_line = masked_line.replace(key, masked_key)
+        return masked_line.strip()
 
     def _find_val_line(self, lines, val):
         val_str = str(val)

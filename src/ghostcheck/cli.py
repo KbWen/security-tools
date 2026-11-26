@@ -300,9 +300,13 @@ def main():
         # Baseline creation
         if args.command == "baseline" and args.baseline_cmd == "create":
             scan_findings = scanner.scan()
+            sanitized_findings = [
+                {k: v for k, v in f.items() if not str(k).startswith('_')} if isinstance(f, dict) else f
+                for f in scan_findings
+            ]
             with open(args.output, "w", encoding='utf-8') as f:
-                json.dump({"findings": scan_findings}, f, indent=4, ensure_ascii=False)
-            print(f"{get_icon('ok', use_unicode)} Baseline created with {len(scan_findings)} findings at {args.output}")
+                json.dump({"findings": sanitized_findings}, f, indent=4, ensure_ascii=False)
+            print(f"{get_icon('ok', use_unicode)} Baseline created with {len(sanitized_findings)} findings at {args.output}")
             sys.exit(0)
 
         # Filter by severity

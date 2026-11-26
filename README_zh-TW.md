@@ -4,10 +4,10 @@
 
 **為 AI 寫 code 時代量身打造的超輕量、零依賴、極速安全防禦小工具。**
 
-[![Version](https://img.shields.io/badge/version-1.3.2-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
+[![Version](https://img.shields.io/badge/version-1.3.3-blue.svg?style=flat-square)](https://github.com/KbWen/security-tools)
 [![Python](https://img.shields.io/badge/python-3.9+-yellow.svg?style=flat-square)](https://www.python.org/)
 [![授權: MIT](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![測試狀態](https://img.shields.io/badge/tests-479%20passed-brightgreen.svg?style=flat-square)](LICENSE)
+[![測試狀態](https://img.shields.io/badge/tests-516%20passed-brightgreen.svg?style=flat-square)](LICENSE)
 
 *在 AI Agent 產出的程式碼送進 CI/CD 被主管電爆之前，幫你精準抓出高風險漏洞、惡意指令與 AI 瞎掰的「幻覺」套件，再也不怕寫 code 寫到裸奔！*
 
@@ -41,6 +41,11 @@ GhostCheck 透過在專案中設定一道硬派的安全邊界，讓 AI Agent �
 ---
 
 ## ✨ 核心功能與改版亮點
+
+### 🔒 v1.3.3: 零明文外洩加固、HTML XSS / SARIF 2.1.0 合規與核心隔離強化
+*   **零明文密鑰外洩防護：** 於 `Scanner._post_process`、`JsonReporter`、`baseline create` 與 `results_cache.json` 全面剝除內部 `_raw_value` 欄位，補齊 `PrivilegeAuditor` GPA-06 命令列金鑰遮罩，並加固 AST 拼接與快取命中時的 `context` 遮罩，杜絕原始憑證外洩至報表、Baseline 或磁碟快取。
+*   **報表 XSS 防護與 SARIF 2.1.0 合規：** `HTMLReporter` 全面跳脫 `severity`、`grade`、`score_val` 防範 HTML/XSS 注入；`SarifReporter` 強制確保 `startLine >= 1` 並與 `HTMLReporter` 同步支援 `rule_name` 回退解析。
+*   **核心隔離與檢查器精度強化：** `PluginLoader` 採用命名空間隔離防止覆蓋 `sys.modules` 並改依 `project_root` 解析本地插件；`HallucinationChecker` 移除全域 `urllib.request.install_opener()` 副作用；`SecretValidator` 精準串接並防範將 Anthropic/OpenRouter `sk-` 金鑰誤傳至 OpenAI；`_get_secure_git` 封鎖專案子目錄 `git` 劫持並補上 `timeout=15`；補齊 `config` 注入至 `ShadowAIDetector`/`EnvEgressGuard`、修復完整行行內 `ghostcheck-ignore`，並消除 `MCPAuditor`（`::1`/`--api`）、`EnvScanner`、`PrivilegeAuditor`（`...`）、`RagMemoryAuditor`（ROT13）、`IaCScanner`（`.tfstate`）與 `ContextAuditor` 之高衝擊誤報與死碼。
 
 ### 🔐 v1.3.2: SecretScanner 同行多密鑰強化、現代 AI 金鑰精度與防洩漏遮罩加固
 *   **現代 AI 金鑰格式精準匹配：** 升級 OpenAI (`sk-proj-...`) 與 Anthropic (`sk-ant-api03-...`) 偵測規則支援 `-`/`_`，導入字詞邊界防誤報與 `(?!ant-)` 負向前瞻，跨正則與 AST 掃描器徹底消除跨供應商誤分類與漏報。
@@ -159,7 +164,7 @@ GhostCheck 提供針對特定風險向量的專屬指令：
 ### 📦 選項 A: 透過 GitHub 安裝 (標準安裝)
 推薦給大多數使用者，可獲取最新穩定版本：
 ```bash
-pip install git+https://github.com/KbWen/security-tools.git@v1.3.2
+pip install git+https://github.com/KbWen/security-tools.git@v1.3.3
 ```
 
 ### 🔨 選項 B: 從原始碼安裝
@@ -222,7 +227,7 @@ ghostcheck scan . -q
 
 ## 🧪 執行測試與驗證
 
-透過執行 479 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
+透過執行 516 個單元與整合測試，驗證安裝是否完整以及核心掃描器運作是否正常。
 
 ### 使用 Pytest
 在虛擬環境啟用狀態下，執行以下指令：
@@ -237,7 +242,7 @@ make test
 
 預期將看到所有測試通過的輸出：
 ```text
-============================= 479 passed in 31.63s =============================
+============================= 516 passed in 32.16s =============================
 ```
 
 ---

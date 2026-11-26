@@ -64,7 +64,7 @@ class EnvScanner(BaseScannerPlugin):
 
         # 2. Check for suspicious env values
         # Simple multiline .env parser
-        env_pattern = re.compile(r'^[ \t]*([a-zA-Z0-9_]+)\s*=\s*(?:(["\'])(.*?)\2|([^\n]*))', re.MULTILINE | re.DOTALL)
+        env_pattern = re.compile(r'^[ \t]*([a-zA-Z0-9_]+)[ \t]*=[ \t]*(?:(["\'])(.*?)\2|([^\r\n]*))', re.MULTILINE | re.DOTALL)
         for match in env_pattern.finditer(content):
             key = match.group(1).strip()
             

@@ -182,6 +182,7 @@ class Scanner:
                 if 'patterns' in sig.parameters: kwargs['patterns'] = self.raw_secret_patterns
                 if 'root_path' in sig.parameters: kwargs['root_path'] = self.root_path
                 if 'ignore_matcher' in sig.parameters: kwargs['ignore_matcher'] = self.ignore_matcher
+                if 'config' in sig.parameters: kwargs['config'] = self.config
                 
                 self.scanners.append(cls(**kwargs))
             except Exception as e:
@@ -189,7 +190,7 @@ class Scanner:
                     print(f"[DEBUG] Error instantiating plugin {name}: {e}")
         
         load_local = self.config.get('load_local_plugins', False) if self.config else False
-        self.plugin_loader = PluginLoader(load_local=load_local)
+        self.plugin_loader = PluginLoader(load_local=load_local, project_root=self.project_root)
         self.plugin_loader.load_plugins()
         
         self.context_auditor = ContextAuditor(config=self.config)
@@ -554,14 +555,21 @@ class Scanner:
             
         return False
 
+    @staticmethod
+    def _mask_secret(val) -> str:
+        s = str(val)
+        return s[:4] + "*" * (len(s) - 8) + s[-4:] if len(s) > 8 else "****"
+
     def _get_cache_meta(self) -> dict:
         preset_info = self.config.get("preset", "none") if self.config and hasattr(self.config, "get") else "none"
         checks = self.config.get("enabled_checks", []) if self.config and hasattr(self.config, "get") else []
         disabled = self.config.get("disabled_rules", []) if self.config and hasattr(self.config, "get") else []
         excludes = self.config.get("exclude_patterns", []) if self.config and hasattr(self.config, "get") else []
+        validate_secrets = bool(self.config.get("validate_secrets", False)) if self.config and hasattr(self.config, "get") else False
         return {
             "version": str(getattr(self, "version", __version__)),
             "offline": bool(getattr(self, "offline", False)),
+            "validate_secrets": bool(not getattr(self, "offline", False) and validate_secrets),
             "preset": preset_info,
             "checks": list(checks) if isinstance(checks, (list, tuple)) else [],
             "disabled_rules": sorted(str(r).strip().lower() for r in disabled if r) if isinstance(disabled, (list, tuple)) else [],
@@ -590,16 +598,24 @@ class Scanner:
         try:
             os.makedirs(self.cache_dir, exist_ok=True)
             # AC-S3: Use stable JSON format for integrity check (no whitespace)
-            cache_to_save = self.results_cache.copy()
-            if 'integrity' in cache_to_save:
-                del cache_to_save['integrity']
+            cache_to_save = {}
+            for k, v in self.results_cache.copy().items():
+                if k == 'integrity':
+                    continue
+                if isinstance(v, list):
+                    cache_to_save[k] = [
+                        {fk: fv for fk, fv in f.items() if not str(fk).startswith('_')} if isinstance(f, dict) else f
+                        for f in v
+                    ]
+                else:
+                    cache_to_save[k] = v
             
             # Include preset and environment metadata in integrity hash
             meta = self._get_cache_meta()
             
             integrity_hash = hashlib.sha256((json.dumps(cache_to_save, sort_keys=True, separators=(',', ':')) + json.dumps(meta, sort_keys=True)).encode()).hexdigest()
             cache_to_save['integrity'] = integrity_hash
-            tmp_cache_file = self.results_cache_file + f".tmp.{os.getpid()}"
+            tmp_cache_file = self.results_cache_file + f".tmp.{os.getpid()}.{threading.get_ident()}"
             with open(tmp_cache_file, 'w', encoding='utf-8') as f:
                 json.dump(cache_to_save, f, separators=(',', ':'))
             os.replace(tmp_cache_file, self.results_cache_file)
@@ -848,6 +864,21 @@ class Scanner:
         filtered = []
         file_content_cache = {}
         seen_findings = set()
+        line_raw_secrets = {}
+        for rf in raw_findings:
+            rf_file = rf.get('file')
+            if not isinstance(rf_file, str) or not rf_file:
+                continue
+            rf_line = rf.get('line', 0)
+            if not isinstance(rf_line, int):
+                try:
+                    rf_line = int(rf_line)
+                except (ValueError, TypeError):
+                    rf_line = 0
+            rf_val = rf.get('_raw_value')
+            if rf_line > 0 and rf_val is not None and str(rf_val) != "":
+                line_raw_secrets.setdefault((rf_file, rf_line), set()).add(str(rf_val))
+
         for fnd in raw_findings:
             # Use original raw string value of file to preserve distinction in edge-case tests
             raw_file_str = str(fnd.get('file'))
@@ -872,8 +903,8 @@ class Scanner:
             fnd['line'] = line
 
             # Usability: Deduplicate duplicate warnings from different checkers on the same line
-            fnd_id = self._get_fnd_id(fnd)
-            raw_val = fnd.get('_raw_value') or fnd.get('value_preview', '')
+            fnd_id = str(self._get_fnd_id(fnd))
+            raw_val = str(fnd.get('_raw_value') or fnd.get('value_preview', ''))
             dup_fp = (raw_file_str, line, fnd_id, raw_val)
             if dup_fp in seen_findings:
                 continue
@@ -931,9 +962,9 @@ class Scanner:
                     continue
 
             # Inline suppression (Strict Mode)
-            # If context is missing (common for AST findings), fetch it dynamically to check for suppressions
-            ctx_str = fnd.get('context', '')
-            if not ctx_str and file_path and line > 0:
+            # Fetch raw source line for inline ignore checks and dynamic context population
+            raw_source_line = ""
+            if file_path and line > 0:
                 try:
                     if file_path not in file_content_cache:
                         file_content_cache[file_path] = self._read_file_safe(file_path)
@@ -941,25 +972,46 @@ class Scanner:
                     if content:
                         lines = content.splitlines()
                         if 1 <= line <= len(lines):
-                            ctx_str = lines[line - 1].strip()
-                            # Safely mask the secret inside the dynamically fetched context to prevent leakage in reports
-                            raw_val = fnd.get('_raw_value')
-                            masked_val = fnd.get('value_preview')
-                            if raw_val and masked_val and raw_val in ctx_str:
-                                ctx_str = ctx_str.replace(raw_val, masked_val)
-                            fnd['context'] = ctx_str
+                            raw_source_line = lines[line - 1]
                 except Exception as e:
                     logger.debug(f"Failed to fetch line context: {e}")
-            ctx_str = str(ctx_str)
-            
-            if "ghostcheck-ignore" in ctx_str:
+
+            orig_ctx = fnd.get('context', '')
+            had_orig_context = bool(orig_ctx)
+            ctx_str = str(orig_ctx) if orig_ctx else ''
+            ctx_updated = False
+            if not ctx_str and raw_source_line:
+                ctx_str = raw_source_line.strip()
+                ctx_updated = True
+            if ctx_str:
+                raw_val_priv = fnd.get('_raw_value')
+                sibling_secrets = set(line_raw_secrets.get((file_path, line), set()))
+                if raw_val_priv is not None and str(raw_val_priv) != "":
+                    raw_val_str = str(raw_val_priv)
+                    sibling_secrets.add(raw_val_str)
+                    masked_val = str(fnd.get('value_preview') or self._mask_secret(raw_val_str))
+                    if raw_val_str in ctx_str:
+                        ctx_str = ctx_str.replace(raw_val_str, masked_val)
+                        ctx_updated = True
+                    elif not had_orig_context:
+                        ctx_str = masked_val
+                        ctx_updated = True
+                for sv in sorted((str(s) for s in sibling_secrets if s), key=len, reverse=True):
+                    if sv in ctx_str:
+                        ctx_str = ctx_str.replace(sv, self._mask_secret(sv))
+                        ctx_updated = True
+                if ctx_updated:
+                    fnd['context'] = ctx_str
+
+            ignore_target = raw_source_line if raw_source_line else ctx_str
+            if "ghostcheck-ignore" in ignore_target.lower():
                 import re
                 untrusted_asset_rules = {
                     "rag_poisoning_encoded_payload", "memory_poisoning_directive",
                     "multimodal_metadata_injection", "multimodal_svg_hidden_injection",
                     "polyglot_magic_byte_mismatch"
                 }
-                ignore_match = re.search(r'(#|//|/\*|<!--|--|rem\b|::)\s*ghostcheck-ignore(?::\s*([^\r\n*#]+))?', ctx_str, re.IGNORECASE)
+                ignore_match = re.search(r'(#|//|/\*|<!--|--|\brem\b|::)\s*ghostcheck-ignore(?::\s*([^\r\n*#]+))?', ignore_target, re.IGNORECASE)
                 if ignore_match:
                     target_rules_str = ignore_match.group(2)
                     if target_rules_str:
@@ -994,7 +1046,7 @@ class Scanner:
                     continue
 
             # v0.8.0: Secret Validation (if applicable and enabled)
-            if 'secret' in fnd_id.lower() or 'token' in fnd_id.lower():
+            if any(k in fnd_id.lower() for k in ('secret', 'token', 'key', 'openai')):
                 validation = self.secret_validator.validate(fnd)
                 if validation:
                     fnd['validation'] = validation
@@ -1018,7 +1070,11 @@ class Scanner:
 
             filtered.append(fnd)
 
-        return self.severity_engine.adjust_findings(filtered)
+        adjusted = self.severity_engine.adjust_findings(filtered)
+        for fnd in adjusted:
+            if isinstance(fnd, dict):
+                fnd.pop('_raw_value', None)
+        return adjusted
 
     def scan(self, limit_files=None):
         import concurrent.futures
@@ -1069,8 +1125,43 @@ class Scanner:
                         # Update cache entry for this file
                         fp = self._get_file_fingerprint(f_path)
                         if fp:
+                            result_line_secrets = {}
+                            for f in (result or []):
+                                if isinstance(f, dict):
+                                    rv = f.get('_raw_value')
+                                    if rv is not None and str(rv) != "":
+                                        try:
+                                            ln = int(f.get('line', 0))
+                                        except (ValueError, TypeError):
+                                            ln = 0
+                                        result_line_secrets.setdefault(ln, set()).add(str(rv))
+                            sanitized_cache_entries = []
+                            for f in (result or []):
+                                if isinstance(f, dict):
+                                    entry = {k: v for k, v in f.items() if not str(k).startswith('_')}
+                                    try:
+                                        line_no = int(f.get('line', 0))
+                                    except (ValueError, TypeError):
+                                        line_no = 0
+                                    line_secrets = result_line_secrets.get(line_no, set())
+                                    # Preserve masked context and redact sibling secrets so cache hits never leak raw lines
+                                    if entry.get('context'):
+                                        ctx_s = str(entry['context'])
+                                        for sv in sorted(line_secrets, key=len, reverse=True):
+                                            if sv in ctx_s:
+                                                ctx_s = ctx_s.replace(sv, self._mask_secret(sv))
+                                        entry['context'] = ctx_s
+                                    elif f.get('_raw_value'):
+                                        entry['context'] = str(
+                                            entry.get('value_preview') or self._mask_secret(f['_raw_value'])
+                                        )
+                                    elif line_secrets:
+                                        entry['context'] = "[redacted: line contains secret]"
+                                    sanitized_cache_entries.append(entry)
+                                else:
+                                    sanitized_cache_entries.append(f)
                             with self._cache_lock:
-                                self.results_cache[fp] = [dict(f) for f in result] if result else []
+                                self.results_cache[fp] = sanitized_cache_entries
                     except Exception as e:
                         print(f"Error scanning {f_path}: {e}")
             

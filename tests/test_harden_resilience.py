@@ -48,24 +48,30 @@ def test_proxy_propagation(mock_install):
             assert plugin2.proxies["http"] == "http://test-proxy:8080"
 
 def test_proxy_opener_reset_on_default_checker():
-    """Verify that instantiating a default HallucinationChecker resets urllib's global opener."""
+    """Verify that instantiating HallucinationChecker with proxy does not mutate urllib's global opener."""
     import urllib.request
+    original_opener = urllib.request._opener
+    urllib.request.install_opener(None)
     try:
+        assert urllib.request._opener is None
         checker_proxy = HallucinationChecker(proxy="http://bad-proxy:8080")
-        assert urllib.request._opener is not None
+        assert urllib.request._opener is None
+        assert checker_proxy.opener is not None
 
         checker_default = HallucinationChecker()
         assert urllib.request._opener is None
+        assert checker_default.opener is not None
     finally:
-        urllib.request.install_opener(None)
+        urllib.request.install_opener(original_opener)
 
 @patch('urllib.request.install_opener')
 @patch('urllib.request.build_opener')
 def test_hallucination_proxy_setup(mock_build, mock_install):
-    """Verify that HallucinationChecker sets up the urllib opener with proxy."""
+    """Verify that HallucinationChecker sets up an isolated opener with proxy without calling install_opener."""
     checker = HallucinationChecker(proxy="http://secure-proxy:3128")
     assert mock_build.called
-    assert mock_install.called
+    assert checker.opener is not None
+    assert not mock_install.called
 
 def test_scanner_safe_path_windows_root(tmp_path):
     """Verify that _is_safe_path handles absolute paths correctly."""

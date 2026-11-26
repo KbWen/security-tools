@@ -140,29 +140,56 @@ class AIMarker(BaseScannerPlugin):
                     break
         return findings
 
+    def _is_within(self, path: str, parent: str) -> bool:
+        try:
+            p_norm = os.path.normcase(os.path.realpath(path))
+            parent_norm = os.path.normcase(os.path.realpath(parent))
+            return os.path.commonpath([p_norm, parent_norm]) == parent_norm
+        except (ValueError, OSError):
+            return False
+
     def _get_secure_git(self):
         git_path = shutil.which("git")
         if not git_path:
             return None
-        abs_git = os.path.abspath(git_path)
         cwd = os.getcwd()
         project_abs = os.path.abspath(self.root_path)
-        if abs_git.startswith(cwd) or abs_git.startswith(project_abs):
-            # Scan PATH manually excluding current folder or relative entries
+        if os.path.isfile(project_abs):
+            project_abs = os.path.dirname(project_abs) or "."
+        if self._is_within(git_path, cwd) or self._is_within(git_path, project_abs):
+            # Scan PATH manually excluding current/project folders, subdirectories, and relative entries
             path_env = os.environ.get("PATH", "")
             paths = path_env.split(os.pathsep)
+            exts = [".exe", ".cmd", ".bat"] if os.name == "nt" else [""]
             for p in paths:
-                if not p or p.strip() in [".", ""]:
+                p_clean = p.strip().strip('"')
+                if not p_clean or not os.path.isabs(p_clean):
                     continue
-                p_abs = os.path.abspath(p)
-                if p_abs == cwd or p_abs == project_abs:
+                if self._is_within(p_clean, cwd) or self._is_within(p_clean, project_abs):
                     continue
-                for ext in ["", ".exe", ".cmd", ".bat"]:
-                    candidate = os.path.join(p, f"git{ext}")
-                    if os.path.exists(candidate) and os.path.isfile(candidate):
+                for ext in exts:
+                    candidate = os.path.join(p_clean, f"git{ext}")
+                    if self._is_within(candidate, cwd) or self._is_within(candidate, project_abs):
+                        continue
+                    if os.path.isfile(candidate) and (os.name == "nt" or os.access(candidate, os.X_OK)):
                         return candidate
             return None
         return git_path
+
+    def _safe_git_env(self):
+        safe_env = os.environ.copy()
+        for var in (
+            "GIT_EXTERNAL_DIFF",
+            "GIT_PAGER",
+            "GIT_CONFIG_PARAMETERS",
+            "GIT_CONFIG_COUNT",
+            "GIT_CONFIG",
+            "GIT_EXEC_PATH",
+            "GIT_CONFIG_GLOBAL",
+            "GIT_CONFIG_SYSTEM",
+        ):
+            safe_env.pop(var, None)
+        return safe_env
 
     def scan_git_history(self) -> List[Dict[str, Any]]:
         findings = []
@@ -170,8 +197,13 @@ class AIMarker(BaseScannerPlugin):
         if not git_executable:
             return findings
 
+        git_cwd = (
+            os.path.dirname(os.path.abspath(self.root_path)) or "."
+            if os.path.isfile(self.root_path)
+            else self.root_path
+        )
         cmd = [
-            git_executable, "-C", self.root_path,
+            git_executable, "-C", git_cwd,
             "-c", "core.quotePath=false",
             "-c", "core.hooksPath=/dev/null",
             "-c", "core.pager=cat",
@@ -179,7 +211,7 @@ class AIMarker(BaseScannerPlugin):
         ]
         
         try:
-            result = subprocess.run(cmd, capture_output=True, timeout=10)
+            result = subprocess.run(cmd, capture_output=True, timeout=10, env=self._safe_git_env())
             if result.returncode != 0:
                 return findings
             stdout = result.stdout.decode('utf-8', errors='replace')

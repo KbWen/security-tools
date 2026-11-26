@@ -276,25 +276,34 @@ def test_git_diff_scanner_hardening(monkeypatch, tmp_path):
     import os
     import shutil
     
+    project_dir = tmp_path / "project"
+    project_dir.mkdir()
+
     # 1. Test when git is completely missing
     monkeypatch.setattr(shutil, "which", lambda cmd: None)
-    scanner = GitDiffScanner(str(tmp_path))
+    scanner = GitDiffScanner(str(project_dir))
     assert scanner.is_git_repo() is False
     assert scanner.get_staged_files() == []
     
     # 2. Test secure git filter (git_path starts with cwd or project_abs)
-    local_git = tmp_path / "git.exe"
+    exe_name = "git.exe" if os.name == "nt" else "git"
+    local_git = project_dir / exe_name
     local_git.touch()
+    if os.name != "nt":
+        local_git.chmod(0o755)
     monkeypatch.setattr(shutil, "which", lambda cmd: str(local_git))
     
+    # Place safe_dir as a sibling outside project_dir and cwd
     safe_dir = tmp_path / "safe_bin"
     safe_dir.mkdir()
-    system_git = safe_dir / "git.exe"
+    system_git = safe_dir / exe_name
     system_git.touch()
+    if os.name != "nt":
+        system_git.chmod(0o755)
     
-    monkeypatch.setenv("PATH", f"{tmp_path}{os.pathsep}{safe_dir}")
+    monkeypatch.setenv("PATH", f"{project_dir}{os.pathsep}{safe_dir}")
     
-    scanner = GitDiffScanner(str(tmp_path))
+    scanner = GitDiffScanner(str(project_dir))
     resolved_git = scanner._get_secure_git()
     assert resolved_git == str(system_git)
 
@@ -309,7 +318,7 @@ def test_git_diff_scanner_hardening(monkeypatch, tmp_path):
     assert scanner.get_diff_files("-a") == []
     
     # 5. Test file cwd input path resolution
-    dummy_file = tmp_path / "dummy.txt"
+    dummy_file = project_dir / "dummy.txt"
     dummy_file.touch()
     scanner_file = GitDiffScanner(str(dummy_file))
     assert scanner_file.get_staged_files() == []
@@ -329,7 +338,7 @@ def test_git_diff_scanner_hardening(monkeypatch, tmp_path):
     monkeypatch.setattr(shutil, "which", lambda cmd: "git")
     monkeypatch.setattr(subprocess, "run", mock_run_unicode)
     
-    scanner_unicode = GitDiffScanner(str(tmp_path))
+    scanner_unicode = GitDiffScanner(str(project_dir))
     res = scanner_unicode.get_staged_files()
     assert res == []
     assert len(called_envs) > 0

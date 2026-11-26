@@ -8,7 +8,11 @@ class JsonReporter(BaseReporterPlugin):
 
     def report(self, findings, stream=None, **kwargs):
         # Machine-readable output - simple JSON array
-        data = json.dumps(findings, indent=2)
+        sanitized = [
+            {k: v for k, v in f.items() if not str(k).startswith('_')} if isinstance(f, dict) else f
+            for f in findings
+        ]
+        data = json.dumps(sanitized, indent=2)
         if stream:
             stream.write(data)
         else:

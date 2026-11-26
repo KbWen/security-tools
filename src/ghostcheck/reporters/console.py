@@ -112,9 +112,11 @@ class ConsoleReporter(BaseReporterPlugin):
             raw_val = f.get('_raw_value')
             if context:
                 context_str = str(context)
-                if raw_val and str(raw_val) in context_str:
-                    masked_val = raw_val[:4] + "*" * (len(raw_val) - 8) + raw_val[-4:] if len(raw_val) > 8 else "****"
-                    context_str = context_str.replace(str(raw_val), masked_val)
+                if raw_val is not None and str(raw_val) != "":
+                    raw_str = str(raw_val)
+                    if raw_str in context_str:
+                        masked_val = raw_str[:4] + "*" * (len(raw_str) - 8) + raw_str[-4:] if len(raw_str) > 8 else "****"
+                        context_str = context_str.replace(raw_str, masked_val)
                 _print(f"   {self._dim('Context: ' + context_str)}")
             elif 'value_preview' in f:
                 _print(f"   {self._dim('Value: ' + str(f.get('value_preview', '')))}")
